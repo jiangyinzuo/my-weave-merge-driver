@@ -5,6 +5,7 @@ use anyhow::{bail, Context, Result};
 
 mod conflict;
 mod render;
+pub(crate) use conflict::annotate_moves;
 pub use conflict::conflict_box;
 
 pub const MAX_BYTES: usize = 1_000_000;

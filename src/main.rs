@@ -92,6 +92,11 @@ fn run() -> Result<u8> {
                     eprintln!("{line}");
                 }
             }
+            for line in
+                repository::related_move_lines(&file.reasons, &file.related_moves, explain_reasons)
+            {
+                eprintln!("{line}");
+            }
         }
         eprintln!(
             "分析结果：{}；Git 未调用 driver 的文件不会自动成为 index conflict",

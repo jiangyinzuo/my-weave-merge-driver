@@ -1,0 +1,269 @@
+{
+  "schema_version": 5,
+  "engine": "strict-weave-global-v9",
+  "trees": [
+    "fixture:base",
+    "fixture:ours",
+    "fixture:theirs"
+  ],
+  "files": {
+    "billing/prices.go": {
+      "fingerprints": [
+        null,
+        null,
+        "0adeb9a506ccb9b34fef84dac35e307294a2183dfd715d3268dcf44d087be6e7"
+      ],
+      "reasons": [
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "legacy/pricing.go",
+              "entity": "function calculateTotal",
+              "line": 3
+            },
+            "target": {
+              "path": "billing/prices.go",
+              "entity": "function calculateTotals",
+              "line": 3
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "legacy/pricing.go",
+                  "entity": "function calculateTotal",
+                  "line": 3
+                },
+                "target": {
+                  "path": "billing/prices.go",
+                  "entity": "function calculateTotals",
+                  "line": 3
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "modified",
+                "matched_by": {
+                  "kind": "name_normalized",
+                  "grammar": "go",
+                  "entity_type": "function",
+                  "old_name": "calculateTotal",
+                  "new_name": "calculateTotals",
+                  "old_occurrences": 1,
+                  "new_occurrences": 1,
+                  "comparison": {
+                    "kind": "syntax",
+                    "tokens": 19
+                  }
+                },
+                "opposite_moves": []
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "legacy/pricing.go",
+            "entity": "function calculateTotal",
+            "line": 3
+          },
+          "target": {
+            "path": "billing/prices.go",
+            "entity": "function calculateTotals",
+            "line": 3
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "modified",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "go",
+            "entity_type": "function",
+            "old_name": "calculateTotal",
+            "new_name": "calculateTotals",
+            "old_occurrences": 1,
+            "new_occurrences": 1,
+            "comparison": {
+              "kind": "syntax",
+              "tokens": 19
+            }
+          },
+          "opposite_moves": []
+        }
+      ]
+    },
+    "legacy/pricing.go": {
+      "fingerprints": [
+        "79403e6d61103e283ab4c9f52d40926e3ae0ed8ee67018ba39eaa73642348542",
+        "335058aa426efd19fea510d26d997a5ba9d31039e4c1c0445bf722b8957ce035",
+        null
+      ],
+      "reasons": [
+        {
+          "kind": "line_conflict",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "git_line_conflict"
+            }
+          ]
+        },
+        {
+          "kind": "entity_conflict",
+          "subject": {
+            "type": "entity",
+            "entity_type": "function",
+            "name": "calculateTotal"
+          },
+          "evidence": [
+            {
+              "type": "weave_refusal",
+              "refusal": {
+                "kind": "modify_delete",
+                "modified_in": "ours"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "layout_changed",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "layout_changed"
+            }
+          ]
+        },
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "legacy/pricing.go",
+              "entity": "function calculateTotal",
+              "line": 3
+            },
+            "target": {
+              "path": "billing/prices.go",
+              "entity": "function calculateTotals",
+              "line": 3
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "legacy/pricing.go",
+                  "entity": "function calculateTotal",
+                  "line": 3
+                },
+                "target": {
+                  "path": "billing/prices.go",
+                  "entity": "function calculateTotals",
+                  "line": 3
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "modified",
+                "matched_by": {
+                  "kind": "name_normalized",
+                  "grammar": "go",
+                  "entity_type": "function",
+                  "old_name": "calculateTotal",
+                  "new_name": "calculateTotals",
+                  "old_occurrences": 1,
+                  "new_occurrences": 1,
+                  "comparison": {
+                    "kind": "syntax",
+                    "tokens": 19
+                  }
+                },
+                "opposite_moves": []
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "legacy/pricing.go",
+            "entity": "function calculateTotal",
+            "line": 3
+          },
+          "target": {
+            "path": "billing/prices.go",
+            "entity": "function calculateTotals",
+            "line": 3
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "modified",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "go",
+            "entity_type": "function",
+            "old_name": "calculateTotal",
+            "new_name": "calculateTotals",
+            "old_occurrences": 1,
+            "new_occurrences": 1,
+            "comparison": {
+              "kind": "syntax",
+              "tokens": 19
+            }
+          },
+          "opposite_moves": []
+        }
+      ]
+    }
+  },
+  "move_candidates": [
+    {
+      "side": "theirs",
+      "base": {
+        "path": "legacy/pricing.go",
+        "entity": "function calculateTotal",
+        "line": 3
+      },
+      "target": {
+        "path": "billing/prices.go",
+        "entity": "function calculateTotals",
+        "line": 3
+      },
+      "source_count": 1,
+      "destination_count": 1,
+      "opposite": "modified",
+      "matched_by": {
+        "kind": "name_normalized",
+        "grammar": "go",
+        "entity_type": "function",
+        "old_name": "calculateTotal",
+        "new_name": "calculateTotals",
+        "old_occurrences": 1,
+        "new_occurrences": 1,
+        "comparison": {
+          "kind": "syntax",
+          "tokens": 19
+        }
+      },
+      "opposite_moves": []
+    }
+  ],
+  "warnings": []
+}

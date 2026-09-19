@@ -1,0 +1,269 @@
+{
+  "schema_version": 5,
+  "engine": "strict-weave-global-v9",
+  "trees": [
+    "fixture:base",
+    "fixture:ours",
+    "fixture:theirs"
+  ],
+  "files": {
+    "new.py": {
+      "fingerprints": [
+        null,
+        null,
+        "2cb19b74b12a2a5c02bae67b3d792f65f1bb594d24615bf96fdc2096d9772270"
+      ],
+      "reasons": [
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "old.py",
+              "entity": "function calculate",
+              "line": 1
+            },
+            "target": {
+              "path": "new.py",
+              "entity": "function calculates",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "old.py",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "target": {
+                  "path": "new.py",
+                  "entity": "function calculates",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "modified",
+                "matched_by": {
+                  "kind": "name_normalized",
+                  "grammar": "python",
+                  "entity_type": "function",
+                  "old_name": "calculate",
+                  "new_name": "calculates",
+                  "old_occurrences": 1,
+                  "new_occurrences": 1,
+                  "comparison": {
+                    "kind": "syntax",
+                    "tokens": 15
+                  }
+                },
+                "opposite_moves": []
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "old.py",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "new.py",
+            "entity": "function calculates",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "modified",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "python",
+            "entity_type": "function",
+            "old_name": "calculate",
+            "new_name": "calculates",
+            "old_occurrences": 1,
+            "new_occurrences": 1,
+            "comparison": {
+              "kind": "syntax",
+              "tokens": 15
+            }
+          },
+          "opposite_moves": []
+        }
+      ]
+    },
+    "old.py": {
+      "fingerprints": [
+        "04a4a1b60084a768e70911c8fdb94c22551438e9c7052052989e1e1cbbc05178",
+        "bcdf5c2e1000db2b3fc8568fb83ad15d6fba2cc087a290c3e062a4a137e12ef2",
+        null
+      ],
+      "reasons": [
+        {
+          "kind": "line_conflict",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "git_line_conflict"
+            }
+          ]
+        },
+        {
+          "kind": "entity_conflict",
+          "subject": {
+            "type": "entity",
+            "entity_type": "function",
+            "name": "calculate"
+          },
+          "evidence": [
+            {
+              "type": "weave_refusal",
+              "refusal": {
+                "kind": "modify_delete",
+                "modified_in": "ours"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "layout_changed",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "layout_changed"
+            }
+          ]
+        },
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "old.py",
+              "entity": "function calculate",
+              "line": 1
+            },
+            "target": {
+              "path": "new.py",
+              "entity": "function calculates",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "old.py",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "target": {
+                  "path": "new.py",
+                  "entity": "function calculates",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "modified",
+                "matched_by": {
+                  "kind": "name_normalized",
+                  "grammar": "python",
+                  "entity_type": "function",
+                  "old_name": "calculate",
+                  "new_name": "calculates",
+                  "old_occurrences": 1,
+                  "new_occurrences": 1,
+                  "comparison": {
+                    "kind": "syntax",
+                    "tokens": 15
+                  }
+                },
+                "opposite_moves": []
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "old.py",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "new.py",
+            "entity": "function calculates",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "modified",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "python",
+            "entity_type": "function",
+            "old_name": "calculate",
+            "new_name": "calculates",
+            "old_occurrences": 1,
+            "new_occurrences": 1,
+            "comparison": {
+              "kind": "syntax",
+              "tokens": 15
+            }
+          },
+          "opposite_moves": []
+        }
+      ]
+    }
+  },
+  "move_candidates": [
+    {
+      "side": "theirs",
+      "base": {
+        "path": "old.py",
+        "entity": "function calculate",
+        "line": 1
+      },
+      "target": {
+        "path": "new.py",
+        "entity": "function calculates",
+        "line": 1
+      },
+      "source_count": 1,
+      "destination_count": 1,
+      "opposite": "modified",
+      "matched_by": {
+        "kind": "name_normalized",
+        "grammar": "python",
+        "entity_type": "function",
+        "old_name": "calculate",
+        "new_name": "calculates",
+        "old_occurrences": 1,
+        "new_occurrences": 1,
+        "comparison": {
+          "kind": "syntax",
+          "tokens": 15
+        }
+      },
+      "opposite_moves": []
+    }
+  ],
+  "warnings": []
+}

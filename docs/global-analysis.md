@@ -24,7 +24,7 @@ strict-weave driver prepare BASE OURS THEIRS --output /absolute/path/analysis.js
 
 三个位置参数顺序固定，均是明确的 Git revision/tree。工具只用 `rev-parse`、`ls-tree`、`cat-file` 读取对象；不读取工作区作为版本，不推导 merge base，不调用 external diff、filters 或 hooks。结果保存已解析 tree ID，不依赖以后可能移动的 branch 引用。
 
-报告按路径排序，包含每个变化文件三侧 SHA-256 指纹、严格冲突原因、移动关联、解析降级提示。当前格式为 schema v2 / strict-weave-global-v6，`reasons` 保存父节点 `kind`、`subject` 和完整子依据 `evidence`。旧 schema 或旧 engine 报告不兼容，须重新运行 prepare；未知类型、空证据或不合法的父子组合会拒绝读取。缺失文件以 null 指纹表示，空文件有正常指纹。非阻断关联保存在 `related_moves` / `move_candidates` 中，有移动候选不等于有冲突。首次写入使用临时文件原子安装，拒绝覆盖已有结果，并设置只读权限。只读权限防止意外修改，不是防篡改认证。
+报告按路径排序，包含每个变化文件三侧 SHA-256 指纹、严格冲突原因、移动关联、解析降级提示。当前格式为 schema v5 / strict-weave-global-v9，`reasons` 保存父节点 `kind`、`subject` 和完整子依据 `evidence`。旧 schema 或旧 engine 报告不兼容，须重新运行 prepare；未知类型、空证据或不合法的父子组合会拒绝读取。缺失文件以 null 指纹表示，空文件有正常指纹。非阻断关联保存在 `related_moves` / `move_candidates` 中，有移动候选不等于有冲突。首次写入使用临时文件原子安装，拒绝覆盖已有结果，并设置只读权限。只读权限防止意外修改，不是防篡改认证。
 
 - `0`：完成，未发现当前内容规则要求审核的项。
 - `1`：完成，存在审核项；JSON 仍已写出，stderr 列出原因。
@@ -61,9 +61,15 @@ driver 依次验证结果格式版本、路径及三侧文本指纹，再执行�
 
 原文补充仍然必要：weave 会归一化 CRLF/LF 和 BOM，而本项目把原始文本变化也视为修改。`encoding.go` 验证双方仅将 LF 改为 CRLF 时仍然冲突（当前原文分区无法完整还原 CRLF，保守回退整文件）。weave 计算 body hash 前还会把自身名称替换成 `__ENTITY__`；原文真的把自引用改成该标识时，上游可能仍判为 unchanged，由我们的原文字节补充拦截。分区检查还负责完整展示、非实体区域及布局变化；跨文件关联由全局分析补充。完整规则目录见 [conflict-reasons.md](conflict-reasons.md)。
 
-## 第一版移动规则
+## 移动与疑似重命名规则
 
 分别比较 base → ours 与 base → theirs。在一侧，源路径的某 entity 消失，另一条路径新增类型、名称、原始实体区域文本完全相同的 entity，产生“疑似移动”候选。附着注释也在原文比较内。多个源/目标全部保留，输出候选数，不通过遍历顺序选一个“正确”关联。
+
+名称不同时，增加另一条匹配规则：要求同 grammar、同 entity 类型，复用 `weave_core::binding::replace_at_word_boundaries` 将双方各自名称替换为 `__ENTITY__`，完整区域文本逐 byte 相同才建立“疑似重命名并移动”候选。若原文不同，再复用 sem-core 公开的 `parse_tree` 比较完整语法表示：节点类型、字段、嵌套、token 顺序和原文均相同才匹配，仅忽略 token 间空白。注释、字符串、字符、模板等子树按原文保存；不把 Python 缩进导致的结构变化当作格式化。独立 entity 解析失败或存在未覆盖的非空白文本时，不使用这条回退规则。
+
+grammar 使用 sem-core 的公开 registry，允许 `.js` / `.mjs` 等共享 grammar 的扩展名。原文包含 sentinel 时跳过此规则；不以 hash 或相似度判等。
+
+JSON 的 `matched_by.kind` 区分 `exact` 与 `name_normalized`。后者另存 grammar、类型、旧名、新名和替换次数，以及 `comparison.kind=text/syntax`；syntax 模式保存比较单元数 `tokens`（注释/字面量子树整体算一个单元）。同一对优先记录原文匹配，避免重复候选。两侧次数相等且大于零。来源/目标候选数量包含两种匹配依据，全部保留，不优先选择同名候选。复用公共文本操作不意味着 weave 已判定此跨文件关系，诊断来源仍是 analyze。
 
 若另一侧改变了该 base entity，包括无法确认其未改变的解析失败，则源路径和目标路径都记录 `GLOBAL_MODIFY_VS_MOVE`。例如：
 
@@ -72,9 +78,20 @@ driver 依次验证结果格式版本、路径及三侧文本指纹，再执行�
   依据 [analyze]：MOVE_CANDIDATE：theirs 疑似移动 function calculate · source.go:1 → target.go:1；源 deleted、目标 added；类型/名称/原始区域文本相同（含附着注释）；sources=1，destinations=1；另一侧=modified
 ```
 
-另一侧状态明确区分 unchanged、modified、deleted、无法确认；解析失败显示“无法确认”，不会写成已证实的修改。
+另一侧状态明确区分 unchanged、modified、deleted、无法确认；解析失败显示“无法确认”，不会写成已证实的修改。若另一侧也有同一 base entity 的移动候选，`opposite_moves` 保存全部目标、匹配依据和数量；诊断显示如 `另一侧=deleted（ours：疑似移动 …；候选数=1）`，保留 deleted 事实，不将疑似关联升级为确定身份。
 
-这是确定性文本证据，不证明语义身份。复制后仍保留源 entity 不满足 deleted 条件。名称变化、移动同时编辑、同文件移动暂不建立此关联；缺少候选不能解释为没有移动。解析不支持时明确报告关联不完整，继续保留单文件保守检查。
+源与目标文件的冲突 marker 均补充文件级移动关联，分别挂在相应 ours/theirs 方向，并含路径及行号。已有局部冲突也会标注，但不改源码和范围；双方移动时同时展示另一侧目标。详细规则见 [conflict-rendering.md](conflict-rendering.md)。
+
+重命名移动示例（完整预期见 `tests/fixtures/multi-file/rename-modify.stderr-details/target.go`）：
+
+```text
+原因 [analyze]：GLOBAL_MODIFY_VS_MOVE：function calculate 疑似重命名并移动（calculate → renamed），与另一侧变化需共同审核
+  依据 [analyze]：RENAME_MOVE_CANDIDATE：theirs 疑似重命名并移动 function calculate → renamed · source.go:1 → target.go:1；源 deleted、目标 added；grammar=go、类型相同；按词边界替换各自名称后，区域文本逐 byte 相同（含附着注释）；替换次数=1/1；sources=1，destinations=1；另一侧=modified；仅为文本候选，未证明语义等价
+```
+
+`--explain-reasons` 另说明所用公共函数、文本替换范围和候选数量含义。替换可能涉及自引用、注释和字符串，不等于只改定义名，也没有验证其它文件的调用更新。`sources` 为当前目标的候选来源数，`destinations` 为当前来源的候选目标数。另一侧未变时只显示 `关联 [analyze]`，不新增冲突。
+
+这是确定性文本证据，不证明语义身份。复制后仍保留源 entity 不满足 deleted 条件。名称归一化后 token 内容或结构仍变化的编辑、跨 grammar 的改名移动、同文件移动暂不建立此关联；缺少候选不能解释为没有移动。解析不支持时明确报告关联不完整，继续保留单文件保守检查。候选组合或另一侧关联展开总数超过 10000 时明确失败，不截断输出报告。
 
 ## 必须明确的限制
 

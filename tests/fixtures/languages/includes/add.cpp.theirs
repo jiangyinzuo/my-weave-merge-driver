@@ -1,0 +1,6 @@
+#include <vector>
+#include <map>
+
+int answer() {
+    return 42;
+}

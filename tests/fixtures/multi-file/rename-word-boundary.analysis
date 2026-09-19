@@ -1,0 +1,71 @@
+{
+  "schema_version": 5,
+  "engine": "strict-weave-global-v9",
+  "trees": [
+    "fixture:base",
+    "fixture:ours",
+    "fixture:theirs"
+  ],
+  "files": {
+    "source.go": {
+      "fingerprints": [
+        "c83776a0b9281e4a3a674e0bf16c55cddd9e2c2be778dcddd7993af6c5f266f7",
+        "2b2f902986bc6313561491873fc659e4328eab4ce0e748bb73f7e320e2528bd8",
+        null
+      ],
+      "reasons": [
+        {
+          "kind": "line_conflict",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "git_line_conflict"
+            }
+          ]
+        },
+        {
+          "kind": "entity_conflict",
+          "subject": {
+            "type": "entity",
+            "entity_type": "function",
+            "name": "calculate"
+          },
+          "evidence": [
+            {
+              "type": "weave_refusal",
+              "refusal": {
+                "kind": "modify_delete",
+                "modified_in": "ours"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "layout_changed",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "layout_changed"
+            }
+          ]
+        }
+      ],
+      "related_moves": []
+    },
+    "target.go": {
+      "fingerprints": [
+        null,
+        null,
+        "51576d91bb2a91a1694805a069a291a62c35a0fc9f61a94e75f7aceaf3f44cb1"
+      ],
+      "reasons": [],
+      "related_moves": []
+    }
+  },
+  "move_candidates": [],
+  "warnings": []
+}

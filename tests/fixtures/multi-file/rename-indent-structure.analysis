@@ -1,0 +1,71 @@
+{
+  "schema_version": 5,
+  "engine": "strict-weave-global-v9",
+  "trees": [
+    "fixture:base",
+    "fixture:ours",
+    "fixture:theirs"
+  ],
+  "files": {
+    "new.py": {
+      "fingerprints": [
+        null,
+        null,
+        "52ad0eac8edfbe6643463af38e44cc49f7ade30804fae40db7395b6644efe5d2"
+      ],
+      "reasons": [],
+      "related_moves": []
+    },
+    "old.py": {
+      "fingerprints": [
+        "04a4a1b60084a768e70911c8fdb94c22551438e9c7052052989e1e1cbbc05178",
+        "bcdf5c2e1000db2b3fc8568fb83ad15d6fba2cc087a290c3e062a4a137e12ef2",
+        null
+      ],
+      "reasons": [
+        {
+          "kind": "line_conflict",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "git_line_conflict"
+            }
+          ]
+        },
+        {
+          "kind": "entity_conflict",
+          "subject": {
+            "type": "entity",
+            "entity_type": "function",
+            "name": "calculate"
+          },
+          "evidence": [
+            {
+              "type": "weave_refusal",
+              "refusal": {
+                "kind": "modify_delete",
+                "modified_in": "ours"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "layout_changed",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "layout_changed"
+            }
+          ]
+        }
+      ],
+      "related_moves": []
+    }
+  },
+  "move_candidates": [],
+  "warnings": []
+}

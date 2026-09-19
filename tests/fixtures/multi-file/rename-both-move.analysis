@@ -1,0 +1,961 @@
+{
+  "schema_version": 5,
+  "engine": "strict-weave-global-v9",
+  "trees": [
+    "fixture:base",
+    "fixture:ours",
+    "fixture:theirs"
+  ],
+  "files": {
+    "ours/moved.go": {
+      "fingerprints": [
+        null,
+        "e9c9b60da3902dbe558a66ff5c4ae17204728bbfae2eec2d97f86a370f71cd12",
+        null
+      ],
+      "reasons": [
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "ours",
+            "base": {
+              "path": "source.go",
+              "entity": "function calculate",
+              "line": 1
+            },
+            "target": {
+              "path": "ours/moved.go",
+              "entity": "function calculate",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "ours",
+                "base": {
+                  "path": "source.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "target": {
+                  "path": "ours/moved.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "deleted",
+                "matched_by": {
+                  "kind": "exact"
+                },
+                "opposite_moves": [
+                  {
+                    "target": {
+                      "path": "theirs/first.go",
+                      "entity": "function renamed",
+                      "line": 1
+                    },
+                    "matched_by": {
+                      "kind": "name_normalized",
+                      "grammar": "go",
+                      "entity_type": "function",
+                      "old_name": "calculate",
+                      "new_name": "renamed",
+                      "old_occurrences": 1,
+                      "new_occurrences": 1,
+                      "comparison": {
+                        "kind": "syntax",
+                        "tokens": 9
+                      }
+                    },
+                    "source_count": 1,
+                    "destination_count": 2
+                  },
+                  {
+                    "target": {
+                      "path": "theirs/second.go",
+                      "entity": "function renamed",
+                      "line": 1
+                    },
+                    "matched_by": {
+                      "kind": "name_normalized",
+                      "grammar": "go",
+                      "entity_type": "function",
+                      "old_name": "calculate",
+                      "new_name": "renamed",
+                      "old_occurrences": 1,
+                      "new_occurrences": 1,
+                      "comparison": {
+                        "kind": "text"
+                      }
+                    },
+                    "source_count": 1,
+                    "destination_count": 2
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "ours",
+          "base": {
+            "path": "source.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "ours/moved.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "deleted",
+          "matched_by": {
+            "kind": "exact"
+          },
+          "opposite_moves": [
+            {
+              "target": {
+                "path": "theirs/first.go",
+                "entity": "function renamed",
+                "line": 1
+              },
+              "matched_by": {
+                "kind": "name_normalized",
+                "grammar": "go",
+                "entity_type": "function",
+                "old_name": "calculate",
+                "new_name": "renamed",
+                "old_occurrences": 1,
+                "new_occurrences": 1,
+                "comparison": {
+                  "kind": "syntax",
+                  "tokens": 9
+                }
+              },
+              "source_count": 1,
+              "destination_count": 2
+            },
+            {
+              "target": {
+                "path": "theirs/second.go",
+                "entity": "function renamed",
+                "line": 1
+              },
+              "matched_by": {
+                "kind": "name_normalized",
+                "grammar": "go",
+                "entity_type": "function",
+                "old_name": "calculate",
+                "new_name": "renamed",
+                "old_occurrences": 1,
+                "new_occurrences": 1,
+                "comparison": {
+                  "kind": "text"
+                }
+              },
+              "source_count": 1,
+              "destination_count": 2
+            }
+          ]
+        }
+      ]
+    },
+    "source.go": {
+      "fingerprints": [
+        "e9c9b60da3902dbe558a66ff5c4ae17204728bbfae2eec2d97f86a370f71cd12",
+        null,
+        null
+      ],
+      "reasons": [
+        {
+          "kind": "entity_conflict",
+          "subject": {
+            "type": "entity",
+            "entity_type": "function",
+            "name": "calculate"
+          },
+          "evidence": [
+            {
+              "type": "weave_actions",
+              "ours": "deleted",
+              "theirs": "deleted"
+            }
+          ]
+        },
+        {
+          "kind": "layout_changed",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "layout_changed"
+            }
+          ]
+        },
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "ours",
+            "base": {
+              "path": "source.go",
+              "entity": "function calculate",
+              "line": 1
+            },
+            "target": {
+              "path": "ours/moved.go",
+              "entity": "function calculate",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "ours",
+                "base": {
+                  "path": "source.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "target": {
+                  "path": "ours/moved.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "deleted",
+                "matched_by": {
+                  "kind": "exact"
+                },
+                "opposite_moves": [
+                  {
+                    "target": {
+                      "path": "theirs/first.go",
+                      "entity": "function renamed",
+                      "line": 1
+                    },
+                    "matched_by": {
+                      "kind": "name_normalized",
+                      "grammar": "go",
+                      "entity_type": "function",
+                      "old_name": "calculate",
+                      "new_name": "renamed",
+                      "old_occurrences": 1,
+                      "new_occurrences": 1,
+                      "comparison": {
+                        "kind": "syntax",
+                        "tokens": 9
+                      }
+                    },
+                    "source_count": 1,
+                    "destination_count": 2
+                  },
+                  {
+                    "target": {
+                      "path": "theirs/second.go",
+                      "entity": "function renamed",
+                      "line": 1
+                    },
+                    "matched_by": {
+                      "kind": "name_normalized",
+                      "grammar": "go",
+                      "entity_type": "function",
+                      "old_name": "calculate",
+                      "new_name": "renamed",
+                      "old_occurrences": 1,
+                      "new_occurrences": 1,
+                      "comparison": {
+                        "kind": "text"
+                      }
+                    },
+                    "source_count": 1,
+                    "destination_count": 2
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "source.go",
+              "entity": "function calculate",
+              "line": 1
+            },
+            "target": {
+              "path": "theirs/first.go",
+              "entity": "function renamed",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "source.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "target": {
+                  "path": "theirs/first.go",
+                  "entity": "function renamed",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 2,
+                "opposite": "deleted",
+                "matched_by": {
+                  "kind": "name_normalized",
+                  "grammar": "go",
+                  "entity_type": "function",
+                  "old_name": "calculate",
+                  "new_name": "renamed",
+                  "old_occurrences": 1,
+                  "new_occurrences": 1,
+                  "comparison": {
+                    "kind": "syntax",
+                    "tokens": 9
+                  }
+                },
+                "opposite_moves": [
+                  {
+                    "target": {
+                      "path": "ours/moved.go",
+                      "entity": "function calculate",
+                      "line": 1
+                    },
+                    "matched_by": {
+                      "kind": "exact"
+                    },
+                    "source_count": 1,
+                    "destination_count": 1
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "source.go",
+              "entity": "function calculate",
+              "line": 1
+            },
+            "target": {
+              "path": "theirs/second.go",
+              "entity": "function renamed",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "source.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "target": {
+                  "path": "theirs/second.go",
+                  "entity": "function renamed",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 2,
+                "opposite": "deleted",
+                "matched_by": {
+                  "kind": "name_normalized",
+                  "grammar": "go",
+                  "entity_type": "function",
+                  "old_name": "calculate",
+                  "new_name": "renamed",
+                  "old_occurrences": 1,
+                  "new_occurrences": 1,
+                  "comparison": {
+                    "kind": "text"
+                  }
+                },
+                "opposite_moves": [
+                  {
+                    "target": {
+                      "path": "ours/moved.go",
+                      "entity": "function calculate",
+                      "line": 1
+                    },
+                    "matched_by": {
+                      "kind": "exact"
+                    },
+                    "source_count": 1,
+                    "destination_count": 1
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "ours",
+          "base": {
+            "path": "source.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "ours/moved.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "deleted",
+          "matched_by": {
+            "kind": "exact"
+          },
+          "opposite_moves": [
+            {
+              "target": {
+                "path": "theirs/first.go",
+                "entity": "function renamed",
+                "line": 1
+              },
+              "matched_by": {
+                "kind": "name_normalized",
+                "grammar": "go",
+                "entity_type": "function",
+                "old_name": "calculate",
+                "new_name": "renamed",
+                "old_occurrences": 1,
+                "new_occurrences": 1,
+                "comparison": {
+                  "kind": "syntax",
+                  "tokens": 9
+                }
+              },
+              "source_count": 1,
+              "destination_count": 2
+            },
+            {
+              "target": {
+                "path": "theirs/second.go",
+                "entity": "function renamed",
+                "line": 1
+              },
+              "matched_by": {
+                "kind": "name_normalized",
+                "grammar": "go",
+                "entity_type": "function",
+                "old_name": "calculate",
+                "new_name": "renamed",
+                "old_occurrences": 1,
+                "new_occurrences": 1,
+                "comparison": {
+                  "kind": "text"
+                }
+              },
+              "source_count": 1,
+              "destination_count": 2
+            }
+          ]
+        },
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "theirs/first.go",
+            "entity": "function renamed",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 2,
+          "opposite": "deleted",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "go",
+            "entity_type": "function",
+            "old_name": "calculate",
+            "new_name": "renamed",
+            "old_occurrences": 1,
+            "new_occurrences": 1,
+            "comparison": {
+              "kind": "syntax",
+              "tokens": 9
+            }
+          },
+          "opposite_moves": [
+            {
+              "target": {
+                "path": "ours/moved.go",
+                "entity": "function calculate",
+                "line": 1
+              },
+              "matched_by": {
+                "kind": "exact"
+              },
+              "source_count": 1,
+              "destination_count": 1
+            }
+          ]
+        },
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "theirs/second.go",
+            "entity": "function renamed",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 2,
+          "opposite": "deleted",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "go",
+            "entity_type": "function",
+            "old_name": "calculate",
+            "new_name": "renamed",
+            "old_occurrences": 1,
+            "new_occurrences": 1,
+            "comparison": {
+              "kind": "text"
+            }
+          },
+          "opposite_moves": [
+            {
+              "target": {
+                "path": "ours/moved.go",
+                "entity": "function calculate",
+                "line": 1
+              },
+              "matched_by": {
+                "kind": "exact"
+              },
+              "source_count": 1,
+              "destination_count": 1
+            }
+          ]
+        }
+      ]
+    },
+    "theirs/first.go": {
+      "fingerprints": [
+        null,
+        null,
+        "793987cc65cd2132fb1a724ee961d6c93f92ed2c5400ee6d9ceac17ffd620ec8"
+      ],
+      "reasons": [
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "source.go",
+              "entity": "function calculate",
+              "line": 1
+            },
+            "target": {
+              "path": "theirs/first.go",
+              "entity": "function renamed",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "source.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "target": {
+                  "path": "theirs/first.go",
+                  "entity": "function renamed",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 2,
+                "opposite": "deleted",
+                "matched_by": {
+                  "kind": "name_normalized",
+                  "grammar": "go",
+                  "entity_type": "function",
+                  "old_name": "calculate",
+                  "new_name": "renamed",
+                  "old_occurrences": 1,
+                  "new_occurrences": 1,
+                  "comparison": {
+                    "kind": "syntax",
+                    "tokens": 9
+                  }
+                },
+                "opposite_moves": [
+                  {
+                    "target": {
+                      "path": "ours/moved.go",
+                      "entity": "function calculate",
+                      "line": 1
+                    },
+                    "matched_by": {
+                      "kind": "exact"
+                    },
+                    "source_count": 1,
+                    "destination_count": 1
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "theirs/first.go",
+            "entity": "function renamed",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 2,
+          "opposite": "deleted",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "go",
+            "entity_type": "function",
+            "old_name": "calculate",
+            "new_name": "renamed",
+            "old_occurrences": 1,
+            "new_occurrences": 1,
+            "comparison": {
+              "kind": "syntax",
+              "tokens": 9
+            }
+          },
+          "opposite_moves": [
+            {
+              "target": {
+                "path": "ours/moved.go",
+                "entity": "function calculate",
+                "line": 1
+              },
+              "matched_by": {
+                "kind": "exact"
+              },
+              "source_count": 1,
+              "destination_count": 1
+            }
+          ]
+        }
+      ]
+    },
+    "theirs/second.go": {
+      "fingerprints": [
+        null,
+        null,
+        "420170fe6c9b391c6cde44a8dd676affafffa142f3923a897605d44b950d9d20"
+      ],
+      "reasons": [
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "source.go",
+              "entity": "function calculate",
+              "line": 1
+            },
+            "target": {
+              "path": "theirs/second.go",
+              "entity": "function renamed",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "source.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "target": {
+                  "path": "theirs/second.go",
+                  "entity": "function renamed",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 2,
+                "opposite": "deleted",
+                "matched_by": {
+                  "kind": "name_normalized",
+                  "grammar": "go",
+                  "entity_type": "function",
+                  "old_name": "calculate",
+                  "new_name": "renamed",
+                  "old_occurrences": 1,
+                  "new_occurrences": 1,
+                  "comparison": {
+                    "kind": "text"
+                  }
+                },
+                "opposite_moves": [
+                  {
+                    "target": {
+                      "path": "ours/moved.go",
+                      "entity": "function calculate",
+                      "line": 1
+                    },
+                    "matched_by": {
+                      "kind": "exact"
+                    },
+                    "source_count": 1,
+                    "destination_count": 1
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "theirs/second.go",
+            "entity": "function renamed",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 2,
+          "opposite": "deleted",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "go",
+            "entity_type": "function",
+            "old_name": "calculate",
+            "new_name": "renamed",
+            "old_occurrences": 1,
+            "new_occurrences": 1,
+            "comparison": {
+              "kind": "text"
+            }
+          },
+          "opposite_moves": [
+            {
+              "target": {
+                "path": "ours/moved.go",
+                "entity": "function calculate",
+                "line": 1
+              },
+              "matched_by": {
+                "kind": "exact"
+              },
+              "source_count": 1,
+              "destination_count": 1
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "move_candidates": [
+    {
+      "side": "ours",
+      "base": {
+        "path": "source.go",
+        "entity": "function calculate",
+        "line": 1
+      },
+      "target": {
+        "path": "ours/moved.go",
+        "entity": "function calculate",
+        "line": 1
+      },
+      "source_count": 1,
+      "destination_count": 1,
+      "opposite": "deleted",
+      "matched_by": {
+        "kind": "exact"
+      },
+      "opposite_moves": [
+        {
+          "target": {
+            "path": "theirs/first.go",
+            "entity": "function renamed",
+            "line": 1
+          },
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "go",
+            "entity_type": "function",
+            "old_name": "calculate",
+            "new_name": "renamed",
+            "old_occurrences": 1,
+            "new_occurrences": 1,
+            "comparison": {
+              "kind": "syntax",
+              "tokens": 9
+            }
+          },
+          "source_count": 1,
+          "destination_count": 2
+        },
+        {
+          "target": {
+            "path": "theirs/second.go",
+            "entity": "function renamed",
+            "line": 1
+          },
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "go",
+            "entity_type": "function",
+            "old_name": "calculate",
+            "new_name": "renamed",
+            "old_occurrences": 1,
+            "new_occurrences": 1,
+            "comparison": {
+              "kind": "text"
+            }
+          },
+          "source_count": 1,
+          "destination_count": 2
+        }
+      ]
+    },
+    {
+      "side": "theirs",
+      "base": {
+        "path": "source.go",
+        "entity": "function calculate",
+        "line": 1
+      },
+      "target": {
+        "path": "theirs/first.go",
+        "entity": "function renamed",
+        "line": 1
+      },
+      "source_count": 1,
+      "destination_count": 2,
+      "opposite": "deleted",
+      "matched_by": {
+        "kind": "name_normalized",
+        "grammar": "go",
+        "entity_type": "function",
+        "old_name": "calculate",
+        "new_name": "renamed",
+        "old_occurrences": 1,
+        "new_occurrences": 1,
+        "comparison": {
+          "kind": "syntax",
+          "tokens": 9
+        }
+      },
+      "opposite_moves": [
+        {
+          "target": {
+            "path": "ours/moved.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "matched_by": {
+            "kind": "exact"
+          },
+          "source_count": 1,
+          "destination_count": 1
+        }
+      ]
+    },
+    {
+      "side": "theirs",
+      "base": {
+        "path": "source.go",
+        "entity": "function calculate",
+        "line": 1
+      },
+      "target": {
+        "path": "theirs/second.go",
+        "entity": "function renamed",
+        "line": 1
+      },
+      "source_count": 1,
+      "destination_count": 2,
+      "opposite": "deleted",
+      "matched_by": {
+        "kind": "name_normalized",
+        "grammar": "go",
+        "entity_type": "function",
+        "old_name": "calculate",
+        "new_name": "renamed",
+        "old_occurrences": 1,
+        "new_occurrences": 1,
+        "comparison": {
+          "kind": "text"
+        }
+      },
+      "opposite_moves": [
+        {
+          "target": {
+            "path": "ours/moved.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "matched_by": {
+            "kind": "exact"
+          },
+          "source_count": 1,
+          "destination_count": 1
+        }
+      ]
+    }
+  ],
+  "warnings": []
+}

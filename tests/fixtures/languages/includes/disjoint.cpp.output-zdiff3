@@ -1,0 +1,26 @@
+<<<<<<< ours: feature/ours | UNMODELED_BOTH_CHANGED：文件开头、function answer 之前的非实体区域被双方修改
+#include "first_v2.h"
+#include <array>
+#include <cstddef>
+#include <string>
+#include <vector>
+#include "last.h"
+||||||| base: base-commit
+#include "first.h"
+#include <array>
+#include <cstddef>
+#include <string>
+#include <vector>
+#include "last.h"
+=======
+#include "first.h"
+#include <array>
+#include <cstddef>
+#include <string>
+#include <vector>
+#include "last_v2.h"
+>>>>>>> theirs: feature/theirs
+
+int answer() {
+    return 42;
+}

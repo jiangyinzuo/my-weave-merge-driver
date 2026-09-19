@@ -1,0 +1,8 @@
+冲突 · delete-modify.cpp
+ours   : feature/ours
+base   : base-commit
+theirs : feature/theirs
+原因 [git]：LINE_CONFLICT：Git 行级冲突
+原因 [analyze]：UNMODELED_BOTH_CHANGED：文件开头、function answer 之前的非实体区域被双方修改
+需人工处理：选择一侧 / 编辑合并结果。
+

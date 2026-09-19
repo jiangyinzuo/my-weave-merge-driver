@@ -1,0 +1,71 @@
+{
+  "schema_version": 5,
+  "engine": "strict-weave-global-v9",
+  "trees": [
+    "fixture:base",
+    "fixture:ours",
+    "fixture:theirs"
+  ],
+  "files": {
+    "new.ts": {
+      "fingerprints": [
+        null,
+        null,
+        "0b6b52ebcefc09142636b2d7df6af4f7f794e3e93697c60737cb9a65170b5106"
+      ],
+      "reasons": [],
+      "related_moves": []
+    },
+    "old.ts": {
+      "fingerprints": [
+        "91b86d13fbe65b0565b5c028032eb3b443c94d6951709a3b0311925cbd172eff",
+        "413138dd57f8307b270d13318006b1bc4f3eef133305aeac546177e82bc2da1a",
+        null
+      ],
+      "reasons": [
+        {
+          "kind": "line_conflict",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "git_line_conflict"
+            }
+          ]
+        },
+        {
+          "kind": "entity_conflict",
+          "subject": {
+            "type": "entity",
+            "entity_type": "function",
+            "name": "calculate"
+          },
+          "evidence": [
+            {
+              "type": "weave_refusal",
+              "refusal": {
+                "kind": "modify_delete",
+                "modified_in": "ours"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "layout_changed",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "layout_changed"
+            }
+          ]
+        }
+      ],
+      "related_moves": []
+    }
+  },
+  "move_candidates": [],
+  "warnings": []
+}

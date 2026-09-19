@@ -19,7 +19,7 @@
 
 ## 与 zdiff3 的关系
 
-这不是自行实现 Git zdiff3。`--zdiff3` 继续只选择 Git 行级合并的展示风格，默认 Git 风格为 diff3。Git 生成的块原样使用；自生成块在两种模式下都做上述三方共同文本裁剪。
+这不是自行实现 Git zdiff3。`--zdiff3` 继续只选择 Git 行级合并的展示风格，默认 Git 风格为 diff3。Git 生成的块保留源码与范围，全局关联可补充到 marker 标签；自生成块在两种模式下都做上述三方共同文本裁剪。
 
 Git zdiff3 可以移出仅 ours/theirs 相同、与 base 不同的边界行。我们的裁剪更保守，要求三方相同，因此同内容双方修改也仍然可见。
 
@@ -28,3 +28,9 @@ Git zdiff3 可以移出仅 ours/theirs 相同、与 base 不同的边界行。�
 文本 fixture 保存实际三方输入和预期输出；原有 57 份 output 缩短，更新前逐一验证了沿三种 marker 分支还原出的文本与旧 output 相同，原有详细诊断和退出码未变化。nested 用例增加 10 组边界场景，详见 [nested-entity-fixtures.md](nested-entity-fixtures.md)。
 
 `tests/conflict_blocks.rs` 从 fixture 读取 64 组三方组合，分别沿 base/ours/theirs 分支还原完整文本，检查 byte 保真；另外覆盖全相同强制冲突、空内容、插入/删除、重复边界行、CRLF 和无末尾换行。测试中的几行辅助字符串仅用于换行和 marker 边界。
+
+## 全局移动的双侧展示
+
+使用全局报告时，在首个对应方向的 ours/theirs marker 上追加 `文件关联 [analyze]`，列出疑似移动/重命名、源与目标 entity、路径及行号。源文件已有局部冲突时仍会追加，删除侧为空也能找到目标位置。标注表示文件级关联，不声称所有候选属于紧邻的行级块。
+
+双方都移动时，目标文件也能看到另一侧全部候选；重复关联排序去重。只修改 marker 标签，不插入源码行、不调整块范围、不取消原因；无冲突文件不会为了标注而新增 marker。重复读取同一报告不重复追加标签。默认/zdiff3、自定义 marker 宽度均适用。

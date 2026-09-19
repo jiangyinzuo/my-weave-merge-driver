@@ -63,8 +63,8 @@ pub enum Subject {
     File,
     /// 可靠分区的实体类型与原始名称，禁止只按显示名合并不同类型。
     Entity { entity_type: String, name: String },
-    /// 本地分区中的非实体区域，key 在相同布局内稳定。
-    Gap { key: String },
+    /// key 用于内部身份；label 由相邻 entity 生成，供人类定位。
+    Gap { key: String, label: String },
     /// 无法绑定本地实体的上游结果；来源与序号防止同名误归并。
     Weave {
         name: String,
@@ -247,7 +247,41 @@ pub enum Opposite {
     Unknown,
 }
 
-/// 同名、同类型、原始区域文本相同的跨文件删除/新增候选；不证明语义身份。
+/// 跨文件候选的文本依据；名称归一化复用 weave 公共函数，但不是上游分类。
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum MoveMatch {
+    Exact,
+    NameNormalized {
+        grammar: String,
+        entity_type: String,
+        old_name: String,
+        new_name: String,
+        old_occurrences: usize,
+        new_occurrences: usize,
+        comparison: RenameComparison,
+    },
+}
+
+/// Exact comparison after name normalization; syntax mode ignores only gaps.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum RenameComparison {
+    Text,
+    Syntax { tokens: usize },
+}
+
+/// 同一 base entity 在另一侧的候选；非递归，保留匹配依据及歧义数量。
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OppositeMove {
+    pub target: Location,
+    pub matched_by: MoveMatch,
+    pub source_count: usize,
+    pub destination_count: usize,
+}
+
+/// 跨文件删除/新增候选；保留所有目标及实际匹配依据，不证明语义身份。
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MoveEvidence {
@@ -257,11 +291,32 @@ pub struct MoveEvidence {
     pub source_count: usize,
     pub destination_count: usize,
     pub opposite: Opposite,
+    pub matched_by: MoveMatch,
+    pub opposite_moves: Vec<OppositeMove>,
 }
 
 impl MoveEvidence {
     /// 纯移动也可以是合法关联，但不是阻断原因。
     pub fn valid(&self) -> bool {
+        self.valid_match()
+            && (self.opposite_moves.is_empty() || self.opposite == Opposite::Deleted)
+            && self.opposite_moves.windows(2).all(|pair| pair[0] < pair[1])
+            && self.opposite_moves.iter().all(|other| {
+                Self {
+                    side: self.side,
+                    base: self.base.clone(),
+                    target: other.target.clone(),
+                    source_count: other.source_count,
+                    destination_count: other.destination_count,
+                    opposite: Opposite::Deleted,
+                    matched_by: other.matched_by.clone(),
+                    opposite_moves: Vec::new(),
+                }
+                .valid_match()
+            })
+    }
+
+    fn valid_match(&self) -> bool {
         self.source_count > 0
             && self.destination_count > 0
             && !self.base.path.is_empty()
@@ -269,7 +324,64 @@ impl MoveEvidence {
             && self.base.path != self.target.path
             && self.base.line > 0
             && self.target.line > 0
+            && match &self.matched_by {
+                MoveMatch::Exact => {
+                    !self.base.entity.is_empty() && self.base.entity == self.target.entity
+                }
+                MoveMatch::NameNormalized {
+                    grammar,
+                    entity_type,
+                    old_name,
+                    new_name,
+                    old_occurrences,
+                    new_occurrences,
+                    comparison,
+                } => {
+                    !grammar.is_empty()
+                        && !entity_type.is_empty()
+                        && !old_name.is_empty()
+                        && !new_name.is_empty()
+                        && old_name != new_name
+                        && *old_occurrences > 0
+                        && old_occurrences == new_occurrences
+                        && match comparison {
+                            RenameComparison::Text => true,
+                            RenameComparison::Syntax { tokens } => *tokens > 0,
+                        }
+                        && self.base.entity == format!("{entity_type} {old_name}")
+                        && self.target.entity == format!("{entity_type} {new_name}")
+                }
+            }
     }
+
+    pub(crate) fn opposite_side(&self) -> Side {
+        match self.side {
+            Side::Ours => Side::Theirs,
+            Side::Theirs => Side::Ours,
+        }
+    }
+
+    /// 文件级关联提示，不声称候选一定属于紧邻的某个行级冲突块。
+    pub(crate) fn marker_note(&self) -> String {
+        move_note(&self.base, &self.target, &self.matched_by)
+    }
+
+    pub(crate) fn opposite_marker_notes(&self) -> impl Iterator<Item = String> + '_ {
+        self.opposite_moves
+            .iter()
+            .map(|other| move_note(&self.base, &other.target, &other.matched_by))
+    }
+}
+
+fn move_note(base: &Location, target: &Location, matched_by: &MoveMatch) -> String {
+    let action = match matched_by {
+        MoveMatch::Exact => "疑似移动",
+        MoveMatch::NameNormalized { .. } => "疑似重命名并移动",
+    };
+    safe_label(&format!(
+        "{action} {} · {}:{} → {} · {}:{}",
+        base.entity, base.path, base.line, target.entity, target.path, target.line
+    ))
 }
 
 /// 子依据全集；自身不另计一个冲突。只有挂在合法父原因下才影响判定。
@@ -293,7 +405,7 @@ pub enum Evidence {
     /// 实体/间隙序列不同，不能安全按对应实体拼接。
     LayoutChanged,
     /// 跨文件移动匹配的确定性依据和另一侧状态。
-    MoveCandidate { candidate: MoveEvidence },
+    MoveCandidate { candidate: Box<MoveEvidence> },
 }
 impl Evidence {
     pub fn source(&self) -> Source {
@@ -324,12 +436,43 @@ impl Evidence {
             Self::WeaveUnavailable => "weave 未返回实体分类".into(),
             Self::LayoutChanged => "三方实体或非实体区域序列不同".into(),
             Self::MoveCandidate { candidate: c } => {
-                let opposite = match c.opposite {
+                let mut opposite = match c.opposite {
                     Opposite::Unchanged => "unchanged",
                     Opposite::Modified => "modified",
                     Opposite::Deleted => "deleted",
                     Opposite::Unknown => "无法确认",
-                };
+                }
+                .to_owned();
+                if !c.opposite_moves.is_empty() {
+                    let targets = c.opposite_marker_notes().collect::<Vec<_>>().join("；");
+                    opposite.push_str(&format!(
+                        "（{}：{}；候选数={}）",
+                        c.opposite_side().label(),
+                        targets,
+                        c.opposite_moves.len()
+                    ));
+                }
+                if let MoveMatch::NameNormalized {
+                    grammar,
+                    entity_type,
+                    old_name,
+                    new_name,
+                    old_occurrences,
+                    new_occurrences,
+                    comparison,
+                } = &c.matched_by
+                {
+                    let matched = match comparison {
+                        RenameComparison::Text => "区域文本逐 byte 相同（含附着注释）".into(),
+                        RenameComparison::Syntax { tokens } => format!(
+                            "忽略 token 间空白后语法结构及有序 token 完全相同（{tokens} 个 token，保留注释和字面量原文）；原文存在格式差异"
+                        ),
+                    };
+                    return safe_label(&format!(
+                        "[analyze]：RENAME_MOVE_CANDIDATE：{} 疑似重命名并移动 {entity_type} {old_name} → {new_name} · {}:{} → {}:{}；源 deleted、目标 added；grammar={grammar}、类型相同；按词边界替换各自名称后，{matched}；替换次数={old_occurrences}/{new_occurrences}；sources={}，destinations={}；另一侧={opposite}；仅为文本候选，未证明语义等价",
+                        c.side.label(), c.base.path, c.base.line, c.target.path, c.target.line, c.source_count, c.destination_count
+                    ));
+                }
                 format!(
                     "MOVE_CANDIDATE：{} 疑似移动 {} · {}:{} → {}:{}；\
                      源 deleted、目标 added；类型/名称/原始区域文本相同（含附着注释）；\
@@ -346,6 +489,51 @@ impl Evidence {
             }
         };
         safe_label(&format!("[{}]：{message}", self.source().label()))
+    }
+
+    /// 详细模式补充方法与适用边界；摘要已包含候选方向、位置、匹配条件和歧义数量。
+    pub fn lines(&self, detailed: bool) -> Vec<String> {
+        let mut lines = vec![self.summary()];
+        if detailed {
+            if let Self::MoveCandidate { candidate } = self {
+                for other in &candidate.opposite_moves {
+                    let counterpart = MoveEvidence {
+                        side: candidate.opposite_side(),
+                        base: candidate.base.clone(),
+                        target: other.target.clone(),
+                        source_count: other.source_count,
+                        destination_count: other.destination_count,
+                        opposite: Opposite::Deleted,
+                        matched_by: other.matched_by.clone(),
+                        opposite_moves: Vec::new(),
+                    };
+                    lines.push(format!(
+                        "另一侧候选 {}",
+                        Self::MoveCandidate {
+                            candidate: Box::new(counterpart)
+                        }
+                        .summary()
+                    ));
+                }
+            }
+        }
+        if detailed
+            && matches!(self, Self::MoveCandidate { candidate }
+            if matches!(candidate.matched_by, MoveMatch::NameNormalized { .. }))
+        {
+            if matches!(self, Self::MoveCandidate { candidate }
+            if matches!(candidate.matched_by, MoveMatch::NameNormalized {
+                comparison: RenameComparison::Syntax { .. }, ..
+            })) {
+                lines.push("[analyze]：方法：复用 weave::binding::replace_at_word_boundaries 和 sem-core::parse_tree，比较名称归一化后的完整语法结构及 token 序列；相同才匹配，不使用模糊阈值或 hash 判等".into());
+                lines.push("[analyze]：格式：只忽略语法 token 间的空白；保留节点类型、字段、顺序、嵌套及注释/字面量原文，不把缩进造成的结构变化当作格式化；不是语义等价证明".into());
+            } else {
+                lines.push("[analyze]：方法：复用 weave::binding::replace_at_word_boundaries，将各自名称替换为 __ENTITY__ 后直接比较原文；不使用相似度或 hash 判等".into());
+            }
+            lines.push("[analyze]：范围：整段 entity 文本；替换可能涉及定义、自引用、注释及字符串，不代表只修改定义名；未检查其它文件中的调用是否更新".into());
+            lines.push("[analyze]：歧义：sources 为此目标的候选来源数，destinations 为此来源的候选目标数（含同名移动）；全部保留，不选择唯一配对".into());
+        }
+        lines
     }
 
     fn necessary(&self) -> bool {
@@ -379,7 +567,7 @@ impl Reason {
         let target = match &self.subject {
             Subject::File => String::new(),
             Subject::Entity { entity_type, name } => format!("{entity_type} {name}"),
-            Subject::Gap { key } => format!("非实体区域 {key}"),
+            Subject::Gap { label, .. } => label.clone(),
             Subject::Weave { name, .. } => format!("entity {name}（weave，身份未关联）"),
             Subject::Move { base, .. } => base.entity.clone(),
         };
@@ -399,10 +587,24 @@ impl Reason {
                     } else {
                         format!("{target} 需人工审核")
                     },
-                Kind::NonEntityConflict => format!("{target} 被双方修改"),
+                Kind::NonEntityConflict => format!("{target}被双方修改"),
                 Kind::AnalysisUnavailable => "无法可靠分析，保留整文件冲突".into(),
                 Kind::LayoutChanged => "实体增删或顺序变化".into(),
-                Kind::ModifyVsMove => format!("{target} 疑似移动与另一侧变化需共同审核"),
+                Kind::ModifyVsMove => {
+                    if let Some((old_name, new_name)) = self.evidence.iter().find_map(|e| match e {
+                        Evidence::MoveCandidate { candidate } => match &candidate.matched_by {
+                            MoveMatch::NameNormalized {
+                                old_name, new_name, ..
+                            } => Some((old_name, new_name)),
+                            _ => None,
+                        },
+                        _ => None,
+                    }) {
+                        format!("{target} 疑似重命名并移动（{old_name} → {new_name}），与另一侧变化需共同审核")
+                    } else {
+                        format!("{target} 疑似移动与另一侧变化需共同审核")
+                    }
+                }
             }
         ))
     }
@@ -417,7 +619,12 @@ impl Reason {
         let mut lines = vec![format!("原因 [{sources}]：{}", self.summary())];
         for evidence in &self.evidence {
             if detailed || evidence.necessary() {
-                lines.push(format!("  依据 {}", evidence.summary()));
+                lines.extend(
+                    evidence
+                        .lines(detailed)
+                        .into_iter()
+                        .map(|line| format!("  依据 {line}")),
+                );
             }
         }
         lines
@@ -439,6 +646,10 @@ impl Reason {
             Kind::ModifyVsMove => matches!(self.subject, Subject::Move { .. }),
         };
         subject_ok
+            && match &self.subject {
+                Subject::Gap { key, label } => !key.is_empty() && !label.trim().is_empty(),
+                _ => true,
+            }
             && !self.evidence.is_empty()
             && self.evidence.iter().all(|e| match (self.kind, e) {
                 (Kind::LineConflict, Evidence::GitLineConflict)

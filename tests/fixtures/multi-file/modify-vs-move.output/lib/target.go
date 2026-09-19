@@ -4,4 +4,4 @@
 func calculate() int {
     return 1
 }
->>>>>>> theirs: feature/theirs
+>>>>>>> theirs: feature/theirs | 文件关联 [analyze]：疑似移动 function calculate · src/source.go:1 → function calculate · lib/target.go:1

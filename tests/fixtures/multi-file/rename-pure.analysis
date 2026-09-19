@@ -1,0 +1,121 @@
+{
+  "schema_version": 5,
+  "engine": "strict-weave-global-v9",
+  "trees": [
+    "fixture:base",
+    "fixture:ours",
+    "fixture:theirs"
+  ],
+  "files": {
+    "source.go": {
+      "fingerprints": [
+        "e9c9b60da3902dbe558a66ff5c4ae17204728bbfae2eec2d97f86a370f71cd12",
+        "e9c9b60da3902dbe558a66ff5c4ae17204728bbfae2eec2d97f86a370f71cd12",
+        null
+      ],
+      "reasons": [],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "target.go",
+            "entity": "function renamed",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "unchanged",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "go",
+            "entity_type": "function",
+            "old_name": "calculate",
+            "new_name": "renamed",
+            "old_occurrences": 1,
+            "new_occurrences": 1,
+            "comparison": {
+              "kind": "text"
+            }
+          },
+          "opposite_moves": []
+        }
+      ]
+    },
+    "target.go": {
+      "fingerprints": [
+        null,
+        null,
+        "420170fe6c9b391c6cde44a8dd676affafffa142f3923a897605d44b950d9d20"
+      ],
+      "reasons": [],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "target.go",
+            "entity": "function renamed",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "unchanged",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "go",
+            "entity_type": "function",
+            "old_name": "calculate",
+            "new_name": "renamed",
+            "old_occurrences": 1,
+            "new_occurrences": 1,
+            "comparison": {
+              "kind": "text"
+            }
+          },
+          "opposite_moves": []
+        }
+      ]
+    }
+  },
+  "move_candidates": [
+    {
+      "side": "theirs",
+      "base": {
+        "path": "source.go",
+        "entity": "function calculate",
+        "line": 1
+      },
+      "target": {
+        "path": "target.go",
+        "entity": "function renamed",
+        "line": 1
+      },
+      "source_count": 1,
+      "destination_count": 1,
+      "opposite": "unchanged",
+      "matched_by": {
+        "kind": "name_normalized",
+        "grammar": "go",
+        "entity_type": "function",
+        "old_name": "calculate",
+        "new_name": "renamed",
+        "old_occurrences": 1,
+        "new_occurrences": 1,
+        "comparison": {
+          "kind": "text"
+        }
+      },
+      "opposite_moves": []
+    }
+  ],
+  "warnings": []
+}

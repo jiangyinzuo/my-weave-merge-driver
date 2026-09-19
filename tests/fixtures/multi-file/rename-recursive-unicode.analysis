@@ -1,0 +1,264 @@
+{
+  "schema_version": 5,
+  "engine": "strict-weave-global-v9",
+  "trees": [
+    "fixture:base",
+    "fixture:ours",
+    "fixture:theirs"
+  ],
+  "files": {
+    "source.py": {
+      "fingerprints": [
+        "a1cad6e34f3748f5ef214f94a81264e2628b84b72495611216dfd085e4f6afed",
+        "cd7ea633efc280b8fea401231fc3aa93c257de4a1bc7f106845bff29bea80c92",
+        null
+      ],
+      "reasons": [
+        {
+          "kind": "line_conflict",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "git_line_conflict"
+            }
+          ]
+        },
+        {
+          "kind": "entity_conflict",
+          "subject": {
+            "type": "entity",
+            "entity_type": "function",
+            "name": "计算"
+          },
+          "evidence": [
+            {
+              "type": "weave_refusal",
+              "refusal": {
+                "kind": "modify_delete",
+                "modified_in": "ours"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "layout_changed",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "layout_changed"
+            }
+          ]
+        },
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "source.py",
+              "entity": "function 计算",
+              "line": 1
+            },
+            "target": {
+              "path": "target.py",
+              "entity": "function 求值",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "source.py",
+                  "entity": "function 计算",
+                  "line": 1
+                },
+                "target": {
+                  "path": "target.py",
+                  "entity": "function 求值",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "modified",
+                "matched_by": {
+                  "kind": "name_normalized",
+                  "grammar": "python",
+                  "entity_type": "function",
+                  "old_name": "计算",
+                  "new_name": "求值",
+                  "old_occurrences": 2,
+                  "new_occurrences": 2,
+                  "comparison": {
+                    "kind": "text"
+                  }
+                },
+                "opposite_moves": []
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.py",
+            "entity": "function 计算",
+            "line": 1
+          },
+          "target": {
+            "path": "target.py",
+            "entity": "function 求值",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "modified",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "python",
+            "entity_type": "function",
+            "old_name": "计算",
+            "new_name": "求值",
+            "old_occurrences": 2,
+            "new_occurrences": 2,
+            "comparison": {
+              "kind": "text"
+            }
+          },
+          "opposite_moves": []
+        }
+      ]
+    },
+    "target.py": {
+      "fingerprints": [
+        null,
+        null,
+        "4155fe4b3343b5a6b849888b8b267c19cf884b921088ae4a367b1032f57ad692"
+      ],
+      "reasons": [
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "source.py",
+              "entity": "function 计算",
+              "line": 1
+            },
+            "target": {
+              "path": "target.py",
+              "entity": "function 求值",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "source.py",
+                  "entity": "function 计算",
+                  "line": 1
+                },
+                "target": {
+                  "path": "target.py",
+                  "entity": "function 求值",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "modified",
+                "matched_by": {
+                  "kind": "name_normalized",
+                  "grammar": "python",
+                  "entity_type": "function",
+                  "old_name": "计算",
+                  "new_name": "求值",
+                  "old_occurrences": 2,
+                  "new_occurrences": 2,
+                  "comparison": {
+                    "kind": "text"
+                  }
+                },
+                "opposite_moves": []
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.py",
+            "entity": "function 计算",
+            "line": 1
+          },
+          "target": {
+            "path": "target.py",
+            "entity": "function 求值",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "modified",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "python",
+            "entity_type": "function",
+            "old_name": "计算",
+            "new_name": "求值",
+            "old_occurrences": 2,
+            "new_occurrences": 2,
+            "comparison": {
+              "kind": "text"
+            }
+          },
+          "opposite_moves": []
+        }
+      ]
+    }
+  },
+  "move_candidates": [
+    {
+      "side": "theirs",
+      "base": {
+        "path": "source.py",
+        "entity": "function 计算",
+        "line": 1
+      },
+      "target": {
+        "path": "target.py",
+        "entity": "function 求值",
+        "line": 1
+      },
+      "source_count": 1,
+      "destination_count": 1,
+      "opposite": "modified",
+      "matched_by": {
+        "kind": "name_normalized",
+        "grammar": "python",
+        "entity_type": "function",
+        "old_name": "计算",
+        "new_name": "求值",
+        "old_occurrences": 2,
+        "new_occurrences": 2,
+        "comparison": {
+          "kind": "text"
+        }
+      },
+      "opposite_moves": []
+    }
+  ],
+  "warnings": []
+}

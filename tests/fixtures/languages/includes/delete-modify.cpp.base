@@ -1,0 +1,6 @@
+#include <vector>
+#include "backend.h"
+
+int answer() {
+    return 42;
+}

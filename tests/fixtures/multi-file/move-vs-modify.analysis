@@ -1,6 +1,6 @@
 {
-  "schema_version": 2,
-  "engine": "strict-weave-global-v6",
+  "schema_version": 5,
+  "engine": "strict-weave-global-v9",
   "trees": [
     "fixture:base",
     "fixture:ours",
@@ -86,7 +86,11 @@
                 },
                 "source_count": 1,
                 "destination_count": 1,
-                "opposite": "modified"
+                "opposite": "modified",
+                "matched_by": {
+                  "kind": "exact"
+                },
+                "opposite_moves": []
               }
             }
           ]
@@ -107,7 +111,11 @@
           },
           "source_count": 1,
           "destination_count": 1,
-          "opposite": "modified"
+          "opposite": "modified",
+          "matched_by": {
+            "kind": "exact"
+          },
+          "opposite_moves": []
         }
       ]
     },
@@ -151,7 +159,11 @@
                 },
                 "source_count": 1,
                 "destination_count": 1,
-                "opposite": "modified"
+                "opposite": "modified",
+                "matched_by": {
+                  "kind": "exact"
+                },
+                "opposite_moves": []
               }
             }
           ]
@@ -172,7 +184,11 @@
           },
           "source_count": 1,
           "destination_count": 1,
-          "opposite": "modified"
+          "opposite": "modified",
+          "matched_by": {
+            "kind": "exact"
+          },
+          "opposite_moves": []
         }
       ]
     }
@@ -192,7 +208,11 @@
       },
       "source_count": 1,
       "destination_count": 1,
-      "opposite": "modified"
+      "opposite": "modified",
+      "matched_by": {
+        "kind": "exact"
+      },
+      "opposite_moves": []
     }
   ],
   "warnings": []

@@ -8,8 +8,8 @@ use weave_core::region::{extract_regions, FileRegion};
 #[derive(Debug)]
 pub(crate) struct Part {
     pub(crate) key: String,
-    name: String,
-    entity_type: String,
+    pub(super) name: String,
+    pub(super) entity_type: String,
     pub(crate) label: String,
     pub(crate) text: String,
     pub(crate) entity: bool,
@@ -77,6 +77,26 @@ pub(crate) fn partition(path: &str, text: &str) -> Option<Vec<Part>> {
     if parts.iter().map(|p| p.text.as_str()).collect::<String>() != text {
         return None;
     }
+    // Interstitial regions alternate with entities. Describe their position
+    // using reliable neighbours, without interpreting the region's contents.
+    for index in 0..parts.len() {
+        if parts[index].entity {
+            continue;
+        }
+        let previous = index
+            .checked_sub(1)
+            .and_then(|i| parts.get(i))
+            .filter(|p| p.entity);
+        let next = parts.get(index + 1).filter(|p| p.entity);
+        parts[index].label = match (previous, next) {
+            (None, Some(next)) => format!("文件开头、{} 之前的非实体区域", next.label),
+            (Some(previous), None) => format!("文件末尾、{} 之后的非实体区域", previous.label),
+            (Some(previous), Some(next)) => {
+                format!("{} 与 {} 之间的非实体区域", previous.label, next.label)
+            }
+            (None, None) => "文件中的非实体区域".into(),
+        };
+    }
     Some(parts)
 }
 
@@ -90,6 +110,7 @@ impl Part {
         } else {
             Subject::Gap {
                 key: self.key.clone(),
+                label: self.label.clone(),
             }
         }
     }

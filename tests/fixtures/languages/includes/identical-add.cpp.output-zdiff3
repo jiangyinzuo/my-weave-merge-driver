@@ -1,0 +1,11 @@
+#include <vector>
+<<<<<<< ours: feature/ours | UNMODELED_BOTH_CHANGED：文件开头、function answer 之前的非实体区域被双方修改
+#include <string>
+||||||| base: base-commit
+=======
+#include <string>
+>>>>>>> theirs: feature/theirs
+
+int answer() {
+    return 42;
+}

@@ -1,0 +1,9 @@
+int first() {
+    return 1;
+}
+
+#include "backend_safe.h"
+
+int second() {
+    return 2;
+}

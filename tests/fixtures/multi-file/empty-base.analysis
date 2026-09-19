@@ -1,6 +1,6 @@
 {
-  "schema_version": 2,
-  "engine": "strict-weave-global-v6",
+  "schema_version": 5,
+  "engine": "strict-weave-global-v9",
   "trees": [
     "fixture:base",
     "fixture:ours",

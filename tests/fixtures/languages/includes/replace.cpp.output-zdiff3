@@ -1,0 +1,11 @@
+<<<<<<< ours: feature/ours | LINE_CONFLICT：Git 行级冲突; UNMODELED_BOTH_CHANGED：文件开头、function answer 之前的非实体区域被双方修改
+#include "backend_fast.h"
+||||||| base: base-commit
+#include "backend.h"
+=======
+#include "backend_safe.h"
+>>>>>>> theirs: feature/theirs
+
+int answer() {
+    return 42;
+}

@@ -1,6 +1,6 @@
 use strict_weave::reason::{
-    self, Change, Evidence, Kind, Location, MoveEvidence, Opposite, Reason, Side, Subject,
-    WeaveRefusal, WeaveSource,
+    self, Change, Evidence, Kind, Location, MoveEvidence, MoveMatch, Opposite, Reason, Side,
+    Subject, WeaveRefusal, WeaveSource,
 };
 use weave_core::conflict::ConflictKind;
 
@@ -50,6 +50,8 @@ fn movement(opposite: Opposite) -> MoveEvidence {
         source_count: 1,
         destination_count: 2,
         opposite,
+        matched_by: MoveMatch::Exact,
+        opposite_moves: Vec::new(),
     }
 }
 fn move_reason(c: MoveEvidence) -> Reason {
@@ -60,7 +62,9 @@ fn move_reason(c: MoveEvidence) -> Reason {
             base: c.base.clone(),
             target: c.target.clone(),
         },
-        Evidence::MoveCandidate { candidate: c },
+        Evidence::MoveCandidate {
+            candidate: Box::new(c),
+        },
     )
 }
 fn refusals() -> Vec<ConflictKind> {
@@ -101,6 +105,7 @@ fn complete_parent_and_evidence_catalog_roundtrips_without_loss() {
             Kind::NonEntityConflict,
             Subject::Gap {
                 key: "gap:0".into(),
+                label: "文件开头、function f 之前的非实体区域".into(),
             },
             Evidence::RawBothChanged,
         ),
@@ -216,7 +221,10 @@ fn grouping_is_order_independent_idempotent_and_preserves_distinct_targets() {
     for key in ["gap:0", "gap:2"] {
         reasons.push(Reason::new(
             Kind::NonEntityConflict,
-            Subject::Gap { key: key.into() },
+            Subject::Gap {
+                key: key.into(),
+                label: "文件中的非实体区域".into(),
+            },
             Evidence::RawBothChanged,
         ));
     }
@@ -393,6 +401,71 @@ fn invalid_empty_unknown_and_nonblocking_evidence_is_rejected() {
 }
 
 #[test]
+fn rename_move_evidence_validates_names_counts_and_locations() {
+    let mut candidate = movement(Opposite::Modified);
+    candidate.target.entity = "function g".into();
+    candidate.matched_by = MoveMatch::NameNormalized {
+        grammar: "go".into(),
+        entity_type: "function".into(),
+        old_name: "f".into(),
+        new_name: "g".into(),
+        old_occurrences: 2,
+        new_occurrences: 2,
+        comparison: strict_weave::reason::RenameComparison::Text,
+    };
+    assert!(candidate.valid());
+    let reason = move_reason(candidate.clone());
+    assert!(reason.valid());
+    let json = serde_json::to_string(&reason).unwrap();
+    assert_eq!(serde_json::from_str::<Reason>(&json).unwrap(), reason);
+    for mutation in [
+        "same_name",
+        "empty_grammar",
+        "wrong_label",
+        "zero",
+        "different_count",
+        "exact",
+        "zero_tokens",
+    ] {
+        let mut invalid = candidate.clone();
+        if let MoveMatch::NameNormalized {
+            grammar,
+            new_name,
+            old_occurrences,
+            new_occurrences,
+            comparison,
+            ..
+        } = &mut invalid.matched_by
+        {
+            match mutation {
+                "same_name" => *new_name = "f".into(),
+                "empty_grammar" => grammar.clear(),
+                "wrong_label" => invalid.target.entity = "class g".into(),
+                "zero" => *old_occurrences = 0,
+                "different_count" => *new_occurrences = 1,
+                "zero_tokens" => {
+                    *comparison = strict_weave::reason::RenameComparison::Syntax { tokens: 0 };
+                }
+                _ => {}
+            }
+        }
+        if mutation == "exact" {
+            invalid.matched_by = MoveMatch::Exact;
+        }
+        assert!(!invalid.valid(), "{mutation}");
+    }
+    if let MoveMatch::NameNormalized { comparison, .. } = &mut candidate.matched_by {
+        *comparison = strict_weave::reason::RenameComparison::Syntax { tokens: 12 };
+    }
+    let reason = move_reason(candidate);
+    assert!(reason.valid());
+    assert_eq!(
+        serde_json::from_slice::<Reason>(&serde_json::to_vec(&reason).unwrap()).unwrap(),
+        reason
+    );
+}
+
+#[test]
 fn human_output_escapes_entity_and_evidence_control_characters() {
     let r: Reason = serde_json::from_str(REASON_CONTROLS_JSON).unwrap();
     assert!(r
@@ -431,7 +504,7 @@ fn provenance_is_explicit_for_every_evidence_and_does_not_claim_independent_chec
         (Evidence::LayoutChanged, Source::Analyze),
         (
             Evidence::MoveCandidate {
-                candidate: movement(Opposite::Unknown),
+                candidate: Box::new(movement(Opposite::Unknown)),
             },
             Source::Analyze,
         ),

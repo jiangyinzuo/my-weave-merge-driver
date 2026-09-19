@@ -6,6 +6,7 @@ pub(crate) mod local;
 mod moves;
 mod partition;
 mod raw;
+mod syntax;
 mod upstream;
 
 // Existing library API for explicit three-tree reports.

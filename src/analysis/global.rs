@@ -15,7 +15,7 @@ use std::{
 };
 
 const MAX_TOTAL: usize = 64 * 1024 * 1024;
-const ENGINE: &str = "strict-weave-global-v6";
+const ENGINE: &str = "strict-weave-global-v9";
 type Snapshot = BTreeMap<String, String>;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -68,7 +68,7 @@ pub fn analyze(snapshots: &[Snapshot; 3], trees: [String; 3]) -> Result<Report> 
         }
     }
     let mut report = Report {
-        schema_version: 2,
+        schema_version: 5,
         engine: ENGINE.into(),
         trees,
         files: BTreeMap::new(),
@@ -282,7 +282,7 @@ pub fn load_for_driver(path: &Path, source: &str, texts: [&str; 3]) -> Result<Fi
         bail!("全局分析文件超过 64 MiB");
     }
     let mut report: Report = serde_json::from_slice(&bytes).context("无效的全局分析文件")?;
-    if report.schema_version != 2 || report.engine != ENGINE {
+    if report.schema_version != 5 || report.engine != ENGINE {
         bail!("全局分析版本不兼容");
     }
     if report.files.values().any(|file| {
@@ -335,5 +335,8 @@ pub fn augment(
             width,
             &reason::summaries(&outcome.reasons),
         );
+    }
+    if outcome.conflicted() {
+        outcome.content = merge::annotate_moves(&outcome.content, &outcome.related_moves, width);
     }
 }

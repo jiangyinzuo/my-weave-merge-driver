@@ -1,0 +1,5 @@
+int answer() {
+    return 42;
+}
+
+#include "backend_safe.h"

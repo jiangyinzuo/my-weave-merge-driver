@@ -1,0 +1,264 @@
+{
+  "schema_version": 5,
+  "engine": "strict-weave-global-v9",
+  "trees": [
+    "fixture:base",
+    "fixture:ours",
+    "fixture:theirs"
+  ],
+  "files": {
+    "source.go": {
+      "fingerprints": [
+        "c4e1560d46a16e6625b9f632f5e0dd3e6cec7ebf45f5de457c5de7b752d32195",
+        "2bc317ac7eb976c4de229db23e4998489c885a5d3034d2b0ae4b74a4ac48dbe5",
+        null
+      ],
+      "reasons": [
+        {
+          "kind": "line_conflict",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "git_line_conflict"
+            }
+          ]
+        },
+        {
+          "kind": "entity_conflict",
+          "subject": {
+            "type": "entity",
+            "entity_type": "function",
+            "name": "calculate"
+          },
+          "evidence": [
+            {
+              "type": "weave_refusal",
+              "refusal": {
+                "kind": "modify_delete",
+                "modified_in": "ours"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "layout_changed",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "layout_changed"
+            }
+          ]
+        },
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "source.go",
+              "entity": "function calculate",
+              "line": 2
+            },
+            "target": {
+              "path": "target.go",
+              "entity": "function renamed",
+              "line": 2
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "source.go",
+                  "entity": "function calculate",
+                  "line": 2
+                },
+                "target": {
+                  "path": "target.go",
+                  "entity": "function renamed",
+                  "line": 2
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "modified",
+                "matched_by": {
+                  "kind": "name_normalized",
+                  "grammar": "go",
+                  "entity_type": "function",
+                  "old_name": "calculate",
+                  "new_name": "renamed",
+                  "old_occurrences": 2,
+                  "new_occurrences": 2,
+                  "comparison": {
+                    "kind": "text"
+                  }
+                },
+                "opposite_moves": []
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.go",
+            "entity": "function calculate",
+            "line": 2
+          },
+          "target": {
+            "path": "target.go",
+            "entity": "function renamed",
+            "line": 2
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "modified",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "go",
+            "entity_type": "function",
+            "old_name": "calculate",
+            "new_name": "renamed",
+            "old_occurrences": 2,
+            "new_occurrences": 2,
+            "comparison": {
+              "kind": "text"
+            }
+          },
+          "opposite_moves": []
+        }
+      ]
+    },
+    "target.go": {
+      "fingerprints": [
+        null,
+        null,
+        "5ef85eddf56306cc6759dc5ba19b678503bb8aab43df398c6a598e7d2e42fe40"
+      ],
+      "reasons": [
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "source.go",
+              "entity": "function calculate",
+              "line": 2
+            },
+            "target": {
+              "path": "target.go",
+              "entity": "function renamed",
+              "line": 2
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "source.go",
+                  "entity": "function calculate",
+                  "line": 2
+                },
+                "target": {
+                  "path": "target.go",
+                  "entity": "function renamed",
+                  "line": 2
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "modified",
+                "matched_by": {
+                  "kind": "name_normalized",
+                  "grammar": "go",
+                  "entity_type": "function",
+                  "old_name": "calculate",
+                  "new_name": "renamed",
+                  "old_occurrences": 2,
+                  "new_occurrences": 2,
+                  "comparison": {
+                    "kind": "text"
+                  }
+                },
+                "opposite_moves": []
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.go",
+            "entity": "function calculate",
+            "line": 2
+          },
+          "target": {
+            "path": "target.go",
+            "entity": "function renamed",
+            "line": 2
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "modified",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "go",
+            "entity_type": "function",
+            "old_name": "calculate",
+            "new_name": "renamed",
+            "old_occurrences": 2,
+            "new_occurrences": 2,
+            "comparison": {
+              "kind": "text"
+            }
+          },
+          "opposite_moves": []
+        }
+      ]
+    }
+  },
+  "move_candidates": [
+    {
+      "side": "theirs",
+      "base": {
+        "path": "source.go",
+        "entity": "function calculate",
+        "line": 2
+      },
+      "target": {
+        "path": "target.go",
+        "entity": "function renamed",
+        "line": 2
+      },
+      "source_count": 1,
+      "destination_count": 1,
+      "opposite": "modified",
+      "matched_by": {
+        "kind": "name_normalized",
+        "grammar": "go",
+        "entity_type": "function",
+        "old_name": "calculate",
+        "new_name": "renamed",
+        "old_occurrences": 2,
+        "new_occurrences": 2,
+        "comparison": {
+          "kind": "text"
+        }
+      },
+      "opposite_moves": []
+    }
+  ],
+  "warnings": []
+}

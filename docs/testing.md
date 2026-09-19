@@ -10,6 +10,7 @@ tests/fixtures/
     disjoint.go.theirs
     disjoint.go.output
   languages/      # 上游各 code grammar 的示例
+    includes/     # C++ #include 修改、新增、删除、条件编译及独立修改对照
   insertions/     # 双方新增行：不同内容、相同内容、共同边界、不同位置
   nested/         # C++ / Python 非顶层 entity、类方法和宏；见专门的用例索引
   layout/         # 相邻插入、增删、重排、非实体区域
@@ -30,6 +31,31 @@ tests/fixtures/
 非顶层 entity 的 18 组人工检视案例及当前展示范围见 [nested-entity-fixtures.md](nested-entity-fixtures.md)。
 
 `insertions/` 的 4 组双方新增行用例均包含 `.output`、`.output-zdiff3` 和 `.stderr-details`，共验证 16 次 CLI 运行。具体输出和与原生 Git 的区别见 [diff3-vs-zdiff3.md](diff3-vs-zdiff3.md#双方新增行的用例)。
+
+## C++ include 实验
+
+`languages/includes/` 的 10 组单文件案例保存三方源码、默认/zdiff3 输出、默认/详细诊断，共 40 次 CLI 断言。下表中的 Git 结果来自对同一输入运行普通 `git merge-file -p`；没有读取头文件内容或运行 C++ 预处理器。
+
+| 案例 | 变化 | Git | driver 当前结果 |
+| --- | --- | --- | --- |
+| `replace.cpp` | 同一个 include 改成两个不同头文件 | conflict | `LINE_CONFLICT` + `UNMODELED_BOTH_CHANGED` |
+| `add.cpp` | 同一位置分别新增 `<string>` / `<map>` | conflict | 同上 |
+| `delete-modify.cpp` | 删除 include / 修改该头文件名 | conflict | 同上，删除侧为空 |
+| `disjoint.cpp` | 修改相隔多行的不同 include | clean | `UNMODELED_BOTH_CHANGED`，同一非实体区域双方变化 |
+| `identical-add.cpp` | 双方新增相同的 `<string>` | clean | `UNMODELED_BOTH_CHANGED`，相同结果仍保留冲突 |
+| `include-vs-function.cpp` | 一边新增 include，另一边改函数返回值 | clean | clean，两项修改均保留 |
+| `conditional.cpp` | 双方修改同一 `#if` 分支中的 include | conflict | 行级冲突、weave 的 `file_header` 拒绝，以及非实体区域双方变化 |
+| `between.cpp` | 两个 function 之间的 include 被双方修改 | conflict | 行级冲突及非实体区域冲突，标明相邻两个 function |
+| `trailing.cpp` | 最后一个 function 之后的 include 被双方修改 | conflict | 行级冲突及非实体区域冲突，标明文件末尾和前方 function |
+| `headers-only.cpp` | 文件仅含 include，双方修改头文件名 | conflict | 行级冲突、weave 的 `(file)` 拒绝，以及 `ENTITY_ANALYSIS_UNAVAILABLE` 整文件回退 |
+
+普通 include 区域在可靠分区中并非独立 function/entity。内部 key（如 `gap:0`）只用于身份关联，提示改为“文件开头、function answer 之前的非实体区域被双方修改”；文件中间和末尾分别根据相邻 entity 定位。条件编译案例中的 weave `file_header` 无法可靠关联到本地 entity，故其拒绝与原文区域依据分别保留。仅 include 的文件没有可供当前分区使用的 entity，会保守回退；不是 C++ 语言不受支持。
+
+这批案例默认与 zdiff3 输出逐 byte 相同；有未修改函数的案例均将函数留在冲突块外。实际输出可查看 [replace.cpp.output](../tests/fixtures/languages/includes/replace.cpp.output)、[disjoint.cpp.output](../tests/fixtures/languages/includes/disjoint.cpp.output) 和 [headers-only.cpp.stderr-details](../tests/fixtures/languages/includes/headers-only.cpp.stderr-details)。这些断言固定当前行为，不意味着已实现 include 依赖、条件分支可达性或业务语义分析。
+
+```sh
+FIXTURE=languages/includes/replace.cpp cargo test --locked --test fixtures -- --nocapture
+```
 
 ## 自动发现与比较
 
@@ -118,7 +144,7 @@ multi-file/
 
 `.analysis` 必须提供，逐 byte 比较完整报告，包括所有原因、移动候选、歧义数量、另一侧状态、警告、缺失/空文件指纹及相关路径。三方标识固定为 `fixture:base / fixture:ours / fixture:theirs`，不需要构造 Git commit。它使用当前产品的报告序列化格式；分析生成失败会令该案例失败。
 
-已有 7 组多文件场景：
+已有 33 组多文件场景，其中原有移动场景：
 
 | 案例 | 检查内容 |
 | --- | --- |
@@ -129,6 +155,26 @@ multi-file/
 | `ambiguous-move` | 两个目标全部保留，源与两个目标都报审核原因 |
 | `unknown-opposite` | 另一侧解析失败，显示 unknown 和关联不完整警告，保守报冲突 |
 | `empty-base` | 空 base，两侧分别新增文件，不误认为移动 |
+
+另有 18 组疑似重命名移动场景：
+
+| 案例 | 检查内容 |
+| --- | --- |
+| `rename-modify`、`rename-ours` | 双向修改/重命名移动；源与目标均审核，前者含 zdiff3 断言 |
+| `rename-pure`、`rename-copy` | 纯重命名移动仅显示关联；保留源 entity 的复制不产生候选 |
+| `rename-ambiguous`、`rename-many-sources` | 所有来源/目标保留，数量包含同名精确移动，不选择唯一配对 |
+| `rename-literal-comment`、`rename-docstring` | 字符串和附着文本也可能被替换；不得宣称只改定义名 |
+| `rename-recursive-unicode` | Unicode 名称和自引用替换次数 |
+| `rename-unknown`、`rename-deleted` | 另一侧无法解析/已删除时保守审核 |
+| `rename-grammar-alias`、`rename-cross-grammar` | 同 grammar 的扩展名可匹配；不同 grammar 不作归一化匹配 |
+| `rename-format`、`rename-body-edit` | 格式差异通过语法回退匹配；额外内容变化不匹配，仍保留原有冲突 |
+| `rename-sentinel`、`rename-word-boundary`、`rename-same-file` | sentinel、非词边界子串、同文件排除 |
+
+另有 7 组格式化边界案例：`rename-format-file`（文件改名移动、格式化、函数轻微改名）、`rename-format-python`（缩进宽度改变）、`rename-indent-structure`（缩进改变嵌套，拒绝匹配）、`rename-literal-whitespace`、`rename-comment-whitespace`、`rename-template-whitespace`（内部空白必须保留）、`rename-format-body-edit`（额外内容编辑不能被格式化掩盖）。
+
+`rename-both-move` 另验证 ours 同名移动、theirs 改名到两个候选目标：旧文件和各目标的两侧 marker 提示、另一侧候选及详细依据、默认/zdiff3、自定义 11 字符 marker，保留全部歧义。
+
+这些案例全部断言默认和详细 stderr，以及 schema v5 / engine v9 的 `.analysis`。报告用 `matched_by` 明确区分精确移动与名称归一化，并检查替换次数、歧义数量和另一侧状态。
 
 新增场景只需添加这些目录和文本，无需改 Rust 测试。可先用空文件起草 `.analysis` 和输出预期，运行后阅读失败 diff 及实际产物，确认符合要求后手工填写；框架没有自动接受结果的开关。
 
@@ -163,7 +209,7 @@ FIXTURE=multi-file/modify-vs-move cargo test --locked --test fixtures -- --nocap
 
 完整合并用例共用磁盘上的源码文本，读取入口在 [tests/common/mod.rs](../tests/common/mod.rs)；不在 Rust 中用 `replace`、`format!` 或字符串拼接生成 base / ours / theirs 或预期源码。只涉及文本结果的旧测试已并入自动发现框架，结构化原因和性质断言继续保留。
 
-- `tests/fixtures/`：105 组单文件案例、7 组多文件案例，共 186 次 driver CLI 组合运行（单文件 148 次、多文件 38 次）。Git 的 8×8 对照从 `git-variant-0.ts` 到 `git-variant-7.ts` 读取固定版本，只组合已有文本，不生成源码。
+- `tests/fixtures/`：115 组单文件案例、33 组多文件案例，共 352 次 driver CLI 组合运行（单文件 188 次、多文件 164 次）。Git 的 8×8 对照从 `git-variant-0.ts` 到 `git-variant-7.ts` 读取固定版本，只组合已有文本，不生成源码。
 - 少量几行的辅助文本（原因提示、非法 JSON、控制字符、Git attributes 及工作区状态标记）直接使用 Rust 常量，放在对应测试附近；跨测试共用的常量放在 `tests/common/mod.rs`，无需单独建文件。
 
 全局分析和 Git 流程测试复用 `move-source.go`、`move-target.go` 等案例，代码只组织路径、快照与 Git 操作。来源枚举、证据组合、非法缓存字段变异等结构化断言仍由 Rust 表达。

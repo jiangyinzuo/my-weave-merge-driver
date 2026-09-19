@@ -1,0 +1,9 @@
+#if defined(USE_FAST_BACKEND)
+#include "backend_fast_checked.h"
+#else
+#include "backend.h"
+#endif
+
+int answer() {
+    return 42;
+}

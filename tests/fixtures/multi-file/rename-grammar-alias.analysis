@@ -1,0 +1,264 @@
+{
+  "schema_version": 5,
+  "engine": "strict-weave-global-v9",
+  "trees": [
+    "fixture:base",
+    "fixture:ours",
+    "fixture:theirs"
+  ],
+  "files": {
+    "source.js": {
+      "fingerprints": [
+        "648c317d77df972a24ccd1415188e76824d1b9b8ecab5782b3ef955ac53e66fd",
+        "af0a96ab4b54e8a24ab86389e337a7cb0ecff46bfdd2f63815f3189ee7468105",
+        null
+      ],
+      "reasons": [
+        {
+          "kind": "line_conflict",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "git_line_conflict"
+            }
+          ]
+        },
+        {
+          "kind": "entity_conflict",
+          "subject": {
+            "type": "entity",
+            "entity_type": "function",
+            "name": "calculate"
+          },
+          "evidence": [
+            {
+              "type": "weave_refusal",
+              "refusal": {
+                "kind": "modify_delete",
+                "modified_in": "ours"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "layout_changed",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "layout_changed"
+            }
+          ]
+        },
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "source.js",
+              "entity": "function calculate",
+              "line": 1
+            },
+            "target": {
+              "path": "target.mjs",
+              "entity": "function renamed",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "source.js",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "target": {
+                  "path": "target.mjs",
+                  "entity": "function renamed",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "modified",
+                "matched_by": {
+                  "kind": "name_normalized",
+                  "grammar": "javascript",
+                  "entity_type": "function",
+                  "old_name": "calculate",
+                  "new_name": "renamed",
+                  "old_occurrences": 1,
+                  "new_occurrences": 1,
+                  "comparison": {
+                    "kind": "text"
+                  }
+                },
+                "opposite_moves": []
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.js",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "target.mjs",
+            "entity": "function renamed",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "modified",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "javascript",
+            "entity_type": "function",
+            "old_name": "calculate",
+            "new_name": "renamed",
+            "old_occurrences": 1,
+            "new_occurrences": 1,
+            "comparison": {
+              "kind": "text"
+            }
+          },
+          "opposite_moves": []
+        }
+      ]
+    },
+    "target.mjs": {
+      "fingerprints": [
+        null,
+        null,
+        "6b2b02ae082e2184a84ec959c59dc4f6ae11dac1fcc94f14399f64d17ae0ef15"
+      ],
+      "reasons": [
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "source.js",
+              "entity": "function calculate",
+              "line": 1
+            },
+            "target": {
+              "path": "target.mjs",
+              "entity": "function renamed",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "source.js",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "target": {
+                  "path": "target.mjs",
+                  "entity": "function renamed",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "modified",
+                "matched_by": {
+                  "kind": "name_normalized",
+                  "grammar": "javascript",
+                  "entity_type": "function",
+                  "old_name": "calculate",
+                  "new_name": "renamed",
+                  "old_occurrences": 1,
+                  "new_occurrences": 1,
+                  "comparison": {
+                    "kind": "text"
+                  }
+                },
+                "opposite_moves": []
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.js",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "target.mjs",
+            "entity": "function renamed",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "modified",
+          "matched_by": {
+            "kind": "name_normalized",
+            "grammar": "javascript",
+            "entity_type": "function",
+            "old_name": "calculate",
+            "new_name": "renamed",
+            "old_occurrences": 1,
+            "new_occurrences": 1,
+            "comparison": {
+              "kind": "text"
+            }
+          },
+          "opposite_moves": []
+        }
+      ]
+    }
+  },
+  "move_candidates": [
+    {
+      "side": "theirs",
+      "base": {
+        "path": "source.js",
+        "entity": "function calculate",
+        "line": 1
+      },
+      "target": {
+        "path": "target.mjs",
+        "entity": "function renamed",
+        "line": 1
+      },
+      "source_count": 1,
+      "destination_count": 1,
+      "opposite": "modified",
+      "matched_by": {
+        "kind": "name_normalized",
+        "grammar": "javascript",
+        "entity_type": "function",
+        "old_name": "calculate",
+        "new_name": "renamed",
+        "old_occurrences": 1,
+        "new_occurrences": 1,
+        "comparison": {
+          "kind": "text"
+        }
+      },
+      "opposite_moves": []
+    }
+  ],
+  "warnings": []
+}

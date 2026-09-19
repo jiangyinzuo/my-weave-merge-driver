@@ -1,5 +1,6 @@
 //! File output and human-readable driver diagnostics. No Git operation orchestration.
 use crate::merge::{self, Labels, Outcome};
+use crate::reason::{Evidence, MoveEvidence, MoveMatch, Reason};
 use anyhow::{bail, Context, Result};
 use std::{io::Write, path::Path};
 
@@ -17,20 +18,39 @@ pub fn report(path: &str, outcome: &Outcome, labels: &Labels, detailed: bool) {
                 eprintln!("{line}");
             }
         }
-        for candidate in &outcome.related_moves {
-            let evidence = crate::reason::Evidence::MoveCandidate {
-                candidate: candidate.clone(),
-            };
-            if !outcome
-                .reasons
-                .iter()
-                .any(|reason| reason.evidence.contains(&evidence))
-            {
-                eprintln!("关联 {}", evidence.summary());
-            }
-        }
+    }
+    for line in related_move_lines(&outcome.reasons, &outcome.related_moves, detailed) {
+        eprintln!("{line}");
+    }
+    if outcome.conflicted() {
         eprintln!("需人工处理：选择一侧 / 编辑合并结果。\n");
     }
+}
+
+/// 未阻断的 rename 也应可检视；已挂在原因下的关联不重复输出。
+pub fn related_move_lines(
+    reasons: &[Reason],
+    candidates: &[MoveEvidence],
+    detailed: bool,
+) -> Vec<String> {
+    let mut lines = Vec::new();
+    for candidate in candidates {
+        if reasons.is_empty() && matches!(candidate.matched_by, MoveMatch::Exact) {
+            continue;
+        }
+        let evidence = Evidence::MoveCandidate {
+            candidate: Box::new(candidate.clone()),
+        };
+        if !reasons.iter().any(|r| r.evidence.contains(&evidence)) {
+            lines.extend(
+                evidence
+                    .lines(detailed)
+                    .into_iter()
+                    .map(|line| format!("关联 {line}")),
+            );
+        }
+    }
+    lines
 }
 
 pub fn atomic_write(path: &Path, bytes: &[u8]) -> Result<()> {

@@ -3,6 +3,60 @@
 //! rendering never decides whether a conflict exists.
 
 use super::{safe_label, Labels};
+use crate::reason::{MoveEvidence, Side};
+use std::collections::BTreeSet;
+
+/// Append file-level move links to the first marker for each affected side.
+/// Source content, hunk boundaries and existing reasons remain byte-identical.
+pub(crate) fn annotate_moves(content: &str, candidates: &[MoveEvidence], width: usize) -> String {
+    let mut notes = [BTreeSet::new(), BTreeSet::new()];
+    let index = |side| match side {
+        Side::Ours => 0,
+        Side::Theirs => 1,
+    };
+    for candidate in candidates {
+        notes[index(candidate.side)].insert(candidate.marker_note());
+        notes[index(candidate.opposite_side())].extend(candidate.opposite_marker_notes());
+    }
+    let suffixes = notes.map(|notes| {
+        if notes.is_empty() {
+            String::new()
+        } else {
+            format!(
+                " | 文件关联 [analyze]：{}",
+                notes.into_iter().collect::<Vec<_>>().join("；")
+            )
+        }
+    });
+    let prefixes = [
+        format!("{} ours: ", "<".repeat(width)),
+        format!("{} theirs: ", ">".repeat(width)),
+    ];
+    let mut seen = [false; 2];
+    let mut result = String::with_capacity(content.len());
+    for line in content.split_inclusive('\n') {
+        let mut body = line.strip_suffix('\n').unwrap_or(line);
+        let ending = if body.ends_with('\r') && line.ends_with('\n') {
+            body = &body[..body.len() - 1];
+            "\r\n"
+        } else if line.ends_with('\n') {
+            "\n"
+        } else {
+            ""
+        };
+        result.push_str(body);
+        for side in 0..2 {
+            if !seen[side] && body.starts_with(&prefixes[side]) {
+                seen[side] = true;
+                if !body.ends_with(&suffixes[side]) {
+                    result.push_str(&suffixes[side]);
+                }
+            }
+        }
+        result.push_str(ending);
+    }
+    result
+}
 
 /// Wrap the differing middle of three texts in labelled diff3 markers.
 ///

@@ -1,0 +1,10 @@
+#include "first.h"
+#include <array>
+#include <cstddef>
+#include <string>
+#include <vector>
+#include "last_v2.h"
+
+int answer() {
+    return 42;
+}
