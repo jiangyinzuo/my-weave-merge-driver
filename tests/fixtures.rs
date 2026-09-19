@@ -4,8 +4,16 @@
 //! NAME.stderr-details verifies --explain-reasons in every available style;
 //! output bytes and exit status must stay identical to that style's baseline.
 //! NAME.options optionally overrides marker_size and the three labels via JSON.
-use std::{collections::BTreeSet, fs, path::Path, process::Command};
+//! Directory-valued inputs/output form a multi-file case with NAME.analysis.
+use std::{
+    collections::BTreeSet,
+    fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 mod common;
+#[path = "fixture_support/multi.rs"]
+mod multi;
 
 fn compare(expected_path: &Path, actual: &[u8], actual_path: &Path) -> Result<(), String> {
     let expected =
@@ -67,11 +75,7 @@ fn check_case(
     if detailed {
         artifact_name.push_str(".details");
     }
-    let scratch = tempfile::tempdir().map_err(|e| e.to_string())?;
-    for side in ["base", "ours", "theirs"] {
-        fs::copy(file(side), scratch.path().join(side))
-            .map_err(|e| format!("{name}.{side}: {e}"))?;
-    }
+    let inputs = ["base", "ours", "theirs"].map(&file);
     let path = if file("path").exists() {
         fs::read_to_string(file("path"))
             .map_err(|e| e.to_string())?
@@ -85,9 +89,55 @@ fn check_case(
             .unwrap()
             .to_owned()
     };
-    let expected = fs::read(file("output")).map_err(|e| format!("{name}.output: {e}"))?;
-    let expected_code = if file("exit").exists() {
-        fs::read_to_string(file("exit"))
+    let case = DriverCase {
+        inputs: inputs.map(Some),
+        path,
+        default_output: file("output"),
+        output: file(output_suffix),
+        stderr: file(stderr_suffix),
+        exit: file("exit"),
+    };
+    check_driver(
+        &case,
+        &options,
+        &artifacts.join(artifact_name),
+        zdiff3,
+        detailed,
+        None,
+    )
+}
+
+struct DriverCase {
+    inputs: [Option<PathBuf>; 3],
+    path: String,
+    default_output: PathBuf,
+    output: PathBuf,
+    stderr: PathBuf,
+    exit: PathBuf,
+}
+
+// Both fixture types exercise the same real CLI and byte-for-byte assertions.
+fn check_driver(
+    case: &DriverCase,
+    options: &common::Options,
+    artifact: &Path,
+    zdiff3: bool,
+    detailed: bool,
+    analysis: Option<&Path>,
+) -> Result<(), String> {
+    let artifact_file = |suffix| PathBuf::from(format!("{}.{suffix}", artifact.display()));
+    let scratch = tempfile::tempdir().map_err(|e| e.to_string())?;
+    for (side, input) in ["base", "ours", "theirs"].iter().zip(&case.inputs) {
+        let bytes = match input {
+            Some(input) => fs::read(input).map_err(|e| format!("{}: {e}", input.display()))?,
+            None => Vec::new(),
+        };
+        fs::write(scratch.path().join(side), bytes).map_err(|e| e.to_string())?;
+    }
+    let expected = fs::read(&case.default_output)
+        .map_err(|e| format!("{}: {e}", case.default_output.display()))?;
+    let expected_code = if case.exit.exists() {
+        fs::read_to_string(&case.exit)
             .map_err(|e| e.to_string())?
             .trim()
             .parse::<i32>()
@@ -109,13 +159,16 @@ fn check_case(
     if detailed {
         command.arg("--explain-reasons");
     }
+    if let Some(analysis) = analysis {
+        command.arg("--analysis").arg(analysis);
+    }
     let result = command
         .current_dir(scratch.path())
         .args([
             "base",
             "ours",
             "theirs",
-            &path,
+            &case.path,
             &options.marker_size.to_string(),
         ])
         .arg(format!("--ours-label={}", options.ours_label))
@@ -130,28 +183,25 @@ fn check_case(
         .map_err(|e| e.to_string())?;
     let actual = fs::read(scratch.path().join("ours")).map_err(|e| e.to_string())?;
     let mut errors = Vec::new();
-    if let Err(e) = compare(
-        &file(output_suffix),
-        &actual,
-        &artifacts.join(format!("{artifact_name}.actual")),
-    ) {
+    if let Err(e) = compare(&case.output, &actual, &artifact_file("actual")) {
         errors.push(e);
     }
     if result.status.code() != Some(expected_code) {
         errors.push(format!(
-            "{name}: expected exit {expected_code}, actual {:?}\nstderr:\n{}",
+            "{}: expected exit {expected_code}, actual {:?}\nstderr:\n{}",
+            case.path,
             result.status,
             String::from_utf8_lossy(&result.stderr)
         ));
     }
     if !result.stdout.is_empty() {
-        errors.push(format!("{name}: driver 不应向 stdout 输出内容"));
+        errors.push(format!("{}: driver 不应向 stdout 输出内容", case.path));
     }
-    if file(stderr_suffix).exists() {
+    if case.stderr.exists() {
         if let Err(e) = compare(
-            &file(stderr_suffix),
+            &case.stderr,
             &result.stderr,
-            &artifacts.join(format!("{artifact_name}.actual-stderr")),
+            &artifact_file("actual-stderr"),
         ) {
             errors.push(e);
         }
@@ -195,6 +245,7 @@ fn text_fixtures() {
                     | "stderr-zdiff3"
                     | "stderr-details"
                     | "options"
+                    | "analysis"
             ),
             "未知 fixture 后缀：{filename}"
         );
@@ -203,7 +254,7 @@ fn text_fixtures() {
         }
         if suffix == "stderr-zdiff3" {
             assert!(
-                directory.join(format!("{name}.output-zdiff3")).is_file(),
+                directory.join(format!("{name}.output-zdiff3")).exists(),
                 "{filename} 缺少对应的 .output-zdiff3"
             );
         }
@@ -252,7 +303,16 @@ fn text_fixtures() {
                     if zdiff3 { "zdiff3" } else { "default" },
                     if detailed { "/details" } else { "" }
                 );
-                match check_case(&directory, name, &artifacts, zdiff3, detailed) {
+                let result = if directory.join(format!("{name}.output")).is_dir() {
+                    multi::check_case(&directory, name, &artifacts, zdiff3, detailed)
+                } else {
+                    assert!(
+                        !directory.join(format!("{name}.analysis")).exists(),
+                        "{name}: .analysis 仅支持多文件用例"
+                    );
+                    check_case(&directory, name, &artifacts, zdiff3, detailed)
+                };
+                match result {
                     Ok(()) => eprintln!("fixture {name} ({mode}): ok"),
                     Err(error) => errors.push(format!("fixture {name} ({mode}): FAILED\n{error}")),
                 }
@@ -267,7 +327,29 @@ fn collect_files(directory: &Path, files: &mut Vec<std::path::PathBuf>) {
         let entry = entry.unwrap();
         let kind = entry.file_type().unwrap();
         if kind.is_dir() {
-            collect_files(&entry.path(), files);
+            let name = entry.file_name();
+            let suffix = name
+                .to_str()
+                .and_then(|s| s.rsplit_once('.'))
+                .map(|(_, s)| s);
+            if suffix.is_some_and(|s| {
+                matches!(
+                    s,
+                    "base"
+                        | "ours"
+                        | "theirs"
+                        | "output"
+                        | "output-zdiff3"
+                        | "stderr"
+                        | "stderr-zdiff3"
+                        | "stderr-details"
+                        | "exit"
+                )
+            }) {
+                files.push(entry.path());
+            } else {
+                collect_files(&entry.path(), files);
+            }
         } else {
             assert!(
                 kind.is_file(),
@@ -277,4 +359,17 @@ fn collect_files(directory: &Path, files: &mut Vec<std::path::PathBuf>) {
             files.push(entry.path());
         }
     }
+}
+
+#[test]
+fn directory_fixture_discovery_does_not_treat_source_names_as_cases() {
+    let temp = tempfile::tempdir().unwrap();
+    let base = temp.path().join("group/scenario.base");
+    fs::create_dir_all(base.join("src")).unwrap();
+    fs::write(base.join("src/nested.base"), b"").unwrap();
+    fs::write(temp.path().join("group/single.go.base"), b"").unwrap();
+    let mut files = Vec::new();
+    collect_files(temp.path(), &mut files);
+    files.sort();
+    assert_eq!(files, vec![base, temp.path().join("group/single.go.base")]);
 }

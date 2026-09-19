@@ -1,0 +1,199 @@
+{
+  "schema_version": 2,
+  "engine": "strict-weave-global-v6",
+  "trees": [
+    "fixture:base",
+    "fixture:ours",
+    "fixture:theirs"
+  ],
+  "files": {
+    "lib/target.go": {
+      "fingerprints": [
+        null,
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "e9c9b60da3902dbe558a66ff5c4ae17204728bbfae2eec2d97f86a370f71cd12"
+      ],
+      "reasons": [
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "src/source.go",
+              "entity": "function calculate",
+              "line": 1
+            },
+            "target": {
+              "path": "lib/target.go",
+              "entity": "function calculate",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "src/source.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "target": {
+                  "path": "lib/target.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "modified"
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "src/source.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "lib/target.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "modified"
+        }
+      ]
+    },
+    "src/source.go": {
+      "fingerprints": [
+        "61941550f53627bb2a4f1fba332e0adf86cf5bebd9ee8e08a1b5957b7bf9086a",
+        "e78c990dfed753ab0da41d9a2a303e9a11aa43945ea5304eb3e39650ced45bbc",
+        "012114eb428333be941d698e4976c7afa795de06f54cf0dcc0a38de9b19f7803"
+      ],
+      "reasons": [
+        {
+          "kind": "line_conflict",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "git_line_conflict"
+            }
+          ]
+        },
+        {
+          "kind": "entity_conflict",
+          "subject": {
+            "type": "entity",
+            "entity_type": "function",
+            "name": "calculate"
+          },
+          "evidence": [
+            {
+              "type": "weave_refusal",
+              "refusal": {
+                "kind": "modify_delete",
+                "modified_in": "ours"
+              }
+            }
+          ]
+        },
+        {
+          "kind": "layout_changed",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "layout_changed"
+            }
+          ]
+        },
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "src/source.go",
+              "entity": "function calculate",
+              "line": 1
+            },
+            "target": {
+              "path": "lib/target.go",
+              "entity": "function calculate",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "src/source.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "target": {
+                  "path": "lib/target.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "modified"
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "src/source.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "lib/target.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "modified"
+        }
+      ]
+    }
+  },
+  "move_candidates": [
+    {
+      "side": "theirs",
+      "base": {
+        "path": "src/source.go",
+        "entity": "function calculate",
+        "line": 1
+      },
+      "target": {
+        "path": "lib/target.go",
+        "entity": "function calculate",
+        "line": 1
+      },
+      "source_count": 1,
+      "destination_count": 1,
+      "opposite": "modified"
+    }
+  ],
+  "warnings": []
+}

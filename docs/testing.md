@@ -1,6 +1,6 @@
 # 文本 fixture 测试
 
-driver 文本案例按场景分组在 [tests/fixtures/](../tests/fixtures/)，框架递归扫描 `*.base` 自动发现用例。新增案例无需修改 Rust 代码。
+driver 文本案例按场景分组在 [tests/fixtures/](../tests/fixtures/)，框架递归扫描 `*.base` 文件或目录自动发现用例。新增案例无需修改 Rust 代码。
 
 ```text
 tests/fixtures/
@@ -19,6 +19,7 @@ tests/fixtures/
     adjacent.ts.output
     adjacent.ts.output-zdiff3
   moves/          # 跨文件移动分析复用的文本
+  multi-file/     # 整组三方快照、全局分析报告及各路径的 driver 输出
   encoding/       # CRLF、末尾无换行
   fallback/       # 不支持语言、语法错误、重复名称、非法输入
   git-baseline/   # 真实 Git 8×8 对照使用的版本
@@ -75,6 +76,62 @@ marker size 默认为 7；可通过 `.options` 覆盖。框架默认从 `.output
 
 `invalid-width.go`、`binary-input.go` 分别保存非法宽度和真实 NUL 输入，并通过 `.exit` 与 `.output` 检查拒绝处理且不改写 ours。`encoding.go`、`crlf-edit.go` 保存真实 CRLF；不要用编辑器归一化这些文件。
 
+## 多文件与跨文件 move
+
+同一命名规则也支持目录。`a.output` 为目录时，该案例按多文件场景运行；`.base / .ours / .theirs` 内的相对路径是实际源码路径，可包含子目录，无需 `.path` 或文件清单。
+
+```text
+multi-file/
+  modify-vs-move.base/
+    src/source.go
+    src/unchanged.go
+  modify-vs-move.ours/
+    src/source.go
+    src/unchanged.go
+    lib/target.go          # 存在但为空，与文件不存在不同
+  modify-vs-move.theirs/
+    src/source.go
+    src/unchanged.go
+    lib/target.go          # 移动后的 function
+  modify-vs-move.output/
+    src/source.go
+    src/unchanged.go
+    lib/target.go
+  modify-vs-move.stderr/   # 相同路径结构，逐文件诊断
+  modify-vs-move.stderr-details/
+  modify-vs-move.output-zdiff3/
+  modify-vs-move.analysis  # 完整预期 JSON 报告
+```
+
+每种模式先读取三份完整快照，调用与 prepare 相同的 `analysis::analyze` 并保存只读报告，再逐路径调用真实 `strict-weave driver --analysis ...`。所有文件使用同一份报告和原始输入，不把先合并的结果作为后续分析输入。未变化路径不会出现在报告中，对这些路径直接运行本地 driver。结束后检查报告未被修改。
+
+这套测试直接验证全局分析与多个文件 driver 的配合，不执行原生 `git merge`，也不模拟 Git 对删除、rename、同 blob 等路径的调度。driver 可能被 Git 跳过的边界继续由 `tests/git_workflow.rs` 验证。
+
+输入、输出约定：
+
+- 某侧目录中没有某路径，表示该文件不存在；存在的空文件有自己的空文本指纹。传给单文件 driver 时，不存在的一侧才转换为空文本。
+- 三个输入快照必须显式存在。整份快照为空时，用零 byte 的 `a.base`（或 `.ours / .theirs`）文件表示，便于 Git 跟踪；`empty-base` 提供示例。不能省略整个快照。
+- `.output` 必须覆盖三侧路径并集，不允许缺少或多出文件。已删除路径也放一个空的预期文件，断言的是 driver 输出文本，不是最终 Git tree 的路径存在性。
+- 可选 `.output-zdiff3`、`.stderr`、`.stderr-zdiff3`、`.stderr-details` 也使用目录；一旦提供，必须覆盖全部路径。空诊断文件明确断言没有诊断。
+- `.exit` 可选为目录，用源码相对路径保存需要覆盖的退出码；其余路径按默认 `.output` 是否有 marker 推导。默认和 zdiff3 共用退出码。
+- `.options` 仍是 JSON 文件，作用于整组 driver；多文件案例不支持 `.path`。
+
+`.analysis` 必须提供，逐 byte 比较完整报告，包括所有原因、移动候选、歧义数量、另一侧状态、警告、缺失/空文件指纹及相关路径。三方标识固定为 `fixture:base / fixture:ours / fixture:theirs`，不需要构造 Git commit。它使用当前产品的报告序列化格式；分析生成失败会令该案例失败。
+
+已有 7 组多文件场景：
+
+| 案例 | 检查内容 |
+| --- | --- |
+| `modify-vs-move` | ours 修改、theirs 移动；子目录路径、未变化文件、缺失与空文件，另有 zdiff3 断言 |
+| `move-vs-modify` | ours 移动、theirs 修改，验证方向对称 |
+| `pure-move` | 源文件删除、目标新增，另一侧未变；保留候选但不报冲突 |
+| `copy` | 源 entity 仍存在，复制不报移动候选 |
+| `ambiguous-move` | 两个目标全部保留，源与两个目标都报审核原因 |
+| `unknown-opposite` | 另一侧解析失败，显示 unknown 和关联不完整警告，保守报冲突 |
+| `empty-base` | 空 base，两侧分别新增文件，不误认为移动 |
+
+新增场景只需添加这些目录和文本，无需改 Rust 测试。可先用空文件起草 `.analysis` 和输出预期，运行后阅读失败 diff 及实际产物，确认符合要求后手工填写；框架没有自动接受结果的开关。
+
 ## 运行
 
 ```sh
@@ -85,6 +142,9 @@ cargo test --locked --test fixtures -- --nocapture
 
 ```sh
 FIXTURE=entities/disjoint.go cargo test --locked --test fixtures -- --nocapture
+
+# 一组多文件的全局报告、默认/zdiff3 输出和详细诊断
+FIXTURE=multi-file/modify-vs-move cargo test --locked --test fixtures -- --nocapture
 ```
 
 过滤器接受完整相对路径；文件名在所有目录中唯一时，也兼容 `FIXTURE=disjoint.go`。重名时必须给出相对路径，避免选错用例。
@@ -95,16 +155,20 @@ FIXTURE=entities/disjoint.go cargo test --locked --test fixtures -- --nocapture
 
 失败产物保留 fixture 子目录，避免同名案例相互覆盖。zdiff3 的失败产物名称包含 `.zdiff3`，详细模式再加 `.details`，不会互相覆盖。
 
+多文件产物另外保留场景内源码路径，例如 `multi-file/modify-vs-move/src/source.go.actual`；报告差异保存在 `multi-file/modify-vs-move.actual-analysis`。
+
 修改预期前，应检查差异是否符合需求。没有自动接受当前输出的“更新快照”模式。
 
 ## 其它测试
 
 完整合并用例共用磁盘上的源码文本，读取入口在 [tests/common/mod.rs](../tests/common/mod.rs)；不在 Rust 中用 `replace`、`format!` 或字符串拼接生成 base / ours / theirs 或预期源码。只涉及文本结果的旧测试已并入自动发现框架，结构化原因和性质断言继续保留。
 
-- `tests/fixtures/`：105 组完整三方输入与预期输出；当前共 148 次 CLI 组合运行。Git 的 8×8 对照从 `git-variant-0.ts` 到 `git-variant-7.ts` 读取固定版本，只组合已有文本，不生成源码。
+- `tests/fixtures/`：105 组单文件案例、7 组多文件案例，共 186 次 driver CLI 组合运行（单文件 148 次、多文件 38 次）。Git 的 8×8 对照从 `git-variant-0.ts` 到 `git-variant-7.ts` 读取固定版本，只组合已有文本，不生成源码。
 - 少量几行的辅助文本（原因提示、非法 JSON、控制字符、Git attributes 及工作区状态标记）直接使用 Rust 常量，放在对应测试附近；跨测试共用的常量放在 `tests/common/mod.rs`，无需单独建文件。
 
 全局分析和 Git 流程测试复用 `move-source.go`、`move-target.go` 等案例，代码只组织路径、快照与 Git 操作。来源枚举、证据组合、非法缓存字段变异等结构化断言仍由 Rust 表达。
+
+多文件框架位于 `tests/fixture_support/multi.rs`，与单文件案例共用 CLI 执行及比较函数。框架本身还验证缺失快照不能误当空快照、预期路径遗漏/多余必须失败，以及源码文件名不会被误发现为独立案例。
 
 复用规则的回归测试验证：weave 已拒绝的 entity 只保留拒绝依据；尚未拒绝的 entity 使用上游分类执行严格策略；一个 entity 被拒绝不能跳过另一个 entity。`encoding.go` 包含真实 CRLF 字节，验证 weave 归一化后未识别的双方原文变化仍然冲突。
 

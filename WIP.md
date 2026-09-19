@@ -70,6 +70,6 @@ cargo test --locked
 RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps
 ```
 
-上述检查均通过。文本测试递归发现同目录的 `a.base / a.ours / a.theirs / a.output`，可附加 `.output-zdiff3`、诊断及配置文件；逐 byte 比较，不自动更新预期。当前为 **105 组 fixture、148 次 CLI 组合运行**，包括 18 组嵌套 entity 和 4 组双方新增行用例。
+上述检查均通过。文本测试递归发现同目录的 `a.base / a.ours / a.theirs / a.output`，可附加 `.output-zdiff3`、诊断及配置文件；逐 byte 比较，不自动更新预期。目录形式支持多文件三方快照：先生成只读全局报告，再逐路径调用 driver；`.analysis` 断言完整报告，输出覆盖三侧全部路径，区分缺失与空文件。当前为 **105 组单文件、7 组多文件案例，共 186 次 driver CLI 组合运行**，包括 18 组嵌套 entity 和 4 组双方新增行用例。
 
 其它测试覆盖普通 Git 冲突包含关系（64 组三方组合）、冲突块原文还原、entity 身份和原因模型、语言覆盖、全局分析及真实 Git 流程。完整源码文本来自 fixture，少量辅助文本使用 Rust 常量。入口见 [testing.md](docs/testing.md) 和 [嵌套用例索引](docs/nested-entity-fixtures.md)。

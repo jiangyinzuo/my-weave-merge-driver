@@ -1,0 +1,82 @@
+{
+  "schema_version": 2,
+  "engine": "strict-weave-global-v6",
+  "trees": [
+    "fixture:base",
+    "fixture:ours",
+    "fixture:theirs"
+  ],
+  "files": {
+    "source.go": {
+      "fingerprints": [
+        "e9c9b60da3902dbe558a66ff5c4ae17204728bbfae2eec2d97f86a370f71cd12",
+        "e9c9b60da3902dbe558a66ff5c4ae17204728bbfae2eec2d97f86a370f71cd12",
+        null
+      ],
+      "reasons": [],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "target.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "unchanged"
+        }
+      ]
+    },
+    "target.go": {
+      "fingerprints": [
+        null,
+        null,
+        "e9c9b60da3902dbe558a66ff5c4ae17204728bbfae2eec2d97f86a370f71cd12"
+      ],
+      "reasons": [],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "target.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "unchanged"
+        }
+      ]
+    }
+  },
+  "move_candidates": [
+    {
+      "side": "theirs",
+      "base": {
+        "path": "source.go",
+        "entity": "function calculate",
+        "line": 1
+      },
+      "target": {
+        "path": "target.go",
+        "entity": "function calculate",
+        "line": 1
+      },
+      "source_count": 1,
+      "destination_count": 1,
+      "opposite": "unchanged"
+    }
+  ],
+  "warnings": []
+}

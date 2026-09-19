@@ -1,0 +1,184 @@
+{
+  "schema_version": 2,
+  "engine": "strict-weave-global-v6",
+  "trees": [
+    "fixture:base",
+    "fixture:ours",
+    "fixture:theirs"
+  ],
+  "files": {
+    "source.go": {
+      "fingerprints": [
+        "61941550f53627bb2a4f1fba332e0adf86cf5bebd9ee8e08a1b5957b7bf9086a",
+        "80090dd04522f1fc30494bd7ca4908ed57ce47217dfce8f82f0585809764a659",
+        "012114eb428333be941d698e4976c7afa795de06f54cf0dcc0a38de9b19f7803"
+      ],
+      "reasons": [
+        {
+          "kind": "line_conflict",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "git_line_conflict"
+            }
+          ]
+        },
+        {
+          "kind": "analysis_unavailable",
+          "subject": {
+            "type": "file"
+          },
+          "evidence": [
+            {
+              "type": "partition_unavailable"
+            }
+          ]
+        },
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "source.go",
+              "entity": "function calculate",
+              "line": 1
+            },
+            "target": {
+              "path": "target.go",
+              "entity": "function calculate",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "source.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "target": {
+                  "path": "target.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "unknown"
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "target.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "unknown"
+        }
+      ]
+    },
+    "target.go": {
+      "fingerprints": [
+        null,
+        null,
+        "e9c9b60da3902dbe558a66ff5c4ae17204728bbfae2eec2d97f86a370f71cd12"
+      ],
+      "reasons": [
+        {
+          "kind": "modify_vs_move",
+          "subject": {
+            "type": "move",
+            "side": "theirs",
+            "base": {
+              "path": "source.go",
+              "entity": "function calculate",
+              "line": 1
+            },
+            "target": {
+              "path": "target.go",
+              "entity": "function calculate",
+              "line": 1
+            }
+          },
+          "evidence": [
+            {
+              "type": "move_candidate",
+              "candidate": {
+                "side": "theirs",
+                "base": {
+                  "path": "source.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "target": {
+                  "path": "target.go",
+                  "entity": "function calculate",
+                  "line": 1
+                },
+                "source_count": 1,
+                "destination_count": 1,
+                "opposite": "unknown"
+              }
+            }
+          ]
+        }
+      ],
+      "related_moves": [
+        {
+          "side": "theirs",
+          "base": {
+            "path": "source.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "target": {
+            "path": "target.go",
+            "entity": "function calculate",
+            "line": 1
+          },
+          "source_count": 1,
+          "destination_count": 1,
+          "opposite": "unknown"
+        }
+      ]
+    }
+  },
+  "move_candidates": [
+    {
+      "side": "theirs",
+      "base": {
+        "path": "source.go",
+        "entity": "function calculate",
+        "line": 1
+      },
+      "target": {
+        "path": "target.go",
+        "entity": "function calculate",
+        "line": 1
+      },
+      "source_count": 1,
+      "destination_count": 1,
+      "opposite": "unknown"
+    }
+  ],
+  "warnings": [
+    "ENTITY_ANALYSIS_UNAVAILABLE：ours:source.go；移动关联不完整，单文件严格检查仍执行"
+  ]
+}

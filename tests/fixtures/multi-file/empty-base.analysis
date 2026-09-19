@@ -1,0 +1,31 @@
+{
+  "schema_version": 2,
+  "engine": "strict-weave-global-v6",
+  "trees": [
+    "fixture:base",
+    "fixture:ours",
+    "fixture:theirs"
+  ],
+  "files": {
+    "ours.go": {
+      "fingerprints": [
+        null,
+        "e9c9b60da3902dbe558a66ff5c4ae17204728bbfae2eec2d97f86a370f71cd12",
+        null
+      ],
+      "reasons": [],
+      "related_moves": []
+    },
+    "theirs.go": {
+      "fingerprints": [
+        null,
+        null,
+        "e9c9b60da3902dbe558a66ff5c4ae17204728bbfae2eec2d97f86a370f71cd12"
+      ],
+      "reasons": [],
+      "related_moves": []
+    }
+  },
+  "move_candidates": [],
+  "warnings": []
+}
