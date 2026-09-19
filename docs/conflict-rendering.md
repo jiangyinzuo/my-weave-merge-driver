@@ -2,6 +2,8 @@
 
 实现集中在 `src/merge/conflict.rs`，对外仍通过 `merge::conflict_box` 调用。实体分区冲突、整文件保守回退、全局分析新增冲突使用同一个渲染函数；调用方决定原因和输入范围，渲染函数不决定 clean/conflict。
 
+单文件分析先在 `src/analysis/local.rs` 收集完整原因及 Git 输出，再由 `src/merge/render.rs` 只读选择展示；渲染阶段不追加或删除冲突原因。分析规则入口见 [analysis.md](analysis.md)。
+
 默认裁掉 base、ours、theirs 三方逐 byte 相同的前缀行和后缀行，将共同上下文原样放在 marker 外。中间内容依然用带 base 的三方 marker 包装，原因保持原来的 entity 或文件范围。这个过程不分析内部方法、不匹配 diff hunk、不修改 weave-core。
 
 例如三方共同的 class 声明、方法声明和末尾 return 可以放在块外，class 内部修改的 x 到 z 仍留在同一个块内。块内未修改的 y 不被抽走。若 class 声明本身发生变化，它也留在块内。

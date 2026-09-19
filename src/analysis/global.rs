@@ -1,8 +1,9 @@
 //! Explicit three-tree analysis. This module never runs or controls a Git merge.
 //! Cached findings can only add conflicts; every driver call still checks its inputs.
+use super::moves::{conflict_reason, entities, find_candidates, ParsedSnapshots};
 use crate::merge::{self, Labels, Outcome};
 pub use crate::reason::Location;
-use crate::reason::{self, Evidence, Kind, MoveEvidence, Opposite, Reason, Side, Subject};
+use crate::reason::{self, MoveEvidence, Reason};
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -46,37 +47,6 @@ pub struct FileAnalysis {
 
 pub type MoveCandidate = MoveEvidence;
 
-struct Entity {
-    key: String,
-    location: Location,
-    text: String,
-}
-type Entities = BTreeMap<String, Entity>;
-
-fn entities(path: &str, text: &str) -> Option<Entities> {
-    let mut result = BTreeMap::new();
-    let mut line = 1;
-    for part in merge::partition(path, text)? {
-        let next = line + part.text.bytes().filter(|b| *b == b'\n').count();
-        if part.entity {
-            result.insert(
-                part.key.clone(),
-                Entity {
-                    key: part.key,
-                    location: Location {
-                        path: path.into(),
-                        entity: part.label,
-                        line,
-                    },
-                    text: part.text,
-                },
-            );
-        }
-        line = next;
-    }
-    Some(result)
-}
-
 fn fingerprint(text: &str) -> String {
     format!("{:x}", Sha256::digest(text.as_bytes()))
 }
@@ -106,7 +76,7 @@ pub fn analyze(snapshots: &[Snapshot; 3], trees: [String; 3]) -> Result<Report> 
         warnings: Vec::new(),
     };
     let paths: BTreeSet<_> = snapshots.iter().flat_map(|s| s.keys()).collect();
-    let mut parsed: [BTreeMap<String, Option<Entities>>; 3] = Default::default();
+    let mut parsed: ParsedSnapshots = Default::default();
     for path in paths {
         let texts = snapshots.each_ref().map(|s| s.get(path));
         if texts[0] == texts[1] && texts[0] == texts[2] {
@@ -146,90 +116,14 @@ pub fn analyze(snapshots: &[Snapshot; 3], trees: [String; 3]) -> Result<Report> 
             parsed[side].insert(path.clone(), parts);
         }
     }
-    for (side, direction) in [(1, Side::Ours), (2, Side::Theirs)] {
-        let other = 3 - side;
-        let mut deleted: BTreeMap<(&str, &str), Vec<&Entity>> = BTreeMap::new();
-        let mut added: BTreeMap<(&str, &str), Vec<&Entity>> = BTreeMap::new();
-        for (path, base) in &parsed[0] {
-            let (Some(base), Some(current)) = (base.as_ref(), parsed[side][path].as_ref()) else {
-                continue;
-            };
-            for (key, entity) in base {
-                if !current.contains_key(key) {
-                    deleted
-                        .entry((&entity.key, &entity.text))
-                        .or_default()
-                        .push(entity);
-                }
-            }
-            for (key, entity) in current {
-                if !base.contains_key(key) {
-                    added
-                        .entry((&entity.key, &entity.text))
-                        .or_default()
-                        .push(entity);
-                }
-            }
-        }
-        for (key, sources) in deleted {
-            let Some(targets) = added.get(&key) else {
-                continue;
-            };
-            if sources.len().saturating_mul(targets.len()) > 10_000 - report.move_candidates.len() {
-                bail!("移动候选超过 10000，无法完整生成报告；未写出分析文件");
-            }
-            for source in &sources {
-                let opposite = match parsed[other][&source.location.path].as_ref() {
-                    Some(entities) => match entities.get(&source.key) {
-                        Some(entity) if entity.text == source.text => Opposite::Unchanged,
-                        Some(_) => Opposite::Modified,
-                        None => Opposite::Deleted,
-                    },
-                    None => Opposite::Unknown,
-                };
-                for target in targets {
-                    if source.location.path == target.location.path {
-                        continue;
-                    }
-                    let candidate = MoveEvidence {
-                        side: direction,
-                        base: source.location.clone(),
-                        target: target.location.clone(),
-                        source_count: sources.len(),
-                        destination_count: targets.len(),
-                        opposite,
-                    };
-                    for path in [&source.location.path, &target.location.path] {
-                        report
-                            .files
-                            .get_mut(path)
-                            .expect("changed candidate path")
-                            .related_moves
-                            .push(candidate.clone());
-                    }
-                    if opposite != Opposite::Unchanged {
-                        let reason = Reason::new(
-                            Kind::ModifyVsMove,
-                            Subject::Move {
-                                side: direction,
-                                base: source.location.clone(),
-                                target: target.location.clone(),
-                            },
-                            Evidence::MoveCandidate {
-                                candidate: candidate.clone(),
-                            },
-                        );
-                        for path in [&source.location.path, &target.location.path] {
-                            report
-                                .files
-                                .get_mut(path)
-                                .expect("changed candidate path")
-                                .reasons
-                                .push(reason.clone());
-                        }
-                    }
-                    report.move_candidates.push(candidate);
-                }
+    report.move_candidates = find_candidates(&parsed)?;
+    for candidate in &report.move_candidates {
+        let reason = conflict_reason(candidate);
+        for path in [&candidate.base.path, &candidate.target.path] {
+            let file = report.files.get_mut(path).expect("changed candidate path");
+            file.related_moves.push(candidate.clone());
+            if let Some(reason) = &reason {
+                file.reasons.push(reason.clone());
             }
         }
     }

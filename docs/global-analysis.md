@@ -1,5 +1,7 @@
 # 显式三方全局分析与 driver
 
+单文件和跨文件规则的代码入口见 [已实现的分析](analysis.md)。移动匹配与审核策略位于 `src/analysis/moves.rs`，快照和报告读写位于 `src/analysis/global.rs`。
+
 当前架构：
 
 ```text

@@ -10,7 +10,9 @@
 - **冲突块：** 自生成块默认把三方逐 byte 相同的前后文移到块外，保留中间三方文本及 marker；双方相同但不同于 base 的修改仍在块内。`--zdiff3` 选择 Git 行级展示风格，自生成块在两种模式下使用相同裁剪规则。见 [conflict-rendering.md](docs/conflict-rendering.md)。
 - **原因：** `Reason(kind, subject, evidence)` 保存父原因和子依据，来源标注为 `git`、`weave`、`analyze`；只对同类、同目标归并。中文固定模板不推断业务意图；默认展示双方动作；可靠原文满足 `ours == theirs != base` 时明确提示双方修改结果相同，`--explain-reasons` 展开全部依据。目录见 [conflict-reasons.md](docs/conflict-reasons.md)，同时通过 `include_str!` 引入 rustdoc。
 
-合并流程位于 `src/merge/mod.rs`，自生成冲突块位于 `src/merge/conflict.rs`。依赖原版 weave-core `a3f501d19601126fefcc40a3ebb764b8d07d39fc` 和 sem-core `0.25.0`，无本地 patch。
+分析规则集中在 `src/analysis/`：`local.rs` 串联单文件规则，`line.rs`、`upstream.rs`、`raw.rs`、`moves.rs` 分别负责 Git、weave、原文和跨文件移动分析；`partition.rs` 提供可靠原文分区，`global.rs` 管理全局报告。已实现规则、触发条件及边界见 [analysis.md](docs/analysis.md)，同时引入 analysis 模块的 rustdoc。当前没有格式化或语义等价识别。
+
+`src/merge/mod.rs` 负责入口校验和串联；`render.rs` 只读分析结果选择展示，`conflict.rs` 生成并裁剪冲突块。依赖原版 weave-core `a3f501d19601126fefcc40a3ebb764b8d07d39fc` 和 sem-core `0.25.0`，无本地 patch。
 
 ## 全局预分析
 
