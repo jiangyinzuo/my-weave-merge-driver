@@ -1,43 +1,20 @@
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：module app 需人工审核
 namespace app {
 class Counter {
 public:
     int score() const {
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：module app 需人工审核
         int x = 10;
         int y = 2;
         int z = 3;
-        return x + y + z;
-    }
-
-    int unchanged() const {
-        return 0;
-    }
-};
-}
 ||||||| base: base-commit
-namespace app {
-class Counter {
-public:
-    int score() const {
         int x = 1;
         int y = 2;
         int z = 3;
-        return x + y + z;
-    }
-
-    int unchanged() const {
-        return 0;
-    }
-};
-}
 =======
-namespace app {
-class Counter {
-public:
-    int score() const {
         int x = 1;
         int y = 2;
         int z = 30;
+>>>>>>> theirs: feature/theirs
         return x + y + z;
     }
 
@@ -46,4 +23,3 @@ public:
     }
 };
 }
->>>>>>> theirs: feature/theirs

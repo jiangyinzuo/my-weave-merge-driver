@@ -268,7 +268,7 @@ fn plain_git_conflicts_are_a_subset_of_strict_conflicts() {
 }
 
 #[test]
-fn zdiff3_preserves_full_strict_entity_conflicts() {
+fn zdiff3_preserves_strict_entity_conflicts() {
     for name in [
         "entities/identical.go",
         "entities/nearby.go",

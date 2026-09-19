@@ -1,19 +1,11 @@
+defmodule Alpha do
+  def value do
 <<<<<<< ours: feature/ours | ENTITY_CONFLICT：module Alpha 需人工审核
-defmodule Alpha do
-  def value do
     2
-  end
-end
 ||||||| base: base-commit
-defmodule Alpha do
-  def value do
     1
-  end
-end
 =======
-defmodule Alpha do
-  def value do
     2
+>>>>>>> theirs: feature/theirs
   end
 end
->>>>>>> theirs: feature/theirs

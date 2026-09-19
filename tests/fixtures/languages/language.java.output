@@ -1,19 +1,11 @@
+class Alpha {
+    int value() {
 <<<<<<< ours: feature/ours | ENTITY_CONFLICT：class Alpha 需人工审核
-class Alpha {
-    int value() {
         return 2;
-    }
-}
 ||||||| base: base-commit
-class Alpha {
-    int value() {
         return 1;
-    }
-}
 =======
-class Alpha {
-    int value() {
         return 2;
+>>>>>>> theirs: feature/theirs
     }
 }
->>>>>>> theirs: feature/theirs

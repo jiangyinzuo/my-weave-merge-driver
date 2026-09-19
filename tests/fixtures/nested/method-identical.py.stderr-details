@@ -1,0 +1,8 @@
+冲突 · method-identical.py
+ours   : feature/ours
+base   : base-commit
+theirs : feature/theirs
+原因 [weave]：ENTITY_CONFLICT：class Counter 需人工审核
+  依据 [weave]：分类：ours=modified, theirs=modified
+需人工处理：选择一侧 / 编辑合并结果。
+

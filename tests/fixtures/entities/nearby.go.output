@@ -1,22 +1,14 @@
-<<<<<<< ours: feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：function a 需人工审核
 func a() int {
     x := 1
+<<<<<<< ours: feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：function a 需人工审核
     y := 5
     z := 3
-    return y
-}
 ||||||| base: base-commit
-func a() int {
-    x := 1
     y := 2
     z := 3
-    return y
-}
 =======
-func a() int {
-    x := 1
     y := 2
     z := 8
+>>>>>>> theirs: feature/theirs
     return y
 }
->>>>>>> theirs: feature/theirs

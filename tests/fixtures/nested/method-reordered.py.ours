@@ -1,0 +1,9 @@
+class Counter:
+    def unchanged(self):
+        return 0
+
+    def score(self):
+        x = 10
+        y = 2
+        z = 3
+        return x + y + z

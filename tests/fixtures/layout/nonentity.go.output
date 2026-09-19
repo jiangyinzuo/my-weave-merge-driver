@@ -2,16 +2,14 @@
 // ONE
 // two
 // three
-
 ||||||| base: base-commit
 // one
 // two
 // three
-
 =======
 // one
 // two
 // THREE
-
 >>>>>>> theirs: feature/theirs
+
 func a() {}

@@ -1,7 +1,7 @@
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：class Counter 需人工审核
 class Counter {
 public:
     int first() const {
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：class Counter 需人工审核
         return 10;
     }
 
@@ -11,12 +11,7 @@ public:
 
     int second() const {
         return 2;
-    }
-};
 ||||||| base: base-commit
-class Counter {
-public:
-    int first() const {
         return 1;
     }
 
@@ -26,12 +21,7 @@ public:
 
     int second() const {
         return 2;
-    }
-};
 =======
-class Counter {
-public:
-    int first() const {
         return 1;
     }
 
@@ -41,6 +31,6 @@ public:
 
     int second() const {
         return 20;
+>>>>>>> theirs: feature/theirs
     }
 };
->>>>>>> theirs: feature/theirs

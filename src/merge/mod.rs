@@ -11,6 +11,9 @@ use weave_core::{
     v2::analyze_default,
 };
 
+mod conflict;
+pub use conflict::conflict_box;
+
 pub const MAX_BYTES: usize = 1_000_000;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -86,37 +89,6 @@ fn validate_inputs(texts: [&str; 3], width: usize) -> Result<()> {
         }
     }
     Ok(())
-}
-
-pub fn conflict_box(
-    base: &str,
-    ours: &str,
-    theirs: &str,
-    labels: &Labels,
-    width: usize,
-    reason: &str,
-) -> String {
-    let section = |s: &str| {
-        if s.is_empty() || s.ends_with('\n') {
-            s.to_owned()
-        } else {
-            format!("{s}\n")
-        }
-    };
-    format!(
-        "{} ours: {} | {}\n{}{} base: {}\n{}{}\n{}{} theirs: {}\n",
-        "<".repeat(width),
-        safe_label(&labels.ours),
-        safe_label(reason),
-        section(ours),
-        "|".repeat(width),
-        safe_label(&labels.base),
-        section(base),
-        "=".repeat(width),
-        section(theirs),
-        ">".repeat(width),
-        safe_label(&labels.theirs)
-    )
 }
 
 /// Run Git once on the original text, independently of weave. Git's diff3 and
@@ -567,7 +539,7 @@ pub fn merge_with_style(
         line_content
     } else {
         // Avoid splicing separately owned entity and line conflict ranges.
-        // The conservative fallback keeps both sides' complete text.
+        // Whole-file input keeps both sides, with only common context outside.
         conflict_box(
             base,
             ours,

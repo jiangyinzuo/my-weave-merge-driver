@@ -1,13 +1,9 @@
+export function View() {
 <<<<<<< ours: feature/ours | ENTITY_CONFLICT：function View 需人工审核
-export function View() {
   return <div>new</div>;
-}
 ||||||| base: base-commit
-export function View() {
   return <div>old</div>;
-}
 =======
-export function View() {
   return <div>new</div>;
-}
 >>>>>>> theirs: feature/theirs
+}

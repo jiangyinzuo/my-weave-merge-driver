@@ -1,0 +1,3 @@
+class Counter:
+    def unchanged(self):
+        return 0

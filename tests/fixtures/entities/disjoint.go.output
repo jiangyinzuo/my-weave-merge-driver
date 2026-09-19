@@ -1,20 +1,14 @@
+func a() int {
 <<<<<<< ours: feature/ours | ENTITY_CONFLICT：function a 需人工审核
-func a() int {
     x := 1
     y := 2
-    return y
-}
 ||||||| base: base-commit
-func a() int {
     x := 1
     y := 2
     z := 3
-    return y
-}
 =======
-func a() int {
     y := 2
     z := 3
+>>>>>>> theirs: feature/theirs
     return y
 }
->>>>>>> theirs: feature/theirs

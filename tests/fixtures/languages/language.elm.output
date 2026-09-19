@@ -1,13 +1,11 @@
 module Sample exposing (..)
 
 alpha : Int
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：value_declaration alpha 需人工审核
 alpha =
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：value_declaration alpha 需人工审核
     2
 ||||||| base: base-commit
-alpha =
     1
 =======
-alpha =
     2
 >>>>>>> theirs: feature/theirs

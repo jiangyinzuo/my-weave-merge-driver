@@ -4,12 +4,16 @@
 
 ## 已实现
 
+- **双方新增行测试：** `tests/fixtures/insertions/` 增加 4 组同一 function 内双方新增的用例，覆盖同位置不同内容、相同内容、共同新增边界和不同位置；分别断言默认/zdiff3 输出与详细原因。四组在 driver 中都冲突，展示不改变严格判定。
+
 - **独立行级基线：** 每次行级合并只执行一次 `git merge-file --diff3/--zdiff3`，同时获取判定和展示；经 Git v2.35.0 / v2.53.0 源码审计，覆盖普通模式冲突。删除普通模式预跑及第二次 clean 的防御回退，依据见 [docs/diff3-vs-zdiff3.md](docs/diff3-vs-zdiff3.md)。其冲突不会被 weave 或全局分析消除。
-- **合并流程重构：** `merge_with_style` 负责串联行级基线、实体检查、分区合并和最终展示；weave 拒绝、严格实体规则、分区原文补充分别由私有函数处理，提前返回降低嵌套。主流程统一归并原因并生成结果；分区展示仍不能覆盖整文件 Git 冲突或 weave 拒绝。现有 fixture 预期保持不变。
-- **非顶层 entity 用例：** `tests/fixtures/nested/` 新增 8 组 C++ / Python fixture，覆盖 namespace 内 function、类方法、同类不同方法、宏、嵌套类和嵌套 function，同时断言源码输出和详细原因。当前仍展示外层 entity；用例索引和已观察到的范围见 [docs/nested-entity-fixtures.md](docs/nested-entity-fixtures.md)。
+- **合并流程重构：** 模块入口整理为 `src/merge/mod.rs`，与 `conflict.rs` 同目录；`merge_with_style` 负责串联行级基线、实体检查、分区合并和最终展示；weave 拒绝、严格实体规则、分区原文补充分别由私有函数处理，提前返回降低嵌套。主流程统一归并原因并生成结果；分区展示仍不能覆盖整文件 Git 冲突或 weave 拒绝。现有 fixture 预期保持不变。
+- **非顶层 entity 用例：** `tests/fixtures/nested/` 共 18 组 C++ / Python fixture，覆盖 namespace 内 function、类方法、同类不同方法、宏、嵌套类和嵌套 function，同时断言源码输出和详细原因。判定仍以外层 entity 为准，展示裁剪三方共同文本；用例索引和已观察到的范围见 [docs/nested-entity-fixtures.md](docs/nested-entity-fixtures.md)。
+- **成员级展示调研：** 已审计固定版本上游接口并直接探测 8 组 nested 输入；7 组在 weave 中为 DiffyMerged，宏用例为 InnerMerged 但缺少结构化内部范围。建议只读 scope API 复用上游匹配分类，先在不改变严格判定的前提下缩小可靠成员范围；详见 [docs/member-conflicts-research.md](docs/member-conflicts-research.md)。该成员分析路线已撤回，现采用共同文本裁剪，无需修改 weave。
 - **严格实体规则：** 同一实体双方修改必须冲突，包括不同改动行和相同最终内容。无法可靠分析时回退为整文件冲突或明确报错。
 - **父子原因模型：** `Reason(kind, subject, evidence)` 替代提示字符串；父节点是审核事实，子节点保留各阶段事实或结论，不假设相互独立。按类别和可靠目标合并，不依赖中文或代码前缀判断。无法确认身份时不合并；默认折叠重复支持，`--explain-reasons` 展开全部证据。非阻断移动关联单独保存。来源统一为 `git`、`weave`、`analyze`；父节点显示来源并集，子项标注来源和分类/拒绝/原文检查等阶段。完整原因目录、25 种动作组合和上游 5 类拒绝见 [docs/conflict-reasons.md](docs/conflict-reasons.md)，由 `src/reason.rs` 通过 `include_str!` 引入 rustdoc。
 - **复用 weave：** 同一可靠 entity 优先采用上游拒绝，否则复用上游分类执行双方变更严格策略。已有实体冲突直接用于展示，不再重复检查原文；仅未覆盖区域做原始字节补充（含 weave 名称归一化遗漏），原文分区不可靠时保守回退，保留 CRLF/LF 等变化。删除分类与拒绝的配对展示代码。disjoint.go 只有 weave 分类依据，修改/删除只有 weave 拒绝依据。
+- **共同文本裁剪：** 自生成冲突块移入 `src/merge/conflict.rs`，默认移出三方相同的前后文；保留冲突原因及 marker，相同修改不自动解决。原成员级 prototype 和 Cargo path patch 已撤回，fork 恢复干净。规则与验证见 [docs/conflict-rendering.md](docs/conflict-rendering.md)。
 - **固定依赖：** weave-core 固定到 `a3f501d19601126fefcc40a3ebb764b8d07d39fc`，sem-core 固定为 `0.25.0`；保留上游明确拒绝的判定。
 - **展示：** 使用与 weave 一致的语言 registry，支持其全部 code grammar 的实体分析与展示，详见 [docs/languages.md](docs/languages.md)；类等容器按顶层整体处理。中文固定模板解释原因，来源标签由明确参数或 Git 提供，不推断业务意图。
 - **全局预分析：** 显式接收 base / ours / theirs revision 或 tree，记录解析后的 tree ID；读取三份快照的变化文件，复用 driver 严格检查，并记录每个路径三侧的 SHA-256 文本指纹。
@@ -18,7 +22,7 @@
 - **只读结果：** JSON schema v2，分析 engine 升为 strict-weave-global-v5；行级判定改为单次调用，旧算法结果须重新生成；排序确定；原子新建并设为只读，不覆盖已有结果。各 driver 只读取它，不维护共享可变缓存。
 - **输入校验：** driver 检查结果版本、路径、三侧文本指纹；缺失、损坏或不匹配时退出 `129`，保持 ours 不变。全局信息只能增加冲突，不能放宽本地判定。
 - **文本 fixture：** 单文件、全局分析、Git 流程统一读取 fixture 中的源码文本，删除 Rust 中的源码拼接与替换；少量几行的原因展示、非法 JSON、Git 配置等辅助文本使用 Rust 常量，不单独建 fixture 文件。fixture 按场景分组、递归发现；每组仍在同目录保存 `a.base`、`a.ours`、`a.theirs`、`a.output` 的自动发现和逐 byte 比较，见 [docs/testing.md](docs/testing.md)。
-- **可选 zdiff3：** `driver --zdiff3` 开启紧凑行级展示，默认不变。确认原文未变且双方仅在末尾新增不同实体时，可缩小整文件回退；严格实体冲突仍保留完整三方范围。fixture 可增加 `.output-zdiff3` 额外断言，`adjacent.ts` 已覆盖两种模式。91 组 fixture 统一断言输出；其中诊断用例提供可选 `.stderr` 和 `.stderr-details`。自定义 marker/标签通过 `.options` 指定。
+- **可选 zdiff3：** `driver --zdiff3` 开启紧凑行级展示，默认不变。确认原文未变且双方仅在末尾新增不同实体时，可缩小整文件回退；自生成严格冲突在两种模式下都裁剪三方共同前后文。fixture 可增加 `.output-zdiff3` 额外断言，`adjacent.ts` 已覆盖两种模式。105 组 fixture 统一断言输出；其中诊断用例提供可选 `.stderr` 和 `.stderr-details`。自定义 marker/标签通过 `.options` 指定。
 
 ## 使用
 
@@ -92,7 +96,7 @@ cargo test --locked
 RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps
 ```
 
-fmt、clippy、全部测试和 Rust 文档构建均已通过。测试包含 9 项单文件结构/性质检查（含 64 组三方输入直接对照 Git 的普通/diff3/zdiff3 模式及 driver 的两种风格）、2 项实体身份绑定检查、7 项原因模型检查、7 项全局分析检查、7 项 CLI/Git 流程检查、2 项语言覆盖检查（34 grammar、84 扩展名及全局移动），以及 91 组分类 fixture 的 112 次摘要/详细/zdiff3 组合运行。原因模型覆盖所有父原因、25 种双方变化组合、全部 weave refusal 及方向、序列化往返、去重幂等、同名不同类型、未知状态与无效缓存拒绝。所有文本预期逐 byte 比较，测试框架不自动更新预期。
+fmt、clippy、全部测试和 Rust 文档构建均已通过。测试包含 9 项单文件结构/性质检查（含 64 组三方输入直接对照 Git 的普通/diff3/zdiff3 模式及 driver 的两种风格）、3 项冲突块原文还原/边界检查、2 项实体身份绑定检查、7 项原因模型检查、7 项全局分析检查、7 项 CLI/Git 流程检查、2 项语言覆盖检查（34 grammar、84 扩展名及全局移动），以及 105 组分类 fixture 的 148 次摘要/详细/zdiff3 组合运行。原因模型覆盖所有父原因、25 种双方变化组合、全部 weave refusal 及方向、序列化往返、去重幂等、同名不同类型、未知状态与无效缓存拒绝。所有文本预期逐 byte 比较，测试框架不自动更新预期。
 
 ## 下一步
 

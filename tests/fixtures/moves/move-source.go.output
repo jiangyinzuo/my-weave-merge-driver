@@ -2,21 +2,13 @@
 func calculate() int {
     return 2
 }
-
-func retained() int {
-    return 10
-}
 ||||||| base: base-commit
 func calculate() int {
     return 1
 }
-
-func retained() int {
-    return 10
-}
 =======
+>>>>>>> theirs: feature/theirs
 
 func retained() int {
     return 10
 }
->>>>>>> theirs: feature/theirs

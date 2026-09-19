@@ -1,0 +1,1 @@
+class Counter { int score() { return 1; } };

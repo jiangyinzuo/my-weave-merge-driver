@@ -1,0 +1,18 @@
+package main
+
+func score() int {
+    x := 1
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function score 需人工审核
+    println("ours")
+    y := 2
+    z := 3
+||||||| base: base-commit
+    y := 2
+    z := 3
+=======
+    y := 2
+    z := 3
+    println("theirs")
+>>>>>>> theirs: feature/theirs
+    return x + y + z
+}

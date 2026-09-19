@@ -83,7 +83,7 @@ end
 
 ## 建议的展示策略
 
-- **实体规则触发的冲突：** 默认用 diff3 标记展示完整三方实体，保留两侧相同的修改，不采用 zdiff3 的边界压缩。即使同时触发行级冲突，也优先采用完整实体展示。
+- **实体规则触发的冲突：** 从三方实体（不可靠时整文件）原文构造 diff3 marker，再裁剪三方共同前后文；保留双方相同但不同于 base 的修改。详见 [conflict-rendering.md](conflict-rendering.md)。
 - **纯行级冲突：** 可以支持 zdiff3，让冲突更紧凑；这是可选展示能力，不改变必须人工处理的结论。
 - **范围无法安全扩展：** 保留原行级冲突块，在报告中关联实体；不能为了完整展示而复制、遗漏或重排代码。
 
@@ -91,11 +91,52 @@ end
 
 ## 当前可选实现
 
-`strict-weave driver ... --zdiff3` 显式开启紧凑行级展示，默认仍采用原有 diff3 / 完整实体展示，不自动跟随 Git 的全局 `merge.conflictStyle`。严格判定使用原始三份文本的 Git diff3/zdiff3 行级结果和实体规则，保留普通行级模式会报的冲突；单次调用的依据见下文。
+`strict-weave driver ... --zdiff3` 显式开启紧凑行级展示，默认采用 Git diff3 / 自生成块的共同文本裁剪，不自动跟随 Git 的全局 `merge.conflictStyle`。严格判定使用原始三份文本的 Git diff3/zdiff3 行级结果和实体规则，保留普通行级模式会报的冲突；单次调用的依据见下文。
 
-纯行级冲突可用 Git zdiff3 渲染。对于原本的实体布局整文件回退，首版只在确认 base 原文未变、双方仅在文件末尾新增不同实体及空白、没有其它严格冲突原因时允许紧凑展示。`adjacent.ts` 属于此类；同名实体的双方新增、同一实体双方修改、无法确认的布局变化仍保留完整三方冲突，不承诺全部冲突都能压缩。
+纯行级冲突可用 Git zdiff3 渲染。对于原本的实体布局整文件回退，首版只在确认 base 原文未变、双方仅在文件末尾新增不同实体及空白、没有其它严格冲突原因时允许紧凑展示。`adjacent.ts` 属于此类；其它严格冲突继续自生成三方冲突块，仅移出三方相同的前后文，不采用 Git 的自动合并结果。
 
 测试框架通过可选的 `.output-zdiff3` 单独验证该模式，见 [testing.md](testing.md)。
+
+## 双方新增行的用例
+
+以下用例均在同一个 `function score` 中只新增行；`.output` 和 `.output-zdiff3` 分别断言两种 driver 展示，`.stderr-details` 断言两种风格的原因。表中 Git 结果来自对相同三份文本直接运行 `git merge-file --diff3/--zdiff3` 的对照，两种风格判定相同。
+
+| 用例（链接为 driver 的 zdiff3 输出） | 双方新增方式 | 原生 Git | driver |
+| --- | --- | --- | --- |
+| [different-lines.go](../tests/fixtures/insertions/different-lines.go.output-zdiff3) | 同一位置分别新增 ours / theirs | conflict，base 区域为空 | conflict，base 区域为空 |
+| [identical-lines.go](../tests/fixtures/insertions/identical-lines.go.output-zdiff3) | 同一位置都新增 shared | clean | conflict，保留双方相同新增行 |
+| [common-boundaries.go](../tests/fixtures/insertions/common-boundaries.go.output-zdiff3) | 都新增 start/end，中间分别新增 ours / theirs | conflict；zdiff3 把共同新增边界放在块外 | conflict；start/end 仍在块内，因为 base 没有它们 |
+| [different-positions.go](../tests/fixtures/insertions/different-positions.go.output-zdiff3) | 同一 function 的两个不同位置分别新增 | clean | conflict；覆盖两处新增及中间共同文本 |
+
+例如 common-boundaries 的原生 Git zdiff3 局部输出为：
+
+```text
+    println("start")
+<<<<<<< ours
+    println("ours")
+||||||| base
+=======
+    println("theirs")
+>>>>>>> theirs
+    println("end")
+```
+
+driver 的对应部分为（省略 marker 后的标签及原因，完整文本见 fixture）：
+
+```text
+<<<<<<< ours
+    println("start")
+    println("ours")
+    println("end")
+||||||| base
+=======
+    println("start")
+    println("theirs")
+    println("end")
+>>>>>>> theirs
+```
+
+这四组 driver 的默认与 zdiff3 输出相同：它们都触发严格 entity 原因，使用自生成块及三方共同文本裁剪。`--zdiff3` 不会令这一路径采用 Git 的两侧共同边界裁剪；它仍可影响直接使用 Git 输出的场景，例如已有的 [adjacent.ts](../tests/fixtures/layout/adjacent.ts.output-zdiff3)。
 
 ## 为什么可以只调用一次 Git
 

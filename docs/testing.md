@@ -10,6 +10,7 @@ tests/fixtures/
     disjoint.go.theirs
     disjoint.go.output
   languages/      # 上游各 code grammar 的示例
+  insertions/     # 双方新增行：不同内容、相同内容、共同边界、不同位置
   nested/         # C++ / Python 非顶层 entity、类方法和宏；见专门的用例索引
   layout/         # 相邻插入、增删、重排、非实体区域
     adjacent.ts.base
@@ -25,7 +26,9 @@ tests/fixtures/
 
 `a` 和 `disjoint.go` 是两个独立用例。四个文件分别保存 base、ours、theirs 和预期合并结果。允许空文件；空侧不能用说明文字代替。
 
-非顶层 entity 的 8 组人工检视案例及当前展示范围见 [nested-entity-fixtures.md](nested-entity-fixtures.md)。
+非顶层 entity 的 18 组人工检视案例及当前展示范围见 [nested-entity-fixtures.md](nested-entity-fixtures.md)。
+
+`insertions/` 的 4 组双方新增行用例均包含 `.output`、`.output-zdiff3` 和 `.stderr-details`，共验证 16 次 CLI 运行。具体输出和与原生 Git 的区别见 [diff3-vs-zdiff3.md](diff3-vs-zdiff3.md#双方新增行的用例)。
 
 ## 自动发现与比较
 
@@ -98,7 +101,7 @@ FIXTURE=entities/disjoint.go cargo test --locked --test fixtures -- --nocapture
 
 完整合并用例共用磁盘上的源码文本，读取入口在 [tests/common/mod.rs](../tests/common/mod.rs)；不在 Rust 中用 `replace`、`format!` 或字符串拼接生成 base / ours / theirs 或预期源码。只涉及文本结果的旧测试已并入自动发现框架，结构化原因和性质断言继续保留。
 
-- `tests/fixtures/`：91 组完整三方输入与预期输出；当前共 112 次 CLI 组合运行。Git 的 8×8 对照从 `git-variant-0.ts` 到 `git-variant-7.ts` 读取固定版本，只组合已有文本，不生成源码。
+- `tests/fixtures/`：105 组完整三方输入与预期输出；当前共 148 次 CLI 组合运行。Git 的 8×8 对照从 `git-variant-0.ts` 到 `git-variant-7.ts` 读取固定版本，只组合已有文本，不生成源码。
 - 少量几行的辅助文本（原因提示、非法 JSON、控制字符、Git attributes 及工作区状态标记）直接使用 Rust 常量，放在对应测试附近；跨测试共用的常量放在 `tests/common/mod.rs`，无需单独建文件。
 
 全局分析和 Git 流程测试复用 `move-source.go`、`move-target.go` 等案例，代码只组织路径、快照与 Git 操作。来源枚举、证据组合、非法缓存字段变异等结构化断言仍由 Rust 表达。
@@ -121,3 +124,5 @@ cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked
 RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps
 ```
+
+共同文本裁剪的原文还原检查见 `tests/conflict_blocks.rs`；规则见 [conflict-rendering.md](conflict-rendering.md)。

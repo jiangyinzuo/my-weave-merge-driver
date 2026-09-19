@@ -1,13 +1,9 @@
+pub fn alpha() u8 {
 <<<<<<< ours: feature/ours | ENTITY_CONFLICT：function alpha 需人工审核
-pub fn alpha() u8 {
     return 2;
-}
 ||||||| base: base-commit
-pub fn alpha() u8 {
     return 1;
-}
 =======
-pub fn alpha() u8 {
     return 2;
-}
 >>>>>>> theirs: feature/theirs
+}

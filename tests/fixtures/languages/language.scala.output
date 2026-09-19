@@ -1,13 +1,9 @@
+def alpha(): Int = {
 <<<<<<< ours: feature/ours | ENTITY_CONFLICT：function alpha 需人工审核
-def alpha(): Int = {
   2
-}
 ||||||| base: base-commit
-def alpha(): Int = {
   1
-}
 =======
-def alpha(): Int = {
   2
-}
 >>>>>>> theirs: feature/theirs
+}

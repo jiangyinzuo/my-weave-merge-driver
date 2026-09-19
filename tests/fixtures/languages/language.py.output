@@ -1,10 +1,8 @@
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function alpha 需人工审核
 def alpha():
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function alpha 需人工审核
     return 2
 ||||||| base: base-commit
-def alpha():
     return 1
 =======
-def alpha():
     return 2
 >>>>>>> theirs: feature/theirs

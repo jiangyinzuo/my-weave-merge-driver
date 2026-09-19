@@ -96,7 +96,8 @@ fn real_merge_driver_blocks_disjoint_function_edits() {
     let content = std::fs::read_to_string(root.join("calc.go")).unwrap();
     assert!(content.contains("<<<<<<< ours: HEAD"));
     assert!(content.contains(">>>>>>> theirs: other"));
-    assert_eq!(content.matches("func a()").count(), 3);
+    assert_eq!(content.matches("func a()").count(), 1);
+    assert!(content.starts_with("func a() int {\n<<<<<<<"));
 }
 
 #[test]

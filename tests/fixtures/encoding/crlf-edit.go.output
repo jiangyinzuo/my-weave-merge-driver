@@ -1,22 +1,12 @@
+func a() int {
+    x := 1
 <<<<<<< ours: feature/ours | ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
-func a() int {
-    x := 1
     y := 5
-    z := 3
-    return y
-}
 ||||||| base: base-commit
-func a() int {
-    x := 1
     y := 2
-    z := 3
-    return y
-}
 =======
-func a() int {
-    x := 1
     y := 5
+>>>>>>> theirs: feature/theirs
     z := 3
     return y
 }
->>>>>>> theirs: feature/theirs

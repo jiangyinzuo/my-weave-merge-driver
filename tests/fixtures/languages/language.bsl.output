@@ -1,13 +1,9 @@
+Function Alpha()
 <<<<<<< ours: feature/ours | ENTITY_CONFLICT：function Alpha 需人工审核
-Function Alpha()
     Return 2;
-EndFunction
 ||||||| base: base-commit
-Function Alpha()
     Return 1;
-EndFunction
 =======
-Function Alpha()
     Return 2;
-EndFunction
 >>>>>>> theirs: feature/theirs
+EndFunction

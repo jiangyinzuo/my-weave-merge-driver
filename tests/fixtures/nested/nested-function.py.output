@@ -1,28 +1,18 @@
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function outer 需人工审核
 def outer():
     def score():
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function outer 需人工审核
         x = 10
         y = 2
         z = 3
-        return x + y + z
-
-    return score()
 ||||||| base: base-commit
-def outer():
-    def score():
         x = 1
         y = 2
         z = 3
-        return x + y + z
-
-    return score()
 =======
-def outer():
-    def score():
         x = 1
         y = 2
         z = 30
+>>>>>>> theirs: feature/theirs
         return x + y + z
 
     return score()
->>>>>>> theirs: feature/theirs

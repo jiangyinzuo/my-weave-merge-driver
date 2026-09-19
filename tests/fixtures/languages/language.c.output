@@ -1,13 +1,9 @@
+int alpha(void) {
 <<<<<<< ours: feature/ours | ENTITY_CONFLICT：function alpha 需人工审核
-int alpha(void) {
     return 2;
-}
 ||||||| base: base-commit
-int alpha(void) {
     return 1;
-}
 =======
-int alpha(void) {
     return 2;
-}
 >>>>>>> theirs: feature/theirs
+}

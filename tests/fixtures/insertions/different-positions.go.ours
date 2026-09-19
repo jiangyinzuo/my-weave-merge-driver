@@ -1,0 +1,9 @@
+package main
+
+func score() int {
+    x := 1
+    println("ours")
+    y := 2
+    z := 3
+    return x + y + z
+}

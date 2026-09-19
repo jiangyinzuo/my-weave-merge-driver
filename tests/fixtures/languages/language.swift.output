@@ -1,13 +1,9 @@
+func alpha() -> Int {
 <<<<<<< ours: feature/ours | ENTITY_CONFLICT：function alpha 需人工审核
-func alpha() -> Int {
     return 2
-}
 ||||||| base: base-commit
-func alpha() -> Int {
     return 1
-}
 =======
-func alpha() -> Int {
     return 2
-}
 >>>>>>> theirs: feature/theirs
+}

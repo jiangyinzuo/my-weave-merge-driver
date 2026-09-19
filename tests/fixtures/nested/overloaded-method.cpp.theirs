@@ -1,0 +1,13 @@
+class Counter {
+public:
+    int score(int value) const {
+        int x = 1;
+        int y = 2;
+        int z = 30;
+        return value + x + y + z;
+    }
+
+    double score(double value) const {
+        return value;
+    }
+};

@@ -1,9 +1,7 @@
-<<<<<<< ours: feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：entity a（weave，身份未关联） 需人工审核; ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
 func a() {
+<<<<<<< ours: feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：entity a（weave，身份未关联） 需人工审核; ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
 x
 ||||||| base: base-commit
-func a() {
 =======
-func a() {
 y
 >>>>>>> theirs: feature/theirs
