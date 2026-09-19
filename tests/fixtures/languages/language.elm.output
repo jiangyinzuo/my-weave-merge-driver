@@ -2,7 +2,7 @@ module Sample exposing (..)
 
 alpha : Int
 alpha =
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：value_declaration alpha 需人工审核
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：value_declaration alpha：双方修改结果相同，但均不同于 base，按严格规则需人工审核
     2
 ||||||| base: base-commit
     1

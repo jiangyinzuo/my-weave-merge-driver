@@ -409,9 +409,12 @@ fn record_part_conflict(
 ) -> Option<Reason> {
     let subject = base.subject();
     if let Some(reason) = reasons
-        .iter()
+        .iter_mut()
         .find(|r| r.kind == Kind::EntityConflict && r.subject == subject)
     {
+        if base.text != ours.text && ours.text == theirs.text {
+            reason.evidence.insert(Evidence::IdenticalEdits);
+        }
         return Some(reason.clone());
     }
     if base.text == ours.text || base.text == theirs.text {
@@ -424,7 +427,11 @@ fn record_part_conflict(
             Kind::NonEntityConflict
         },
         subject,
-        Evidence::RawBothChanged,
+        if base.entity && ours.text == theirs.text {
+            Evidence::IdenticalEdits
+        } else {
+            Evidence::RawBothChanged
+        },
     );
     reasons.push(reason.clone());
     Some(reason)

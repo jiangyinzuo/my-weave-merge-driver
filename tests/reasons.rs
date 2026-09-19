@@ -22,6 +22,7 @@ const REASON_CONTROLS_JSON: &str = r#"{"kind":"entity_conflict","subject":{"type
 const REASON_UNKNOWN_FIELD_JSON: &str = r#"{"kind":"line_conflict","subject":{"type":"file"},"evidence":[],"surprise":1}
 "#;
 const REASON_ACTIONS_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：function f 需人工审核
+  依据 [weave]：分类：ours=modified, theirs=modified
 "#;
 const REASON_ACTIONS_DETAILS_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：function f 需人工审核
   依据 [weave]：分类：ours=modified, theirs=modified
@@ -95,6 +96,7 @@ fn complete_parent_and_evidence_catalog_roundtrips_without_loss() {
     let mut reasons = vec![
         Reason::new(Kind::LineConflict, Subject::File, Evidence::GitLineConflict),
         Reason::new(Kind::EntityConflict, entity("f"), Evidence::RawBothChanged),
+        Reason::new(Kind::EntityConflict, entity("f"), Evidence::IdenticalEdits),
         Reason::new(
             Kind::NonEntityConflict,
             Subject::Gap {
@@ -162,7 +164,7 @@ fn complete_parent_and_evidence_catalog_roundtrips_without_loss() {
         .iter()
         .find(|r| r.kind == Kind::EntityConflict)
         .unwrap();
-    assert_eq!(entity.evidence.len(), 33); // raw + 25 action pairs + 7 refusal variants/directions
+    assert_eq!(entity.evidence.len(), 34); // raw + identical + 25 action pairs + 7 refusal variants/directions
     assert_eq!(
         reasons
             .iter()
@@ -356,6 +358,13 @@ fn invalid_empty_unknown_and_nonblocking_evidence_is_rejected() {
     )
     .valid());
     assert!(!Reason::new(Kind::LineConflict, Subject::File, Evidence::LayoutChanged).valid());
+    assert!(!Reason::new(
+        Kind::EntityConflict,
+        Subject::File,
+        Evidence::IdenticalEdits
+    )
+    .valid());
+    assert!(!Reason::new(Kind::LineConflict, entity("f"), Evidence::IdenticalEdits).valid());
     for action in [Change::Unchanged, Change::Absent] {
         assert!(!Reason::new(
             Kind::EntityConflict,
@@ -401,6 +410,7 @@ fn provenance_is_explicit_for_every_evidence_and_does_not_claim_independent_chec
     let cases = [
         (Evidence::GitLineConflict, Source::Git),
         (Evidence::RawBothChanged, Source::Analyze),
+        (Evidence::IdenticalEdits, Source::Analyze),
         (
             Evidence::WeaveActions {
                 ours: Change::Deleted,
@@ -432,8 +442,19 @@ fn provenance_is_explicit_for_every_evidence_and_does_not_claim_independent_chec
             .summary()
             .starts_with(&format!("[{}]：", source.label())));
     }
-    let mut reason = Reason::new(Kind::EntityConflict, entity("f"), cases[2].0.clone());
-    reason.evidence.insert(cases[3].0.clone());
+    let mut reason = Reason::new(
+        Kind::EntityConflict,
+        entity("f"),
+        Evidence::WeaveActions {
+            ours: Change::Deleted,
+            theirs: Change::Modified,
+        },
+    );
+    reason.evidence.insert(Evidence::WeaveRefusal {
+        refusal: WeaveRefusal::ModifyDelete {
+            modified_in: Side::Theirs,
+        },
+    });
     assert_eq!(
         reason.lines(false),
         REASON_PROVENANCE_TXT.lines().collect::<Vec<_>>()

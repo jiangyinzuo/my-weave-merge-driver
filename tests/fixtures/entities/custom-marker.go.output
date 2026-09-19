@@ -1,6 +1,6 @@
 func a() int {
     x := 1
-<<<<<<<<<<< ours: feature/ours INJECT | ENTITY_CONFLICT：function a 需人工审核
+<<<<<<<<<<< ours: feature/ours INJECT | ENTITY_CONFLICT：function a：双方修改结果相同，但均不同于 base，按严格规则需人工审核
     y := 5
 ||||||||||| base: 123
     y := 2

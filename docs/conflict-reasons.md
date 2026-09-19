@@ -9,7 +9,7 @@ weave、原文比较、Git、全局匹配是并列的证据来源，不是固定
 analyze = 本项目的原文检查、布局检查、能力降级和跨文件分析。
 同一可靠 entity 依次采用：weave 明确拒绝 → weave 分类上的严格策略 →
 未覆盖原文的严格补充。已有拒绝不再追加分类规则；已有实体冲突不再重复
-比较原文。weave 的匹配、动作分类、拒绝规则均直接复用，不在本项目重写。
+执行原文阻断规则；可补充逐 byte 相同结果的说明。weave 的匹配、动作分类、拒绝规则均直接复用，不在本项目重写。
 weave 分类本身不代表上游拒绝：双方变更必须审核是本项目额外的策略。
 原文补充覆盖 weave 名称归一化等可能忽略的字节变化；例如上游计算 body hash
 前把自身名称替换成 __ENTITY__，可能把不同原文判为 unchanged。CRLF/LF、
@@ -24,7 +24,7 @@ BOM 也会归一化，原文分区无法完整还原时由能力降级保守阻�
 | `Kind` / 稳定代码 | 触发条件 | 子依据 | 默认展示 |
 | --- | --- | --- | --- |
 | `LineConflict` / `LINE_CONFLICT` | 原始三份文本的 Git merge-file --diff3/--zdiff3 返回冲突，覆盖普通模式冲突；分区内行级冲突亦保留 | `GitLineConflict` | Git 行级冲突 |
-| `EntityConflict` / `ENTITY_CONFLICT` | 优先保留 weave 拒绝；未拒绝目标用 weave 双方变化分类补充严格冲突；仍未覆盖时检查原文双方变化 | `RawBothChanged`、`WeaveActions`、`WeaveRefusal`，任一即可独立触发 | entity 需审核；额外动作/拒绝展开 |
+| `EntityConflict` / `ENTITY_CONFLICT` | 优先保留 weave 拒绝；未拒绝目标用 weave 双方变化分类补充严格冲突；仍未覆盖时检查原文双方变化 | `RawBothChanged`、`IdenticalEdits`、`WeaveActions`、`WeaveRefusal`，任一即可独立触发 | entity 需审核；额外动作/拒绝展开 |
 | `NonEntityConflict` / `UNMODELED_BOTH_CHANGED` | 对应的非实体分区相对 base 在两侧都变化 | `RawBothChanged` | 非实体区域双方修改 |
 | `AnalysisUnavailable` / `ENTITY_ANALYSIS_UNAVAILABLE` | 文件双方变化，且无法获得可靠原文分区或 weave 分类 | `PartitionUnavailable` 或 `WeaveUnavailable` | 无法可靠分析；整文件保守冲突 |
 | `LayoutChanged` / `ENTITY_LAYOUT_CHANGED` | 三方可解析，但实体/间隙序列不同，且文件双方变化 | `LayoutChanged` | 实体增删或顺序变化 |
@@ -45,7 +45,7 @@ EntityConflict(function a)
 修改/删除直接保留 WeaveRefusal::ModifyDelete 及方向，不再追加分类或
 本地重复依据，也无需分类/拒绝的展示配对。若 weave 未拒绝另一个 entity，
 仍继续检查那个 entity；优先级按可靠目标生效，不是全文件短路。
-渲染复用已选定的原因；原文分区只负责可靠身份、显示范围和未覆盖区域的补充。
+渲染复用已选定的原因；原文分区负责可靠身份、显示范围、未覆盖区域的补充和相同结果说明。
 
 ## 全部 weave 子原因
 
@@ -60,8 +60,8 @@ EntityConflict(function a)
 `Change` 穷尽 weave 动作：Added、Absent、Deleted、Unchanged、Modified、
 Renamed、RenameModified。仅 Added/Deleted/Modified/Renamed/RenameModified
 计入双方变化；因此 5×5 种动作组合均可作为严格实体冲突的证据。
-renamed 仅为上游候选分类，不能宣称语义身份已证明。修改/修改默认折叠，
-删除、新增和重命名等不同动作保留；详细模式包含所有来源，不损失依据。
+renamed 仅为上游候选分类，不能宣称语义身份已证明。所有双方动作默认展开，
+包括修改、删除、新增和重命名；详细模式包含所有来源，不损失依据。
 
 下表穷举会触发严格规则的 25 种双方动作组合（行=ours，列=theirs）。
 R 表示 rename candidate，RM 表示 rename + modified candidate；名称关联
@@ -91,7 +91,7 @@ R 表示 rename candidate，RM 表示 rename + modified candidate；名称关联
 `normalize` 合并只会减少重复节点，不会消除最后一个冲突依据。
 非阻断的 related_moves 独立保存；其出现或去重不改变 conflicted()。
 
-全局分析 schema v2 序列化完整父子结构，engine 为 strict-weave-global-v5。
+全局分析 schema v2 序列化完整父子结构，engine 为 strict-weave-global-v6。
 旧算法报告必须拒绝并重新生成，避免重新注入被删掉的重复依据。
 JSON 结构错误、未知枚举、空证据或父子/目标类型不兼容均视为处理错误。
 
@@ -104,3 +104,11 @@ I/O 失败、分析文件损坏/旧版/缺路径/指纹不匹配等返回 Err（
 重复名称、分区不能完整还原原文；现有解析 API 未区分具体失败原因，故不猜测。
 全局移动侧解析失败会产生非阻断 warning；只有结合另一侧移动候选或本地双方
 变化时才触发保守冲突。Git 未调用 driver 的路径仍不能由这些节点强制拦截。
+
+## 相同修改结果说明
+
+`IdenticalEdits` 来源为 analyze：仅在三方原文分区可靠、布局一致且对应 entity 满足 `ours == theirs != base` 时添加。比较包含格式和附着注释，不使用归一化 hash；不推断编辑历史或业务语义相同。该事实描述 entity 本身，不要求整个文件相同。
+
+已有 weave 原因保留，追加此原文事实用于说明；未被 weave 覆盖的相同变化直接采用此事实，避免再添加重复的 RawBothChanged。默认父原因和 marker 提示“双方修改结果相同，但均不同于 base，按严格规则需人工审核”；详细模式标明逐 byte 比较来源。普通双方修改默认展开 weave 动作分类。未知/不可靠原文不宣称结果相同。
+
+engine 为 strict-weave-global-v6，旧报告需重新生成，以保证新增依据和提示一致。

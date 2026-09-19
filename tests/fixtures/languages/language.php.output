@@ -1,6 +1,6 @@
 <?php
 function alpha() {
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function alpha 需人工审核
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function alpha：双方修改结果相同，但均不同于 base，按严格规则需人工审核
     return 2;
 ||||||| base: base-commit
     return 1;

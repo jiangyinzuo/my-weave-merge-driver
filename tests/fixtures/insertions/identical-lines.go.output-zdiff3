@@ -4,7 +4,7 @@ func score() int {
     x := 1
     y := 2
     z := 3
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function score 需人工审核
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function score：双方修改结果相同，但均不同于 base，按严格规则需人工审核
     println("shared")
 ||||||| base: base-commit
 =======

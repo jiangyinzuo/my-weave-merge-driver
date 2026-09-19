@@ -20,14 +20,14 @@ fn strict_policy_reuses_upstream_classification() {
                 name: "a".into()
             }
         );
-        assert_eq!(
-            out.reasons[0].evidence,
-            [Evidence::WeaveActions {
-                ours: Change::Modified,
-                theirs: Change::Modified
-            }]
-            .into()
-        );
+        let mut expected = std::collections::BTreeSet::from([Evidence::WeaveActions {
+            ours: Change::Modified,
+            theirs: Change::Modified,
+        }]);
+        if c.ours == c.theirs {
+            expected.insert(Evidence::IdenticalEdits);
+        }
+        assert_eq!(out.reasons[0].evidence, expected);
     }
 }
 
@@ -142,7 +142,15 @@ fn raw_supplement_catches_name_normalization_omitted_by_weave() {
                 .iter()
                 .find(|r| r.kind == Kind::EntityConflict)
                 .unwrap();
-            assert_eq!(reason.evidence, [Evidence::RawBothChanged].into());
+            assert_eq!(
+                reason.evidence,
+                [if ours == theirs {
+                    Evidence::IdenticalEdits
+                } else {
+                    Evidence::RawBothChanged
+                }]
+                .into()
+            );
         }
     }
 }
@@ -155,6 +163,41 @@ fn unsupported_and_invalid_syntax_refuse_when_both_changed() {
             .reasons
             .iter()
             .any(|r| r.kind == Kind::AnalysisUnavailable));
+    }
+}
+
+#[test]
+fn identical_edits_describe_exact_entity_text_not_normalized_bodies() {
+    for name in [
+        "entities/identical.go",
+        "entities/normalized-identical.go",
+        "insertions/identical-lines.go",
+        "nested/method-identical.py",
+        "entities/scoped.go",
+    ] {
+        let out = Case::load(name).run();
+        assert!(out.conflicted());
+        assert!(
+            out.reasons
+                .iter()
+                .any(|r| r.evidence.contains(&Evidence::IdenticalEdits)),
+            "{name}"
+        );
+    }
+    for name in [
+        "entities/normalized-edit.go",
+        "entities/disjoint.go",
+        "entities/unchanged.go",
+        "entities/unilateral.go",
+        "fallback/invalid-syntax.go",
+    ] {
+        let out = Case::load(name).run();
+        assert!(
+            out.reasons
+                .iter()
+                .all(|r| !r.evidence.contains(&Evidence::IdenticalEdits)),
+            "{name}"
+        );
     }
 }
 

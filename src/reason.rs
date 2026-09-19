@@ -280,6 +280,8 @@ pub enum Evidence {
     GitLineConflict,
     /// 未被上游实体原因覆盖的原文分区两侧均不等于 base，含格式与附着注释。
     RawBothChanged,
+    /// 可靠原文分区中 ours == theirs != base；描述相同结果，不推断编辑过程相同。
+    IdenticalEdits,
     /// weave 尚未拒绝此目标；复用双方动作执行本项目的严格策略。
     WeaveActions { ours: Change, theirs: Change },
     /// weave 明确拒绝，不能被本地或全局信息覆盖。
@@ -299,6 +301,7 @@ impl Evidence {
             Self::GitLineConflict => Source::Git,
             Self::WeaveActions { .. } | Self::WeaveRefusal { .. } => Source::Weave,
             Self::RawBothChanged
+            | Self::IdenticalEdits
             | Self::PartitionUnavailable
             | Self::WeaveUnavailable
             | Self::LayoutChanged
@@ -310,6 +313,7 @@ impl Evidence {
         let message = match self {
             Self::GitLineConflict => "Git 行级合并返回冲突".into(),
             Self::RawBothChanged => "原文：ours、theirs 均相对 base 改变".into(),
+            Self::IdenticalEdits => "原文：ours 与 theirs 逐 byte 相同，且均不同于 base".into(),
             Self::WeaveActions { ours, theirs } => {
                 format!("分类：ours={}, theirs={}", ours.label(), theirs.label())
             }
@@ -349,11 +353,8 @@ impl Evidence {
             self,
             Self::GitLineConflict
                 | Self::RawBothChanged
+                | Self::IdenticalEdits
                 | Self::LayoutChanged
-                | Self::WeaveActions {
-                    ours: Change::Modified,
-                    theirs: Change::Modified
-                }
         )
     }
 }
@@ -392,7 +393,12 @@ impl Reason {
                     } else {
                         format!("Git 行级冲突 · {target}")
                     },
-                Kind::EntityConflict => format!("{target} 需人工审核"),
+                Kind::EntityConflict =>
+                    if self.evidence.contains(&Evidence::IdenticalEdits) {
+                        format!("{target}：双方修改结果相同，但均不同于 base，按严格规则需人工审核")
+                    } else {
+                        format!("{target} 需人工审核")
+                    },
                 Kind::NonEntityConflict => format!("{target} 被双方修改"),
                 Kind::AnalysisUnavailable => "无法可靠分析，保留整文件冲突".into(),
                 Kind::LayoutChanged => "实体增删或顺序变化".into(),
@@ -443,6 +449,9 @@ impl Reason {
                     Evidence::PartitionUnavailable | Evidence::WeaveUnavailable,
                 )
                 | (Kind::LayoutChanged, Evidence::LayoutChanged) => true,
+                (Kind::EntityConflict, Evidence::IdenticalEdits) => {
+                    matches!(self.subject, Subject::Entity { .. })
+                }
                 (Kind::EntityConflict, Evidence::WeaveActions { ours, theirs }) => {
                     ours.changed() && theirs.changed()
                 }
