@@ -2,7 +2,6 @@
 ours   : feature/ours
 base   : base-commit
 theirs : feature/theirs
-原因：ENTITY_BOTH_CHANGED：a [ours=modified, theirs=modified]
-原因：ENTITY_BOTH_CHANGED：function a
+原因 [weave]：ENTITY_CONFLICT：function a 需人工审核
 需人工处理：选择一侧 / 编辑合并结果。
 

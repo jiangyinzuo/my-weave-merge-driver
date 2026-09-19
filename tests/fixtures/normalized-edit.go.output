@@ -1,0 +1,7 @@
+<<<<<<< ours: feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：function a 需人工审核
+func a() int { return __ENTITY__() }
+||||||| base: base-commit
+func a() int { return a() }
+=======
+func a() int { return 1 }
+>>>>>>> theirs: feature/theirs

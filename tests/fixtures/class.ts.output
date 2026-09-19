@@ -1,0 +1,16 @@
+<<<<<<< ours: feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：class C 需人工审核
+class C {
+  a() { return 3; }
+  b() { return 2; }
+}
+||||||| base: base-commit
+class C {
+  a() { return 1; }
+  b() { return 2; }
+}
+=======
+class C {
+  a() { return 1; }
+  b() { return 4; }
+}
+>>>>>>> theirs: feature/theirs

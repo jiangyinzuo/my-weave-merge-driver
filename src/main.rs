@@ -47,6 +47,9 @@ struct Driver {
     /// 可选的紧凑行级展示；严格实体冲突仍保留完整三方范围
     #[arg(long)]
     zdiff3: bool,
+    /// 展开父原因下的全部检查依据
+    #[arg(long)]
+    explain_reasons: bool,
 }
 
 #[derive(Subcommand)]
@@ -59,6 +62,9 @@ enum DriverAction {
         /// 新建结果文件，不覆盖已有文件
         #[arg(long)]
         output: PathBuf,
+        /// 展开全部子依据；默认保留动作差异、拒绝和移动关联等必要信息
+        #[arg(long)]
+        explain_reasons: bool,
     },
 }
 
@@ -69,6 +75,7 @@ fn run() -> Result<u8> {
         ours,
         theirs,
         output,
+        explain_reasons,
     }) = driver.action
     {
         let report = analysis::prepare([&base, &ours, &theirs])?;
@@ -77,12 +84,13 @@ fn run() -> Result<u8> {
             eprintln!("strict-weave：{}", merge::safe_label(warning));
         }
         for (path, file) in &report.files {
+            if !file.reasons.is_empty() {
+                eprintln!("冲突 · {}", merge::safe_label(path));
+            }
             for reason in &file.reasons {
-                eprintln!(
-                    "冲突 · {} · {}",
-                    merge::safe_label(path),
-                    merge::safe_label(reason)
-                );
+                for line in reason.lines(explain_reasons) {
+                    eprintln!("{line}");
+                }
             }
         }
         eprintln!(
@@ -130,7 +138,7 @@ fn run() -> Result<u8> {
         analysis::augment(&mut outcome, &global, texts, &labels, driver.marker_size);
     }
     repository::atomic_write(&ours, outcome.content.as_bytes())?;
-    repository::report(&path, &outcome, &labels);
+    repository::report(&path, &outcome, &labels, driver.explain_reasons);
     Ok(u8::from(outcome.conflicted()))
 }
 

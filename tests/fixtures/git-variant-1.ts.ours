@@ -1,0 +1,7 @@
+export function a() {
+  return 3;
+}
+
+export function b() {
+  return 2;
+}

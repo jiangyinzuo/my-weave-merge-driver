@@ -1,0 +1,26 @@
+<<<<<<< ours: feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：function b 需人工审核; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化
+func a() int {
+    x := 1
+    y := 2
+    z := 3
+    return y
+}
+
+func b() int { return 1 }
+||||||| base: base-commit
+func a() int {
+    x := 1
+    y := 2
+    z := 3
+    return y
+}
+=======
+func a() int {
+    x := 1
+    y := 2
+    z := 3
+    return y
+}
+
+func b() int { return 2 }
+>>>>>>> theirs: feature/theirs

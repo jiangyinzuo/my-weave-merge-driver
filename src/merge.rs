@@ -1,9 +1,14 @@
+use crate::reason::{self, Change, Evidence, Kind, MoveEvidence, Reason, Subject, WeaveSource};
 use anyhow::{bail, Context, Result};
 use sem_core::parser::plugins::create_default_registry;
-use std::{collections::BTreeSet, io::Write, process::Command};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    io::Write,
+    process::Command,
+};
 use weave_core::{
     region::{extract_regions, FileRegion},
-    v2::{analyze_default, Action},
+    v2::analyze_default,
 };
 
 pub const MAX_BYTES: usize = 1_000_000;
@@ -35,7 +40,9 @@ impl Default for Labels {
 #[derive(Debug)]
 pub struct Outcome {
     pub content: String,
-    pub reasons: Vec<String>,
+    pub reasons: Vec<Reason>,
+    /// 非阻断的跨文件关联；有候选不等于有冲突。
+    pub related_moves: Vec<MoveEvidence>,
 }
 
 impl Outcome {
@@ -173,6 +180,8 @@ fn line_merge(
 #[derive(Debug)]
 pub(crate) struct Part {
     pub(crate) key: String,
+    name: String,
+    entity_type: String,
     pub(crate) label: String,
     pub(crate) text: String,
     pub(crate) entity: bool,
@@ -221,6 +230,8 @@ pub(crate) fn partition(path: &str, text: &str) -> Option<Vec<Part>> {
                 parts.push(Part {
                     key,
                     label: format!("{} {}", e.entity_type, e.entity_name),
+                    name: e.entity_name,
+                    entity_type: e.entity_type,
                     text: e.content,
                     entity: true,
                 });
@@ -228,6 +239,8 @@ pub(crate) fn partition(path: &str, text: &str) -> Option<Vec<Part>> {
             FileRegion::Interstitial(gap) => {
                 parts.push(Part {
                     key: format!("gap:{}", parts.len()),
+                    name: String::new(),
+                    entity_type: String::new(),
                     label: "非实体文本".into(),
                     text: gap.content,
                     entity: false,
@@ -241,19 +254,54 @@ pub(crate) fn partition(path: &str, text: &str) -> Option<Vec<Part>> {
     Some(parts)
 }
 
-fn changed(action: Action) -> bool {
-    !matches!(action, Action::Unchanged | Action::Absent)
+impl Part {
+    fn subject(&self) -> Subject {
+        if self.entity {
+            Subject::Entity {
+                entity_type: self.entity_type.clone(),
+                name: self.name.clone(),
+            }
+        } else {
+            Subject::Gap {
+                key: self.key.clone(),
+            }
+        }
+    }
 }
 
-fn action_label(action: Action) -> &'static str {
-    match action {
-        Action::Added => "added",
-        Action::Absent => "absent",
-        Action::Deleted => "deleted",
-        Action::Unchanged => "unchanged",
-        Action::Edited => "modified",
-        Action::Renamed => "rename candidate",
-        Action::RenameEdited => "rename + modified candidate",
+fn same_keys(x: &[Part], y: &[Part]) -> bool {
+    x.iter().map(|p| &p.key).eq(y.iter().map(|p| &p.key))
+}
+
+// The public weave classification exposes a name, not a full identity. Only
+// bind it when all three partitions are reliable and agree on a unique target.
+type ThreePartitions = (Option<Vec<Part>>, Option<Vec<Part>>, Option<Vec<Part>>);
+
+fn local_subject(
+    parts: &ThreePartitions,
+    name: &str,
+    entity_type: Option<&str>,
+) -> Option<Subject> {
+    let (Some(b), Some(o), Some(t)) = parts else {
+        return None;
+    };
+    let mut candidates = BTreeSet::new();
+    for version in [b, o, t] {
+        let found: Vec<_> = version
+            .iter()
+            .filter(|p| {
+                p.entity && p.name == name && entity_type.is_none_or(|kind| p.entity_type == kind)
+            })
+            .collect();
+        if found.len() > 1 {
+            return None;
+        }
+        candidates.extend(found.into_iter().map(Part::subject));
+    }
+    if candidates.len() == 1 {
+        candidates.pop_first()
+    } else {
+        None
     }
 }
 
@@ -321,14 +369,10 @@ pub fn merge_with_style(
     let upstream = weave_core::entity_merge(base, ours, theirs, path);
     let mut reasons = Vec::new();
     if line_conflict {
-        reasons.push("LINE_CONFLICT：Git 行级冲突".into());
-    }
-    for conflict in &upstream.conflicts {
-        reasons.push(format!(
-            "WEAVE_REFUSAL：{} {} [{}]",
-            conflict.entity_type,
-            conflict.entity_name,
-            conflict.kind.wire_kind()
+        reasons.push(Reason::new(
+            Kind::LineConflict,
+            Subject::File,
+            Evidence::GitLineConflict,
         ));
     }
 
@@ -341,51 +385,123 @@ pub fn merge_with_style(
         partition(path, theirs),
     );
     let reliable = parts.0.is_some() && parts.1.is_some() && parts.2.is_some();
+    for (ordinal, conflict) in upstream.conflicts.iter().enumerate() {
+        let subject = local_subject(&parts, &conflict.entity_name, Some(&conflict.entity_type))
+            .unwrap_or_else(|| Subject::Weave {
+                name: conflict.entity_name.clone(),
+                source: WeaveSource::Refusal,
+                ordinal,
+            });
+        reasons.push(Reason::new(
+            Kind::EntityConflict,
+            subject,
+            Evidence::WeaveRefusal {
+                refusal: (&conflict.kind).into(),
+            },
+        ));
+    }
+
     if both_changed {
         if !reliable {
-            reasons.push("ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突".into());
+            reasons.push(Reason::new(
+                Kind::AnalysisUnavailable,
+                Subject::File,
+                Evidence::PartitionUnavailable,
+            ));
         } else if let Some(analysis) = analyze_default(base, ours, theirs, path) {
-            for (triple, cell) in analysis.iter() {
+            let mut counts = BTreeMap::new();
+            for (triple, _) in analysis.iter() {
+                *counts.entry(analysis.label(triple)).or_insert(0) += 1;
+            }
+            for (ordinal, (triple, cell)) in analysis.iter().enumerate() {
                 let (o, t) = cell.actions();
-                if changed(o) && changed(t) {
-                    reasons.push(format!(
-                        "ENTITY_BOTH_CHANGED：{} [ours={}, theirs={}]",
-                        analysis.label(triple),
-                        action_label(o),
-                        action_label(t)
+                let (ours, theirs) = (Change::from(o), Change::from(t));
+                if ours.changed() && theirs.changed() {
+                    let name = analysis.label(triple);
+                    let subject = if counts[&name] == 1 {
+                        local_subject(&parts, &name, None)
+                    } else {
+                        None
+                    }
+                    .unwrap_or(Subject::Weave {
+                        name,
+                        source: WeaveSource::Classification,
+                        ordinal,
+                    });
+                    // weave already owns refusal rules. Add our strict policy
+                    // only when this reliably identified entity has no refusal.
+                    if reasons
+                        .iter()
+                        .any(|r| r.kind == Kind::EntityConflict && r.subject == subject)
+                    {
+                        continue;
+                    }
+                    reasons.push(Reason::new(
+                        Kind::EntityConflict,
+                        subject,
+                        Evidence::WeaveActions { ours, theirs },
                     ));
                 }
             }
         } else {
-            reasons.push("ENTITY_ANALYSIS_UNAVAILABLE：weave 无实体分类".into());
+            reasons.push(Reason::new(
+                Kind::AnalysisUnavailable,
+                Subject::File,
+                Evidence::WeaveUnavailable,
+            ));
         }
     }
 
     // For unchanged entity order and exact byte partitions, render the whole
     // conflicting entity while merging independent text outside that entity.
     if let (Some(b), Some(o), Some(t)) = &parts {
-        let same_keys =
-            |x: &[Part], y: &[Part]| x.iter().map(|p| &p.key).eq(y.iter().map(|p| &p.key));
         if same_keys(b, o) && same_keys(b, t) {
             let mut composed = String::new();
             let mut entity_conflict = false;
             for ((bp, op), tp) in b.iter().zip(o).zip(t) {
-                if bp.text != op.text && bp.text != tp.text {
-                    entity_conflict = true;
-                    let reason = if bp.entity {
-                        format!("ENTITY_BOTH_CHANGED：{}", bp.label)
-                    } else {
-                        "UNMODELED_BOTH_CHANGED：双方修改同一非实体区域".into()
-                    };
+                let subject = bp.subject();
+                let existing = reasons
+                    .iter()
+                    .find(|r| r.kind == Kind::EntityConflict && r.subject == subject)
+                    .cloned();
+                // Reuse the upstream decision/classification for rendering too.
+                // Only uncovered regions need byte-level strict checks: weave
+                // normalizes encoding, and does not classify interstitial text.
+                let conflict = existing.or_else(|| {
+                    if bp.text == op.text || bp.text == tp.text {
+                        return None;
+                    }
+                    let reason = Reason::new(
+                        if bp.entity {
+                            Kind::EntityConflict
+                        } else {
+                            Kind::NonEntityConflict
+                        },
+                        subject,
+                        Evidence::RawBothChanged,
+                    );
                     reasons.push(reason.clone());
+                    Some(reason)
+                });
+                if let Some(reason) = conflict {
+                    entity_conflict = true;
                     composed.push_str(&conflict_box(
-                        &bp.text, &op.text, &tp.text, labels, width, &reason,
+                        &bp.text,
+                        &op.text,
+                        &tp.text,
+                        labels,
+                        width,
+                        &reason.summary(),
                     ));
                 } else {
                     let (content, conflict) =
                         line_merge(&bp.text, &op.text, &tp.text, labels, width, style)?;
                     if conflict {
-                        reasons.push(format!("LINE_CONFLICT：{}", bp.label));
+                        reasons.push(Reason::new(
+                            Kind::LineConflict,
+                            bp.subject(),
+                            Evidence::GitLineConflict,
+                        ));
                     }
                     composed.push_str(&content);
                 }
@@ -393,15 +509,19 @@ pub fn merge_with_style(
             // Keep every original line conflict, even when region splitting
             // would resolve it. Upstream refusals may concern multiple regions.
             if entity_conflict && !line_conflict && upstream.conflicts.is_empty() {
-                reasons.sort();
-                reasons.dedup();
+                reason::normalize(&mut reasons);
                 return Ok(Outcome {
                     content: composed,
                     reasons,
+                    related_moves: Vec::new(),
                 });
             }
         } else if both_changed {
-            reasons.push("ENTITY_LAYOUT_CHANGED：实体增删或顺序变化，保留整文件冲突".into());
+            reasons.push(Reason::new(
+                Kind::LayoutChanged,
+                Subject::File,
+                Evidence::LayoutChanged,
+            ));
         }
     }
 
@@ -410,24 +530,79 @@ pub fn merge_with_style(
         && reliable
         && reasons
             .iter()
-            .all(|r| r.starts_with("LINE_CONFLICT：") || r.starts_with("ENTITY_LAYOUT_CHANGED："))
+            .all(|r| matches!(r.kind, Kind::LineConflict | Kind::LayoutChanged))
         && distinct_entity_appends(base, ours, theirs, path);
-    if compact_appends {
-        for reason in &mut reasons {
-            if reason.starts_with("ENTITY_LAYOUT_CHANGED：") {
-                *reason = "ENTITY_LAYOUT_CHANGED：双方在文件末尾新增不同实体，保留行级冲突".into();
-            }
-        }
-    }
-    reasons.sort();
-    reasons.dedup();
+    reason::normalize(&mut reasons);
     let content = if reasons.is_empty() || (reasons.len() == 1 && line_conflict) || compact_appends
     {
         line_content
     } else {
         // Avoid trying to splice separately owned entity and line conflict
         // ranges. This conservative fallback cannot lose either side's text.
-        conflict_box(base, ours, theirs, labels, width, &reasons.join("; "))
+        conflict_box(
+            base,
+            ours,
+            theirs,
+            labels,
+            width,
+            &reason::summaries(&reasons),
+        )
     };
-    Ok(Outcome { content, reasons })
+    Ok(Outcome {
+        content,
+        reasons,
+        related_moves: Vec::new(),
+    })
+}
+
+#[cfg(test)]
+mod identity_tests {
+    use super::*;
+    fn part(kind: &str, name: &str) -> Part {
+        Part {
+            key: format!("{kind}:{name}"),
+            name: name.into(),
+            entity_type: kind.into(),
+            label: format!("{kind} {name}"),
+            text: String::new(),
+            entity: true,
+        }
+    }
+    #[test]
+    fn public_name_cannot_bind_ambiguous_types_or_unreliable_versions() {
+        let parts = (
+            Some(vec![part("function", "f"), part("interface", "f")]),
+            Some(vec![part("function", "f")]),
+            Some(vec![part("interface", "f")]),
+        );
+        assert!(local_subject(&parts, "f", None).is_none());
+        assert_eq!(
+            local_subject(&parts, "f", Some("function")),
+            Some(part("function", "f").subject())
+        );
+        let parts = (
+            Some(vec![part("function", "f")]),
+            None,
+            Some(vec![part("function", "f")]),
+        );
+        assert!(local_subject(&parts, "f", Some("function")).is_none());
+    }
+    #[test]
+    fn type_changes_are_not_merged_but_confirmed_modify_delete_can_share_parent() {
+        let parts = (
+            Some(vec![part("function", "f")]),
+            Some(vec![part("class", "f")]),
+            Some(vec![part("function", "f")]),
+        );
+        assert!(local_subject(&parts, "f", None).is_none());
+        let parts = (
+            Some(vec![part("function", "f")]),
+            Some(vec![]),
+            Some(vec![part("function", "f")]),
+        );
+        assert_eq!(
+            local_subject(&parts, "f", None),
+            Some(part("function", "f").subject())
+        );
+    }
 }

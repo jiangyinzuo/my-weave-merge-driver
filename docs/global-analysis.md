@@ -22,7 +22,7 @@ strict-weave driver prepare BASE OURS THEIRS --output /absolute/path/analysis.js
 
 三个位置参数顺序固定，均是明确的 Git revision/tree。工具只用 `rev-parse`、`ls-tree`、`cat-file` 读取对象；不读取工作区作为版本，不推导 merge base，不调用 external diff、filters 或 hooks。结果保存已解析 tree ID，不依赖以后可能移动的 branch 引用。
 
-报告按路径排序，包含每个变化文件三侧 SHA-256 指纹、严格冲突原因、移动关联、解析降级提示。缺失文件以 null 指纹表示，空文件有正常指纹。首次写入使用临时文件原子安装，拒绝覆盖已有结果，并设置只读权限。只读权限防止意外修改，不是防篡改认证。
+报告按路径排序，包含每个变化文件三侧 SHA-256 指纹、严格冲突原因、移动关联、解析降级提示。当前格式为 schema v2 / strict-weave-global-v3，`reasons` 保存父节点 `kind`、`subject` 和完整子依据 `evidence`。旧 schema 或旧 engine 报告不兼容，须重新运行 prepare；未知类型、空证据或不合法的父子组合会拒绝读取。缺失文件以 null 指纹表示，空文件有正常指纹。非阻断关联保存在 `related_moves` / `move_candidates` 中，有移动候选不等于有冲突。首次写入使用临时文件原子安装，拒绝覆盖已有结果，并设置只读权限。只读权限防止意外修改，不是防篡改认证。
 
 - `0`：完成，未发现当前内容规则要求审核的项。
 - `1`：完成，存在审核项；JSON 仍已写出，stderr 列出原因。
@@ -49,6 +49,16 @@ driver 依次验证结果格式版本、路径及三侧文本指纹，再执行�
 
 没有分析文件时，driver 仍独立执行现有严格规则。不向共享文件追加状态，因而多个文件 driver 可并发读取同一结果。
 
+## 父子原因的展示
+
+`driver` 和 `driver prepare` 均支持 `--explain-reasons`。默认显示父原因和必要子依据（删除/新增/重命名动作、上游拒绝、能力不足、跨文件匹配）；详细模式展开包括原文与 weave 分类在内的全部子依据。两种模式使用同一结构，不改变冲突判定、输出范围或缓存内容。
+
+来源标签统一为 `git`（行级基线）、`weave`（上游分类/拒绝）、`analyze`（额外的原文字节、布局、跨文件检查及保守降级）。来源说明数据出处；weave 分类上的严格冲突策略属于本项目，不等于 weave 已拒绝。
+
+同一可靠 entity 优先采用 weave 拒绝；没有拒绝时，复用 weave 分类执行“双方变更必须冲突”；仍未覆盖的区域才检查原文。`disjoint.go` 因此只保留 weave 的 modified/modified 分类，修改/删除只保留 weave 的 modify_delete 拒绝及方向。无需重复分类与原文依据，也无需配对展示。身份无法确认时不按同名猜测覆盖；Git 行级冲突独立保留。
+
+原文补充仍然必要：weave 会归一化 CRLF/LF 和 BOM，而本项目把原始文本变化也视为修改。`encoding.go` 验证双方仅将 LF 改为 CRLF 时仍然冲突（当前原文分区无法完整还原 CRLF，保守回退整文件）。weave 计算 body hash 前还会把自身名称替换成 `__ENTITY__`；原文真的把自引用改成该标识时，上游可能仍判为 unchanged，由我们的原文字节补充拦截。分区检查还负责完整展示、非实体区域及布局变化；跨文件关联由全局分析补充。完整规则目录见 [conflict-reasons.md](conflict-reasons.md)。
+
 ## 第一版移动规则
 
 分别比较 base → ours 与 base → theirs。在一侧，源路径的某 entity 消失，另一条路径新增类型、名称、原始实体区域文本完全相同的 entity，产生“疑似移动”候选。附着注释也在原文比较内。多个源/目标全部保留，输出候选数，不通过遍历顺序选一个“正确”关联。
@@ -56,12 +66,11 @@ driver 依次验证结果格式版本、路径及三侧文本指纹，再执行�
 若另一侧改变了该 base entity，包括无法确认其未改变的解析失败，则源路径和目标路径都记录 `GLOBAL_MODIFY_VS_MOVE`。例如：
 
 ```text
-MOVE_CANDIDATE：theirs 疑似移动 function calculate
-source.go:1 → target.go:1
-依据：源 deleted、目标 added；类型/名称/原始实体区域文本相同
-sources=1，destinations=1
-GLOBAL_MODIFY_VS_MOVE：另一侧改变了 base 实体或无法确认未改变，需共同审核
+原因 [analyze]：GLOBAL_MODIFY_VS_MOVE：function calculate 疑似移动与另一侧变化需共同审核
+  依据 [analyze]：MOVE_CANDIDATE：theirs 疑似移动 function calculate · source.go:1 → target.go:1；源 deleted、目标 added；类型/名称/原始区域文本相同（含附着注释）；sources=1，destinations=1；另一侧=modified
 ```
+
+另一侧状态明确区分 unchanged、modified、deleted、无法确认；解析失败显示“无法确认”，不会写成已证实的修改。
 
 这是确定性文本证据，不证明语义身份。复制后仍保留源 entity 不满足 deleted 条件。名称变化、移动同时编辑、同文件移动暂不建立此关联；缺少候选不能解释为没有移动。解析不支持时明确报告关联不完整，继续保留单文件保守检查。
 

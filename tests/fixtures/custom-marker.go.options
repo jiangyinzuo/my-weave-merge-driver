@@ -1,0 +1,6 @@
+{
+  "marker_size": 11,
+  "ours_label": "feature/ours\nINJECT",
+  "base_label": "123",
+  "theirs_label": "abc cherry-pick"
+}

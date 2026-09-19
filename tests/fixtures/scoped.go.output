@@ -1,4 +1,4 @@
-<<<<<<< ours: feature/ours | ENTITY_BOTH_CHANGED：function a
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function a 需人工审核
 func a() int {
     return 2
 }

@@ -1,6 +1,8 @@
 //! Explicit three-tree analysis. This module never runs or controls a Git merge.
 //! Cached findings can only add conflicts; every driver call still checks its inputs.
 use crate::merge::{self, Labels, Outcome};
+pub use crate::reason::Location;
+use crate::reason::{self, Evidence, Kind, MoveEvidence, Opposite, Reason, Side, Subject};
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -12,7 +14,7 @@ use std::{
 };
 
 const MAX_TOTAL: usize = 64 * 1024 * 1024;
-const ENGINE: &str = "strict-weave-global-v1";
+const ENGINE: &str = "strict-weave-global-v3";
 type Snapshot = BTreeMap<String, String>;
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -38,30 +40,11 @@ impl Report {
 pub struct FileAnalysis {
     /// SHA-256 of raw bytes in base, ours, theirs. None means path absent.
     pub fingerprints: [Option<String>; 3],
-    pub reasons: Vec<String>,
-    pub notes: Vec<String>,
+    pub reasons: Vec<Reason>,
+    pub related_moves: Vec<MoveEvidence>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Location {
-    pub path: String,
-    pub entity: String,
-    /// Starts at the entity region, including attached comments.
-    pub line: usize,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct MoveCandidate {
-    pub side: String,
-    pub base: Location,
-    pub target: Location,
-    pub source_count: usize,
-    pub destination_count: usize,
-    pub opposite_changed: bool,
-    pub evidence: String,
-}
+pub type MoveCandidate = MoveEvidence;
 
 struct Entity {
     key: String,
@@ -115,7 +98,7 @@ pub fn analyze(snapshots: &[Snapshot; 3], trees: [String; 3]) -> Result<Report> 
         }
     }
     let mut report = Report {
-        schema_version: 1,
+        schema_version: 2,
         engine: ENGINE.into(),
         trees,
         files: BTreeMap::new(),
@@ -145,7 +128,7 @@ pub fn analyze(snapshots: &[Snapshot; 3], trees: [String; 3]) -> Result<Report> 
             FileAnalysis {
                 fingerprints: texts.map(|t| t.map(|s| fingerprint(s))),
                 reasons: outcome.reasons,
-                notes: Vec::new(),
+                related_moves: Vec::new(),
             },
         );
         for side in 0..3 {
@@ -163,7 +146,7 @@ pub fn analyze(snapshots: &[Snapshot; 3], trees: [String; 3]) -> Result<Report> 
             parsed[side].insert(path.clone(), parts);
         }
     }
-    for (side, name) in [(1, "ours"), (2, "theirs")] {
+    for (side, direction) in [(1, Side::Ours), (2, Side::Theirs)] {
         let other = 3 - side;
         let mut deleted: BTreeMap<(&str, &str), Vec<&Entity>> = BTreeMap::new();
         let mut added: BTreeMap<(&str, &str), Vec<&Entity>> = BTreeMap::new();
@@ -196,38 +179,64 @@ pub fn analyze(snapshots: &[Snapshot; 3], trees: [String; 3]) -> Result<Report> 
                 bail!("移动候选超过 10000，无法完整生成报告；未写出分析文件");
             }
             for source in &sources {
-                let opposite_changed = match parsed[other][&source.location.path].as_ref() {
-                    Some(entities) => entities
-                        .get(&source.key)
-                        .is_none_or(|e| e.text != source.text),
-                    None => true, // Unknown is not evidence of an unchanged entity.
+                let opposite = match parsed[other][&source.location.path].as_ref() {
+                    Some(entities) => match entities.get(&source.key) {
+                        Some(entity) if entity.text == source.text => Opposite::Unchanged,
+                        Some(_) => Opposite::Modified,
+                        None => Opposite::Deleted,
+                    },
+                    None => Opposite::Unknown,
                 };
                 for target in targets {
                     if source.location.path == target.location.path {
                         continue;
                     }
-                    let note = format!("MOVE_CANDIDATE：{name} 疑似移动 {} · {}:{} → {}:{}；依据：源 deleted、目标 added，类型/名称/原始实体区域文本相同（含附着注释）；sources={}，destinations={}", source.location.entity, source.location.path, source.location.line, target.location.path, target.location.line, sources.len(), targets.len());
+                    let candidate = MoveEvidence {
+                        side: direction,
+                        base: source.location.clone(),
+                        target: target.location.clone(),
+                        source_count: sources.len(),
+                        destination_count: targets.len(),
+                        opposite,
+                    };
                     for path in [&source.location.path, &target.location.path] {
-                        let file = report.files.get_mut(path).expect("changed candidate path");
-                        file.notes.push(note.clone());
-                        if opposite_changed {
-                            file.reasons.push(format!("GLOBAL_MODIFY_VS_MOVE：{}；另一侧改变了 base 实体或无法确认未改变，需共同审核", note));
+                        report
+                            .files
+                            .get_mut(path)
+                            .expect("changed candidate path")
+                            .related_moves
+                            .push(candidate.clone());
+                    }
+                    if opposite != Opposite::Unchanged {
+                        let reason = Reason::new(
+                            Kind::ModifyVsMove,
+                            Subject::Move {
+                                side: direction,
+                                base: source.location.clone(),
+                                target: target.location.clone(),
+                            },
+                            Evidence::MoveCandidate {
+                                candidate: candidate.clone(),
+                            },
+                        );
+                        for path in [&source.location.path, &target.location.path] {
+                            report
+                                .files
+                                .get_mut(path)
+                                .expect("changed candidate path")
+                                .reasons
+                                .push(reason.clone());
                         }
                     }
-                    report.move_candidates.push(MoveCandidate {
-                        side: name.into(), base: source.location.clone(), target: target.location.clone(),
-                        source_count: sources.len(), destination_count: targets.len(), opposite_changed,
-                        evidence: "类型、名称、原始实体区域文本完全相同；源 deleted、目标 added；不证明语义身份".into(),
-                    });
+                    report.move_candidates.push(candidate);
                 }
             }
         }
     }
     for file in report.files.values_mut() {
-        file.reasons.sort();
-        file.reasons.dedup();
-        file.notes.sort();
-        file.notes.dedup();
+        reason::normalize(&mut file.reasons);
+        file.related_moves.sort();
+        file.related_moves.dedup();
     }
     report.warnings.sort();
     report.warnings.dedup();
@@ -340,7 +349,7 @@ pub fn prepare(revisions: [&str; 3]) -> Result<Report> {
                     .each_ref()
                     .map(|s| s.get(&path).map(|t| fingerprint(t))),
                 reasons: Vec::new(),
-                notes: Vec::new(),
+                related_moves: Vec::new(),
             });
     }
     Ok(report)
@@ -379,8 +388,15 @@ pub fn load_for_driver(path: &Path, source: &str, texts: [&str; 3]) -> Result<Fi
         bail!("全局分析文件超过 64 MiB");
     }
     let mut report: Report = serde_json::from_slice(&bytes).context("无效的全局分析文件")?;
-    if report.schema_version != 1 || report.engine != ENGINE {
+    if report.schema_version != 2 || report.engine != ENGINE {
         bail!("全局分析版本不兼容");
+    }
+    if report.files.values().any(|file| {
+        file.reasons.iter().any(|reason| !reason.valid())
+            || file.related_moves.iter().any(|c| !c.valid())
+    }) || report.move_candidates.iter().any(|c| !c.valid())
+    {
+        bail!("无效的全局分析原因结构");
     }
     let file = report
         .files
@@ -409,36 +425,21 @@ pub fn augment(
     width: usize,
 ) {
     let already_conflicted = outcome.conflicted();
-    for reason in &global.reasons {
-        // Preparation uses the default display. Keep the current driver's
-        // layout explanation when optional zdiff3 selected a narrower scope.
-        if reason.starts_with("ENTITY_LAYOUT_CHANGED：")
-            && outcome
-                .reasons
-                .iter()
-                .any(|r| r.starts_with("ENTITY_LAYOUT_CHANGED："))
-        {
-            continue;
-        }
-        outcome.reasons.push(reason.clone());
-    }
-    if !outcome.reasons.is_empty() {
-        for note in &global.notes {
-            if !outcome.reasons.iter().any(|reason| reason.contains(note)) {
-                outcome.reasons.push(note.clone());
-            }
-        }
-        outcome.reasons.sort();
-        outcome.reasons.dedup();
-        if !already_conflicted {
-            outcome.content = merge::conflict_box(
-                texts[0],
-                texts[1],
-                texts[2],
-                labels,
-                width,
-                "GLOBAL_ANALYSIS：全局关联要求人工审核",
-            );
-        }
+    outcome.reasons.extend(global.reasons.iter().cloned());
+    reason::normalize(&mut outcome.reasons);
+    outcome
+        .related_moves
+        .extend(global.related_moves.iter().cloned());
+    outcome.related_moves.sort();
+    outcome.related_moves.dedup();
+    if !outcome.reasons.is_empty() && !already_conflicted {
+        outcome.content = merge::conflict_box(
+            texts[0],
+            texts[1],
+            texts[2],
+            labels,
+            width,
+            &reason::summaries(&outcome.reasons),
+        );
     }
 }

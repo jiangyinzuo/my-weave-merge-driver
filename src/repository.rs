@@ -3,7 +3,7 @@ use crate::merge::{self, Labels, Outcome};
 use anyhow::{bail, Context, Result};
 use std::{io::Write, path::Path};
 
-pub fn report(path: &str, outcome: &Outcome, labels: &Labels) {
+pub fn report(path: &str, outcome: &Outcome, labels: &Labels, detailed: bool) {
     if outcome.conflicted() {
         eprintln!("冲突 · {}", merge::safe_label(path));
         eprintln!(
@@ -13,7 +13,21 @@ pub fn report(path: &str, outcome: &Outcome, labels: &Labels) {
             merge::safe_label(&labels.theirs)
         );
         for reason in &outcome.reasons {
-            eprintln!("原因：{}", merge::safe_label(reason));
+            for line in reason.lines(detailed) {
+                eprintln!("{line}");
+            }
+        }
+        for candidate in &outcome.related_moves {
+            let evidence = crate::reason::Evidence::MoveCandidate {
+                candidate: candidate.clone(),
+            };
+            if !outcome
+                .reasons
+                .iter()
+                .any(|reason| reason.evidence.contains(&evidence))
+            {
+                eprintln!("关联 {}", evidence.summary());
+            }
         }
         eprintln!("需人工处理：选择一侧 / 编辑合并结果。\n");
     }

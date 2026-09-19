@@ -1,4 +1,4 @@
-<<<<<<< ours: feature/ours | ENTITY_BOTH_CHANGED：a [ours=deleted, theirs=modified]; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化，保留整文件冲突; LINE_CONFLICT：Git 行级冲突; WEAVE_REFUSAL：function a [modify_delete]
+<<<<<<< ours: feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：function a 需人工审核; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化
 ||||||| base: base-commit
 func a() int {
     return 1

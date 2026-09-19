@@ -1,0 +1,22 @@
+<<<<<<<<<<< ours: feature/ours INJECT | ENTITY_CONFLICT：function a 需人工审核
+func a() int {
+    x := 1
+    y := 5
+    z := 3
+    return y
+}
+||||||||||| base: 123
+func a() int {
+    x := 1
+    y := 2
+    z := 3
+    return y
+}
+===========
+func a() int {
+    x := 1
+    y := 5
+    z := 3
+    return y
+}
+>>>>>>>>>>> theirs: abc cherry-pick

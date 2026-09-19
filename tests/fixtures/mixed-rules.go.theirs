@@ -1,0 +1,7 @@
+func a() int { return 3 }
+
+func b() int {
+    x := 1
+    y := 2
+    return y
+}

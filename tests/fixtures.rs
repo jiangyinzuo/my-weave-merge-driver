@@ -1,7 +1,11 @@
 //! Flat, text-only test cases: NAME.base / .ours / .theirs / .output.
 //! Optional NAME.path, .exit and .stderr specify path, exit status and report.
 //! NAME.output-zdiff3 adds a second run with --zdiff3 and the same exit status.
+//! NAME.stderr-details verifies --explain-reasons in every available style;
+//! output bytes and exit status must stay identical to that style's baseline.
+//! NAME.options optionally overrides marker_size and the three labels via JSON.
 use std::{collections::BTreeSet, fs, path::Path, process::Command};
+mod common;
 
 fn compare(expected_path: &Path, actual: &[u8], actual_path: &Path) -> Result<(), String> {
     let expected =
@@ -38,19 +42,31 @@ fn compare(expected_path: &Path, actual: &[u8], actual_path: &Path) -> Result<()
     ))
 }
 
-fn check_case(directory: &Path, name: &str, artifacts: &Path, zdiff3: bool) -> Result<(), String> {
+fn check_case(
+    directory: &Path,
+    name: &str,
+    artifacts: &Path,
+    zdiff3: bool,
+    detailed: bool,
+) -> Result<(), String> {
     let file = |suffix: &str| directory.join(format!("{name}.{suffix}"));
+    let options = common::Options::load(name)?;
     let output_suffix = if zdiff3 { "output-zdiff3" } else { "output" };
-    let stderr_suffix = if zdiff3 && file("stderr-zdiff3").exists() {
+    let stderr_suffix = if detailed {
+        "stderr-details"
+    } else if zdiff3 && file("stderr-zdiff3").exists() {
         "stderr-zdiff3"
     } else {
         "stderr"
     };
-    let artifact_name = if zdiff3 {
+    let mut artifact_name = if zdiff3 {
         format!("{name}.zdiff3")
     } else {
         name.to_owned()
     };
+    if detailed {
+        artifact_name.push_str(".details");
+    }
     let scratch = tempfile::tempdir().map_err(|e| e.to_string())?;
     for side in ["base", "ours", "theirs"] {
         fs::copy(file(side), scratch.path().join(side))
@@ -85,6 +101,9 @@ fn check_case(directory: &Path, name: &str, artifacts: &Path, zdiff3: bool) -> R
     } else {
         command.arg("driver");
     }
+    if detailed {
+        command.arg("--explain-reasons");
+    }
     let result = command
         .current_dir(scratch.path())
         .args([
@@ -92,11 +111,11 @@ fn check_case(directory: &Path, name: &str, artifacts: &Path, zdiff3: bool) -> R
             "ours",
             "theirs",
             &path,
-            "7",
-            "--ours-label=feature/ours",
-            "--base-label=base-commit",
-            "--theirs-label=feature/theirs",
+            &options.marker_size.to_string(),
         ])
+        .arg(format!("--ours-label={}", options.ours_label))
+        .arg(format!("--base-label={}", options.base_label))
+        .arg(format!("--theirs-label={}", options.theirs_label))
         .env("GIT_CONFIG_GLOBAL", "/dev/null")
         .env("GIT_CONFIG_NOSYSTEM", "1")
         .env_remove("GIT_CONFIG_COUNT")
@@ -170,6 +189,8 @@ fn text_fixtures() {
                     | "exit"
                     | "stderr"
                     | "stderr-zdiff3"
+                    | "stderr-details"
+                    | "options"
             ),
             "未知 fixture 后缀：{filename}"
         );
@@ -204,10 +225,19 @@ fn text_fixtures() {
             if zdiff3 && !directory.join(format!("{name}.output-zdiff3")).exists() {
                 continue;
             }
-            let mode = if zdiff3 { "zdiff3" } else { "default" };
-            match check_case(&directory, name, &artifacts, zdiff3) {
-                Ok(()) => eprintln!("fixture {name} ({mode}): ok"),
-                Err(error) => errors.push(format!("fixture {name} ({mode}): FAILED\n{error}")),
+            for detailed in [false, true] {
+                if detailed && !directory.join(format!("{name}.stderr-details")).exists() {
+                    continue;
+                }
+                let mode = format!(
+                    "{}{}",
+                    if zdiff3 { "zdiff3" } else { "default" },
+                    if detailed { "/details" } else { "" }
+                );
+                match check_case(&directory, name, &artifacts, zdiff3, detailed) {
+                    Ok(()) => eprintln!("fixture {name} ({mode}): ok"),
+                    Err(error) => errors.push(format!("fixture {name} ({mode}): FAILED\n{error}")),
+                }
             }
         }
     }

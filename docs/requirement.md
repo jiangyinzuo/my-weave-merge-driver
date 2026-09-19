@@ -6,7 +6,7 @@
 
 ## 1. 建议的核心规则
 
-把两个判定独立运行，再取冲突的并集：
+保留独立的 Git 行级基线，实体分析复用 weave，仅补充它不会拒绝的规则：
 
 ```text
 必须人工处理 = Git 行级合并发生冲突 OR 严格实体规则发生冲突（包含 weave-core 明确拒绝合并的结果）
@@ -15,7 +15,7 @@
 - Git 已经判为冲突的区域必须保留为未解决状态，即使 weave 能自动合并。
 - 同一实体相对 base 被双方修改，无论双方结果是否相同、改动行是否重叠，都必须冲突。因为这时候直接合并，实际的业务逻辑可能实现有误，必须交给人类判定如何合并。
 - weave-core 明确拒绝合并的结果必须保留为冲突，并说明上游拒绝原因；即使 Git 行级判定和本项目新增的实体规则均未报冲突，也不能忽略。
-- 同一区域同时触发两条规则，展示一个冲突块，并列出两个原因。
+- 同一区域同时触发行级和实体规则，展示一个冲突块，保留两类原因。同一 entity 已有 weave 拒绝时，不再重复执行本项目的双方变化规则。
 - 双方修改不同实体、Git 行级合并没有冲突，且 weave-core 没有明确拒绝合并时，允许合并。
 - “双方修改成完全相同的结果”也判定为冲突。因为假设一种情况：双方都在更新一个`fileCount=2`变量：A和B都增加了3个文件，merge后，实际应该改为`fileCount=8`，但双方都改为了`fileCount=5`，存在“丢失更新”现象。
 
@@ -51,7 +51,7 @@ diff3 与 zdiff3 的区别、实际输出示例及选型建议见 [diff3-vs-zdif
 
 ```text
 冲突 C001 · calc.go · function a()
-原因：同一函数被双方修改 [ENTITY_BOTH_CHANGED]
+原因：同一函数被双方修改 [ENTITY_CONFLICT]
 操作：git merge feature/drop-x
 
 current branch: feature/drop-z
@@ -235,8 +235,8 @@ export function validateInput(data: unknown) {
 
 | 能力 | 已有依据 | 本项目还需要做什么 |
 | --- | --- | --- |
-| 三方实体匹配及改动分类 | [`v2::analyze_default`、`Analysis::iter/label`](https://github.com/Ataraxy-Labs/weave/blob/a3f501d19601126fefcc40a3ebb764b8d07d39fc/crates/weave-core/src/v2/mod.rs)，可观察双方编辑、删除、新增、重命名等 `Cell` | 在自动解决之前应用严格规则，不能仅检查最终的 `MergeResult.conflicts` |
-| 实体冲突与三方内容 | [`EntityConflict`、`ConflictKind`](https://github.com/Ataraxy-Labs/weave/blob/a3f501d19601126fefcc40a3ebb764b8d07d39fc/crates/weave-core/src/conflict.rs) 包含实体名称、类型、冲突类别及可选三方内容 | 增加本项目的原因码；为 weave 原本会自动解决的区域构造冲突 |
+| 三方实体匹配及改动分类 | [`v2::analyze_default`、`Analysis::iter/label`](https://github.com/Ataraxy-Labs/weave/blob/a3f501d19601126fefcc40a3ebb764b8d07d39fc/crates/weave-core/src/v2/mod.rs)，可观察双方编辑、删除、新增、重命名等 `Cell` | 复用分类，对尚未被 weave 拒绝的目标应用双方变更严格规则；不重写匹配或动作分类 |
+| 实体冲突与三方内容 | [`EntityConflict`、`ConflictKind`](https://github.com/Ataraxy-Labs/weave/blob/a3f501d19601126fefcc40a3ebb764b8d07d39fc/crates/weave-core/src/conflict.rs) 包含实体名称、类型、冲突类别及可选三方内容 | 直接保留上游拒绝及方向；只为 weave 原本会自动解决的区域新增严格冲突 |
 | 实体文本范围与间隙 | [`region::extract_regions`](https://github.com/Ataraxy-Labs/weave/blob/a3f501d19601126fefcc40a3ebb764b8d07d39fc/crates/weave-core/src/region.rs) 接收 sem-core 实体，生成实体区和间隙区 | 准备解析实体，将行级块关联到三方范围，并处理范围扩展、重叠和移动 |
 | 相对 base 的文本变化 | [`diagnose::diagnose`](https://github.com/Ataraxy-Labs/weave/blob/a3f501d19601126fefcc40a3ebb764b8d07d39fc/crates/weave-core/src/diagnose.rs) 给出双方增删文本和重叠信息 | 翻译为中文模板；用实际增删内容描述变化，避免推断业务意图 |
 | 冲突解释和处理提示 | [`explain`](https://github.com/Ataraxy-Labs/weave/blob/a3f501d19601126fefcc40a3ebb764b8d07d39fc/crates/weave-core/src/explain.rs) 已有解释结构及部分处理提示 | 其入口使用上游合并判定，不能直接覆盖我们新增的严格冲突；需要复用数据模型或另建解释层 |
@@ -268,7 +268,7 @@ Git 可能在双方文件内容相同时直接采用该内容，不调用自定�
 
 ```text
 冲突 C004 · count.ts · function getFileCount()
-原因：同一函数被双方修改，虽然结果相同，仍须人工审核 [ENTITY_BOTH_CHANGED]
+原因：同一函数被双方修改，虽然结果相同，仍须人工审核 [ENTITY_CONFLICT]
 
 ours 相对 base 的文本变化（theirs 相同）：
 -  return 2;
@@ -297,3 +297,11 @@ ours 相对 base 的文本变化（theirs 相同）：
 | “传统行级合并”以什么为基准？ | 固定并记录 Git 版本与 `git merge-file` 的选项，使用原始三份输入检查 | 不同选项可能改变结果；不能把 weave 内部的行级回退等同于这个基准 |
 
 本草案优先确定三个用户体验约定：为什么停下来、每一侧究竟是谁、需要人决定什么。稳定原因码与中文正文同时保留，首版不需要依赖大模型生成解释。
+
+## 10. 已实现的父子原因模型
+
+父原因表达需要审核的事实，子依据保存 Git、weave、原文及全局关联的各自证据。同一可靠 entity 依次采用 weave 拒绝、weave 分类上的严格策略、未覆盖原文的严格补充；不重复实现上游规则。没有可靠身份映射时保留独立节点。默认摘要折叠常规依据，`--explain-reasons` 展开全部子项，二者不能改变冲突判定。当前稳定代码、每种原因的触发条件、所有 weave 拒绝及动作组合集中维护于 [conflict-reasons.md](conflict-reasons.md)。
+
+`disjoint.go` 的默认摘要为 `原因 [weave]：ENTITY_CONFLICT：function a 需人工审核`，详细模式只展示复用的 modified/modified 分类；该来源表示分类数据来自 weave，必须冲突来自本项目的严格策略。修改/删除直接保留 weave refusal 及方向。行级冲突是独立父原因。
+
+原文补充不重复验证已有实体冲突，仅覆盖 weave 未拒绝且分类未触发严格规则的原始文本变化，例如上游归一化的 CRLF/LF。非实体区域、布局和跨文件移动检查仍由本项目补充；不可靠时保守回退。

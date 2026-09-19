@@ -1,0 +1,4 @@
+class C {
+  a() { return 1; }
+  b() { return 4; }
+}

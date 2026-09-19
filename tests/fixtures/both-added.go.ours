@@ -1,0 +1,8 @@
+func a() int {
+    x := 1
+    y := 2
+    z := 3
+    return y
+}
+
+func b() int { return 1 }

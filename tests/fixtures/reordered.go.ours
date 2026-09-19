@@ -1,0 +1,2 @@
+func a() { println(1) }
+func b() {}

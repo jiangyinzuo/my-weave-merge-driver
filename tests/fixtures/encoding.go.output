@@ -1,0 +1,13 @@
+<<<<<<< ours: feature/ours | ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
+func a() int {
+    return 1
+}
+||||||| base: base-commit
+func a() int {
+    return 1
+}
+=======
+func a() int {
+    return 1
+}
+>>>>>>> theirs: feature/theirs

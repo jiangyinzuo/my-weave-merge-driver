@@ -1,0 +1,17 @@
+<<<<<<< ours: feature/ours | UNMODELED_BOTH_CHANGED：非实体区域 gap:0 被双方修改
+// ONE
+// two
+// three
+
+||||||| base: base-commit
+// one
+// two
+// three
+
+=======
+// one
+// two
+// THREE
+
+>>>>>>> theirs: feature/theirs
+func a() {}
