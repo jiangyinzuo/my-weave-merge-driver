@@ -1,0 +1,5 @@
+defmodule Alpha do
+  def value do
+    2
+  end
+end

@@ -1,0 +1,5 @@
+class Alpha {
+    int Value() {
+        return 1;
+    }
+}

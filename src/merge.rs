@@ -190,10 +190,8 @@ pub(crate) struct Part {
 /// Only use a partition when it reproduces every input byte. Nested entities
 /// are covered by their outer container in this first implementation.
 pub(crate) fn partition(path: &str, text: &str) -> Option<Vec<Part>> {
-    // Admit only languages exercised by the initial integration suite.
-    if ![".go", ".ts", ".tsx"].iter().any(|ext| path.ends_with(ext)) {
-        return None;
-    }
+    // Use the same grammar registry as weave; do not maintain a second
+    // extension allowlist. Reliability checks below apply to every language.
     let registry = create_default_registry();
     let plugin = registry.get_explicit_plugin(path)?;
     let (mut entities, tree) = plugin.extract_entities_with_tree(text, path);

@@ -1,0 +1,3 @@
+function alpha()
+    return 2
+end

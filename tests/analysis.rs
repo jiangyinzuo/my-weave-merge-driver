@@ -9,7 +9,7 @@ use strict_weave::{
 
 const BROKEN_JSON: &str = "{broken";
 
-const F: &str = include_str!("fixtures/move-target.go.theirs");
+const F: &str = include_str!("fixtures/moves/move-target.go.theirs");
 
 fn snapshot(files: &[(&str, &str)]) -> BTreeMap<String, String> {
     files
@@ -27,7 +27,7 @@ fn analyze(files: [BTreeMap<String, String>; 3]) -> analysis::Report {
 }
 
 fn moved() -> [BTreeMap<String, String>; 3] {
-    let c = Case::load("move-source.go");
+    let c = Case::load("moves/move-source.go");
     [
         snapshot(&[("source.go", &c.base)]),
         snapshot(&[("source.go", &c.ours)]),
@@ -60,7 +60,7 @@ fn global_modify_move_is_deterministic_and_only_adds_conflicts() {
     }
     // Destination is a clean unilateral addition in the local three-way merge.
     let labels = Labels::default();
-    let target = Case::load("move-target.go");
+    let target = Case::load("moves/move-target.go");
     let mut outcome = target.run();
     assert!(!outcome.conflicted());
     analysis::augment(
@@ -72,7 +72,7 @@ fn global_modify_move_is_deterministic_and_only_adds_conflicts() {
     );
     assert!(outcome.conflicted());
     assert!(outcome.content.contains("<<<<<<<") && outcome.content.contains(F));
-    let conflict = Case::load("calculate.go");
+    let conflict = Case::load("moves/calculate.go");
     let mut existing = conflict.run();
     let before = existing.content.clone();
     analysis::augment(
@@ -120,7 +120,7 @@ fn pure_move_annotates_without_conflict_and_rename_is_not_claimed() {
     assert_eq!(report.move_candidates.len(), 1);
     assert_eq!(report.move_candidates[0].opposite, Opposite::Unchanged);
     assert!(!report.conflicted());
-    let deleted = Case::load("move-delete.go");
+    let deleted = Case::load("moves/move-delete.go");
     let mut local = deleted.run();
     analysis::augment(
         &mut local,
@@ -133,8 +133,8 @@ fn pure_move_annotates_without_conflict_and_rename_is_not_claimed() {
     assert_eq!(local.related_moves, report.move_candidates);
     assert_eq!(local.content, deleted.expected());
     for new in [
-        text("move-renamed.go", "ours"),
-        text("calculate.go", "ours"),
+        text("moves/move-renamed.go", "ours"),
+        text("moves/calculate.go", "ours"),
     ] {
         let report = analyze([
             source.clone(),
@@ -149,9 +149,9 @@ fn pure_move_annotates_without_conflict_and_rename_is_not_claimed() {
 fn parser_failure_keeps_strict_conflicts_and_reports_incomplete_analysis() {
     let report = analyze([
         snapshot(&[("a.go", F)]),
-        snapshot(&[("a.go", &text("move-invalid.go", "ours"))]),
+        snapshot(&[("a.go", &text("moves/move-invalid.go", "ours"))]),
         snapshot(&[
-            ("a.go", &text("move-invalid.go", "theirs")),
+            ("a.go", &text("moves/move-invalid.go", "theirs")),
             ("target.go", F),
         ]),
     ]);
@@ -182,7 +182,7 @@ fn immutable_result_rejects_stale_reversed_unknown_and_invalid_inputs() {
     std::fs::write(&bad, BROKEN_JSON).unwrap();
     assert!(analysis::load_for_driver(&bad, "source.go", texts).is_err());
     let mut json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-    json["engine"] = "strict-weave-global-v2".into();
+    json["engine"] = "strict-weave-global-v3".into();
     std::fs::write(&bad, serde_json::to_vec(&json).unwrap()).unwrap();
     assert!(analysis::load_for_driver(&bad, "source.go", texts).is_err());
     json = serde_json::from_slice(&bytes).unwrap();
@@ -193,7 +193,7 @@ fn immutable_result_rejects_stale_reversed_unknown_and_invalid_inputs() {
 
 #[test]
 fn global_default_report_does_not_override_zdiff3_display_explanation() {
-    let c = Case::load("adjacent.ts");
+    let c = Case::load("layout/adjacent.ts");
     let [base, ours, theirs] = c.texts();
     let report = analyze([
         snapshot(&[("a.ts", base)]),

@@ -1,0 +1,13 @@
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function alpha 需人工审核
+function alpha
+    echo 2
+end
+||||||| base: base-commit
+function alpha
+    echo 1
+end
+=======
+function alpha
+    echo 2
+end
+>>>>>>> theirs: feature/theirs

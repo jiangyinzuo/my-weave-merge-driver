@@ -1,0 +1,13 @@
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function alpha 需人工审核
+fn alpha() -> i32 {
+    2
+}
+||||||| base: base-commit
+fn alpha() -> i32 {
+    1
+}
+=======
+fn alpha() -> i32 {
+    2
+}
+>>>>>>> theirs: feature/theirs

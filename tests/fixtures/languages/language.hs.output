@@ -1,0 +1,8 @@
+alpha :: Int
+<<<<<<< ours: feature/ours | UNMODELED_BOTH_CHANGED：非实体区域 gap:1 被双方修改
+alpha = 2
+||||||| base: base-commit
+alpha = 1
+=======
+alpha = 2
+>>>>>>> theirs: feature/theirs

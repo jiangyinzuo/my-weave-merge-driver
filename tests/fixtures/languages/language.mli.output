@@ -1,0 +1,7 @@
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：val alpha 需人工审核
+val alpha : unit -> string
+||||||| base: base-commit
+val alpha : unit -> int
+=======
+val alpha : unit -> string
+>>>>>>> theirs: feature/theirs

@@ -1,0 +1,2 @@
+alpha :: Int
+alpha = 1

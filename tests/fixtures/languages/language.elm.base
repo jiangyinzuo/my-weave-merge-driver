@@ -1,0 +1,5 @@
+module Sample exposing (..)
+
+alpha : Int
+alpha =
+    1

@@ -14,7 +14,7 @@ use std::{
 };
 
 const MAX_TOTAL: usize = 64 * 1024 * 1024;
-const ENGINE: &str = "strict-weave-global-v3";
+const ENGINE: &str = "strict-weave-global-v4";
 type Snapshot = BTreeMap<String, String>;
 
 #[derive(Debug, Serialize, Deserialize)]

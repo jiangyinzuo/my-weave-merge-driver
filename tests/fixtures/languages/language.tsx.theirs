@@ -1,0 +1,3 @@
+function Alpha() {
+    return <div>2</div>;
+}

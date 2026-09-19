@@ -1,0 +1,10 @@
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function alpha 需人工审核
+(defn alpha []
+  2)
+||||||| base: base-commit
+(defn alpha []
+  1)
+=======
+(defn alpha []
+  2)
+>>>>>>> theirs: feature/theirs

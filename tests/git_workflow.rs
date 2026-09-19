@@ -12,7 +12,7 @@ const STAGED_TEXT: &str = "staged";
 const DIRTY_TEXT: &str = "dirty worktree";
 const UNTRACKED_TEXT: &str = "untracked";
 
-const BASE: &str = include_str!("fixtures/disjoint.go.base");
+const BASE: &str = include_str!("fixtures/entities/disjoint.go.base");
 
 fn command(program: &str, root: &Path, args: &[&str]) -> Output {
     Command::new(program)
@@ -81,8 +81,8 @@ fn real_merge_driver_blocks_disjoint_function_edits() {
     diverge(
         root,
         "calc.go",
-        &text("disjoint.go", "ours"),
-        &text("disjoint.go", "theirs"),
+        &text("entities/disjoint.go", "ours"),
+        &text("entities/disjoint.go", "theirs"),
     );
     let out = command("git", root, &["merge", "--no-edit", "other"]);
     assert_eq!(
@@ -103,7 +103,7 @@ fn real_merge_driver_blocks_disjoint_function_edits() {
 fn driver_errors_do_not_overwrite_inputs() {
     let temp = tempfile::tempdir().unwrap();
     let root = temp.path();
-    let c = Case::load("binary-input.go");
+    let c = Case::load("fallback/binary-input.go");
     for (path, contents) in ["base", "ours", "theirs"].into_iter().zip(c.texts()) {
         std::fs::write(root.join(path), contents).unwrap();
     }
@@ -138,7 +138,7 @@ fn prepare_reads_explicit_trees_without_changing_dirty_repository() {
     let temp = init("calc.go", BASE);
     let root = temp.path();
     let base = git(root, &["rev-parse", "HEAD"]).trim().to_string();
-    let changed = text("unilateral.go", "ours");
+    let changed = text("entities/unilateral.go", "ours");
     std::fs::write(root.join("calc.go"), &changed).unwrap();
     git(root, &["commit", "-qam", "change"]);
     std::fs::write(root.join("staged"), STAGED_TEXT).unwrap();
@@ -196,13 +196,17 @@ fn prepare_reads_explicit_trees_without_changing_dirty_repository() {
 
 #[test]
 fn real_driver_reads_move_context_and_git_owns_continue_abort() {
-    let c = Case::load("move-source.go");
+    let c = Case::load("moves/move-source.go");
     let temp = init("source.go", &c.base);
     let root = temp.path();
     let base = git(root, &["rev-parse", "HEAD"]).trim().to_string();
     git(root, &["checkout", "-qb", "other"]);
     std::fs::write(root.join("source.go"), &c.theirs).unwrap();
-    std::fs::write(root.join("target.go"), text("move-target.go", "theirs")).unwrap();
+    std::fs::write(
+        root.join("target.go"),
+        text("moves/move-target.go", "theirs"),
+    )
+    .unwrap();
     git(root, &["add", "."]);
     git(root, &["commit", "-qm", "move"]);
     git(root, &["checkout", "-q", "main"]);
@@ -257,7 +261,7 @@ fn preparation_detects_identical_edits_even_when_native_git_skips_driver() {
     let temp = init("calc.go", BASE);
     let root = temp.path();
     let base = git(root, &["rev-parse", "HEAD"]).trim().to_string();
-    let changed = text("unilateral.go", "ours");
+    let changed = text("entities/unilateral.go", "ours");
     diverge(root, "calc.go", &changed, &changed);
     let destination = tempfile::tempdir().unwrap();
     let file = destination.path().join("analysis.json");
@@ -293,8 +297,13 @@ fn preparation_detects_identical_edits_even_when_native_git_skips_driver() {
 fn stale_analysis_fails_before_driver_writes_and_no_workflow_or_diff_commands_exist() {
     let temp = init("calc.go", BASE);
     let root = temp.path();
-    let changed = text("unilateral.go", "ours");
-    diverge(root, "calc.go", &changed, &text("opposed.go", "theirs"));
+    let changed = text("entities/unilateral.go", "ours");
+    diverge(
+        root,
+        "calc.go",
+        &changed,
+        &text("entities/opposed.go", "theirs"),
+    );
     let destination = tempfile::tempdir().unwrap();
     let file = destination.path().join("analysis.json");
     assert_eq!(
@@ -344,8 +353,8 @@ fn stale_analysis_fails_before_driver_writes_and_no_workflow_or_diff_commands_ex
 fn analysis_environment_and_explicit_override_work_and_input_errors_write_no_report() {
     let temp = init("calc.go", BASE);
     let root = temp.path();
-    let ours = text("unilateral.go", "ours");
-    let theirs = text("opposed.go", "theirs");
+    let ours = text("entities/unilateral.go", "ours");
+    let theirs = text("entities/opposed.go", "theirs");
     diverge(root, "calc.go", &ours, &theirs);
     let destination = tempfile::tempdir().unwrap();
     let file = destination.path().join("analysis.json");
@@ -412,7 +421,11 @@ fn analysis_environment_and_explicit_override_work_and_input_errors_write_no_rep
         Some(129)
     );
     assert!(!missing.exists());
-    std::fs::write(root.join("binary"), text("binary-input.go", "ours")).unwrap();
+    std::fs::write(
+        root.join("binary"),
+        text("fallback/binary-input.go", "ours"),
+    )
+    .unwrap();
     git(root, &["add", "binary"]);
     git(root, &["commit", "-qm", "binary"]);
     assert_eq!(

@@ -1,0 +1,13 @@
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：method alpha 需人工审核
+def alpha
+  2
+end
+||||||| base: base-commit
+def alpha
+  1
+end
+=======
+def alpha
+  2
+end
+>>>>>>> theirs: feature/theirs

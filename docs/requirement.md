@@ -231,6 +231,8 @@ export function validateInput(data: unknown) {
 
 ## 7. weave-core 能提供什么，需要补充什么
 
+编程语言覆盖范围复用上游 registry，支持全部上游 code grammar，不维护额外的语言白名单；保留每份输入的可靠性校验。具体范围与回退边界见 [languages.md](languages.md)。
+
 以下链接固定到本次查阅的上游提交，避免后续 API 变化导致误解。
 
 | 能力 | 已有依据 | 本项目还需要做什么 |

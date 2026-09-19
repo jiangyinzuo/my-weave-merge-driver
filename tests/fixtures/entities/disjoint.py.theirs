@@ -1,0 +1,4 @@
+def alpha():
+    y = 2
+    z = 3
+    return y

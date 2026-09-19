@@ -1,0 +1,16 @@
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function alpha 需人工审核
+function alpha() result(value)
+  integer :: value
+  value = 2
+end function alpha
+||||||| base: base-commit
+function alpha() result(value)
+  integer :: value
+  value = 1
+end function alpha
+=======
+function alpha() result(value)
+  integer :: value
+  value = 2
+end function alpha
+>>>>>>> theirs: feature/theirs

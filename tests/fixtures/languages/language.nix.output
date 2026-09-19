@@ -1,0 +1,9 @@
+{
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：binding alpha 需人工审核
+  alpha = 2;
+||||||| base: base-commit
+  alpha = 1;
+=======
+  alpha = 2;
+>>>>>>> theirs: feature/theirs
+}

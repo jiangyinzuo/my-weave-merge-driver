@@ -1,0 +1,2 @@
+(defn alpha []
+  1)

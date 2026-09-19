@@ -1,0 +1,4 @@
+function alpha() result(value)
+  integer :: value
+  value = 2
+end function alpha

@@ -67,7 +67,14 @@ impl Case {
         let path = if fixture_path(name, "path").exists() {
             text(name, "path").trim_end_matches(['\r', '\n']).to_owned()
         } else {
-            name.to_owned()
+            // Fixture directories organize tests, not the source path passed
+            // to the driver. Keep diagnostics stable when moving a case.
+            std::path::Path::new(name)
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_owned()
         };
         Self {
             name: name.into(),

@@ -1,0 +1,4 @@
+<?php
+function alpha() {
+    return 2;
+}

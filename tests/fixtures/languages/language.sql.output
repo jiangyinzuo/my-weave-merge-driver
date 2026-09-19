@@ -1,0 +1,13 @@
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：table alpha 需人工审核
+CREATE TABLE alpha (
+    id INT DEFAULT 2
+);
+||||||| base: base-commit
+CREATE TABLE alpha (
+    id INT DEFAULT 1
+);
+=======
+CREATE TABLE alpha (
+    id INT DEFAULT 2
+);
+>>>>>>> theirs: feature/theirs

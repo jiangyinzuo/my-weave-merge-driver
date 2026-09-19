@@ -1,0 +1,3 @@
+Function Alpha()
+    Return 1;
+EndFunction

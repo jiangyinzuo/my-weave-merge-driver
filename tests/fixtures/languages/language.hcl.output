@@ -1,0 +1,13 @@
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：block alpha 需人工审核
+alpha {
+  value = 2
+}
+||||||| base: base-commit
+alpha {
+  value = 1
+}
+=======
+alpha {
+  value = 2
+}
+>>>>>>> theirs: feature/theirs

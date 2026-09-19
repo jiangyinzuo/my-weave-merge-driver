@@ -9,14 +9,14 @@
 - **父子原因模型：** `Reason(kind, subject, evidence)` 替代提示字符串；父节点是审核事实，子节点保留各阶段事实或结论，不假设相互独立。按类别和可靠目标合并，不依赖中文或代码前缀判断。无法确认身份时不合并；默认折叠重复支持，`--explain-reasons` 展开全部证据。非阻断移动关联单独保存。来源统一为 `git`、`weave`、`analyze`；父节点显示来源并集，子项标注来源和分类/拒绝/原文检查等阶段。完整原因目录、25 种动作组合和上游 5 类拒绝见 [docs/conflict-reasons.md](docs/conflict-reasons.md)，由 `src/reason.rs` 通过 `include_str!` 引入 rustdoc。
 - **复用 weave：** 同一可靠 entity 优先采用上游拒绝，否则复用上游分类执行双方变更严格策略。已有实体冲突直接用于展示，不再重复检查原文；仅未覆盖区域做原始字节补充（含 weave 名称归一化遗漏），原文分区不可靠时保守回退，保留 CRLF/LF 等变化。删除分类与拒绝的配对展示代码。disjoint.go 只有 weave 分类依据，修改/删除只有 weave 拒绝依据。
 - **固定依赖：** weave-core 固定到 `a3f501d19601126fefcc40a3ebb764b8d07d39fc`，sem-core 固定为 `0.25.0`；保留上游明确拒绝的判定。
-- **展示：** Go、TypeScript、TSX 支持有限的完整实体展示；类等容器按顶层整体处理。中文固定模板解释原因，来源标签由明确参数或 Git 提供，不推断业务意图。
+- **展示：** 使用与 weave 一致的语言 registry，支持其全部 code grammar 的实体分析与展示，详见 [docs/languages.md](docs/languages.md)；类等容器按顶层整体处理。中文固定模板解释原因，来源标签由明确参数或 Git 提供，不推断业务意图。
 - **全局预分析：** 显式接收 base / ours / theirs revision 或 tree，记录解析后的 tree ID；读取三份快照的变化文件，复用 driver 严格检查，并记录每个路径三侧的 SHA-256 文本指纹。
 - **移动关联：** 分别比较 base → ours、base → theirs，关联跨文件 deleted / added 的实体。首版只匹配类型、名称、原始区域文本完全相同的 entity，含附着注释。保留所有歧义候选及数量，不强行选择唯一关系。
 - **修改与移动：** 若另一侧改变源实体或无法确认其未改变，在源、目标路径记录共同审核原因。driver 可以据此增加冲突和移动目标说明。
-- **只读结果：** JSON schema v2，分析 engine 升为 strict-weave-global-v3；旧算法结果须重新生成，避免重新注入重复依据；排序确定；原子新建并设为只读，不覆盖已有结果。各 driver 只读取它，不维护共享可变缓存。
+- **只读结果：** JSON schema v2，分析 engine 升为 strict-weave-global-v4；语言覆盖范围改变，旧算法结果须重新生成；排序确定；原子新建并设为只读，不覆盖已有结果。各 driver 只读取它，不维护共享可变缓存。
 - **输入校验：** driver 检查结果版本、路径、三侧文本指纹；缺失、损坏或不匹配时退出 `129`，保持 ours 不变。全局信息只能增加冲突，不能放宽本地判定。
-- **文本 fixture：** 单文件、全局分析、Git 流程统一读取 fixture 中的源码文本，删除 Rust 中的源码拼接与替换；少量几行的原因展示、非法 JSON、Git 配置等辅助文本使用 Rust 常量，不单独建 fixture 文件。保留同目录 `a.base`、`a.ours`、`a.theirs`、`a.output` 的自动发现和逐 byte 比较，见 [docs/testing.md](docs/testing.md)。
-- **可选 zdiff3：** `driver --zdiff3` 开启紧凑行级展示，默认不变。确认原文未变且双方仅在末尾新增不同实体时，可缩小整文件回退；严格实体冲突仍保留完整三方范围。fixture 可增加 `.output-zdiff3` 额外断言，`adjacent.ts` 已覆盖两种模式。44 组 fixture 统一断言输出；其中诊断用例提供可选 `.stderr` 和 `.stderr-details`。自定义 marker/标签通过 `.options` 指定。
+- **文本 fixture：** 单文件、全局分析、Git 流程统一读取 fixture 中的源码文本，删除 Rust 中的源码拼接与替换；少量几行的原因展示、非法 JSON、Git 配置等辅助文本使用 Rust 常量，不单独建 fixture 文件。fixture 按场景分组、递归发现；每组仍在同目录保存 `a.base`、`a.ours`、`a.theirs`、`a.output` 的自动发现和逐 byte 比较，见 [docs/testing.md](docs/testing.md)。
+- **可选 zdiff3：** `driver --zdiff3` 开启紧凑行级展示，默认不变。确认原文未变且双方仅在末尾新增不同实体时，可缩小整文件回退；严格实体冲突仍保留完整三方范围。fixture 可增加 `.output-zdiff3` 额外断言，`adjacent.ts` 已覆盖两种模式。83 组 fixture 统一断言输出；其中诊断用例提供可选 `.stderr` 和 `.stderr-details`。自定义 marker/标签通过 `.options` 指定。
 
 ## 使用
 
@@ -90,7 +90,7 @@ cargo test --locked
 RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps
 ```
 
-fmt、clippy、全部测试和 Rust 文档构建均已通过。测试包含 9 项单文件结构/性质检查（含 64 组三方输入对照普通 Git及两种展示风格）、2 项实体身份绑定检查、7 项原因模型检查、7 项全局分析检查、7 项 CLI/Git 流程检查，以及 44 组平铺 fixture 的 57 次摘要/详细/zdiff3 组合运行。原因模型覆盖所有父原因、25 种双方变化组合、全部 weave refusal 及方向、序列化往返、去重幂等、同名不同类型、未知状态与无效缓存拒绝。所有文本预期逐 byte 比较，测试框架不自动更新预期。
+fmt、clippy、全部测试和 Rust 文档构建均已通过。测试包含 9 项单文件结构/性质检查（含 64 组三方输入对照普通 Git及两种展示风格）、2 项实体身份绑定检查、7 项原因模型检查、7 项全局分析检查、7 项 CLI/Git 流程检查、2 项语言覆盖检查（34 grammar、84 扩展名及全局移动），以及 83 组分类 fixture 的 96 次摘要/详细/zdiff3 组合运行。原因模型覆盖所有父原因、25 种双方变化组合、全部 weave refusal 及方向、序列化往返、去重幂等、同名不同类型、未知状态与无效缓存拒绝。所有文本预期逐 byte 比较，测试框架不自动更新预期。
 
 ## 下一步
 

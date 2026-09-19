@@ -1,0 +1,13 @@
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function Alpha 需人工审核
+function Alpha() {
+    return <div>2</div>;
+}
+||||||| base: base-commit
+function Alpha() {
+    return <div>1</div>;
+}
+=======
+function Alpha() {
+    return <div>2</div>;
+}
+>>>>>>> theirs: feature/theirs

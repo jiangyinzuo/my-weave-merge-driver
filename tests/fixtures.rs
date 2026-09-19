@@ -1,4 +1,4 @@
-//! Flat, text-only test cases: NAME.base / .ours / .theirs / .output.
+//! Recursive text-only test cases: NAME.base / .ours / .theirs / .output.
 //! Optional NAME.path, .exit and .stderr specify path, exit status and report.
 //! NAME.output-zdiff3 adds a second run with --zdiff3 and the same exit status.
 //! NAME.stderr-details verifies --explain-reasons in every available style;
@@ -78,7 +78,12 @@ fn check_case(
             .trim_end_matches(['\r', '\n'])
             .to_owned()
     } else {
-        name.to_owned()
+        Path::new(name)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_owned()
     };
     let expected = fs::read(file("output")).map_err(|e| format!("{name}.output: {e}"))?;
     let expected_code = if file("exit").exists() {
@@ -165,17 +170,16 @@ fn text_fixtures() {
     let artifacts = root.join("target/fixture-failures");
     let mut names = BTreeSet::new();
     let mut files = Vec::new();
-    for entry in fs::read_dir(&directory).unwrap() {
-        let entry = entry.unwrap();
-        assert!(
-            entry.file_type().unwrap().is_file(),
-            "fixtures 必须平铺：{}",
-            entry.path().display()
-        );
-        let filename = entry
-            .file_name()
-            .into_string()
-            .expect("fixture 文件名必须是 UTF-8");
+    let mut paths = Vec::new();
+    collect_files(&directory, &mut paths);
+    paths.sort();
+    for path in paths {
+        let filename = path
+            .strip_prefix(&directory)
+            .unwrap()
+            .to_str()
+            .expect("fixture 文件名必须是 UTF-8")
+            .replace('\\', "/");
         let (name, suffix) = filename.rsplit_once('.').expect("fixture 文件缺少后缀");
         assert!(
             matches!(
@@ -212,7 +216,21 @@ fn text_fixtures() {
             "孤立的 fixture 文件：{name} 缺少 .base"
         );
     }
-    let filter = std::env::var("FIXTURE").ok();
+    let filter = std::env::var("FIXTURE").ok().map(|filter| {
+        if names.contains(&filter) {
+            return filter;
+        }
+        let matches: Vec<_> = names
+            .iter()
+            .filter(|name| Path::new(name).file_name().unwrap().to_str() == Some(&filter))
+            .collect();
+        assert_eq!(
+            matches.len(),
+            1,
+            "用例 {filter} 不存在或不唯一，请使用相对路径：{matches:?}"
+        );
+        matches[0].clone()
+    });
     if let Some(filter) = &filter {
         assert!(names.contains(filter), "未找到用例 {filter}");
     }
@@ -242,4 +260,21 @@ fn text_fixtures() {
         }
     }
     assert!(errors.is_empty(), "\n{}", errors.join("\n\n"));
+}
+
+fn collect_files(directory: &Path, files: &mut Vec<std::path::PathBuf>) {
+    for entry in fs::read_dir(directory).unwrap() {
+        let entry = entry.unwrap();
+        let kind = entry.file_type().unwrap();
+        if kind.is_dir() {
+            collect_files(&entry.path(), files);
+        } else {
+            assert!(
+                kind.is_file(),
+                "fixture 必须为普通文件：{}",
+                entry.path().display()
+            );
+            files.push(entry.path());
+        }
+    }
 }

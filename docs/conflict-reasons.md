@@ -91,7 +91,7 @@ R 表示 rename candidate，RM 表示 rename + modified candidate；名称关联
 `normalize` 合并只会减少重复节点，不会消除最后一个冲突依据。
 非阻断的 related_moves 独立保存；其出现或去重不改变 conflicted()。
 
-全局分析 schema v2 序列化完整父子结构，engine 为 strict-weave-global-v3。
+全局分析 schema v2 序列化完整父子结构，engine 为 strict-weave-global-v4。
 旧算法报告必须拒绝并重新生成，避免重新注入被删掉的重复依据。
 JSON 结构错误、未知枚举、空证据或父子/目标类型不兼容均视为处理错误。
 

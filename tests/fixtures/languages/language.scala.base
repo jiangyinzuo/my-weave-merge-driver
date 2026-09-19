@@ -1,0 +1,3 @@
+def alpha(): Int = {
+  1
+}
