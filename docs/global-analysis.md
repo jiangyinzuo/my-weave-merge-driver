@@ -22,7 +22,7 @@ strict-weave driver prepare BASE OURS THEIRS --output /absolute/path/analysis.js
 
 三个位置参数顺序固定，均是明确的 Git revision/tree。工具只用 `rev-parse`、`ls-tree`、`cat-file` 读取对象；不读取工作区作为版本，不推导 merge base，不调用 external diff、filters 或 hooks。结果保存已解析 tree ID，不依赖以后可能移动的 branch 引用。
 
-报告按路径排序，包含每个变化文件三侧 SHA-256 指纹、严格冲突原因、移动关联、解析降级提示。当前格式为 schema v2 / strict-weave-global-v4，`reasons` 保存父节点 `kind`、`subject` 和完整子依据 `evidence`。旧 schema 或旧 engine 报告不兼容，须重新运行 prepare；未知类型、空证据或不合法的父子组合会拒绝读取。缺失文件以 null 指纹表示，空文件有正常指纹。非阻断关联保存在 `related_moves` / `move_candidates` 中，有移动候选不等于有冲突。首次写入使用临时文件原子安装，拒绝覆盖已有结果，并设置只读权限。只读权限防止意外修改，不是防篡改认证。
+报告按路径排序，包含每个变化文件三侧 SHA-256 指纹、严格冲突原因、移动关联、解析降级提示。当前格式为 schema v2 / strict-weave-global-v5，`reasons` 保存父节点 `kind`、`subject` 和完整子依据 `evidence`。旧 schema 或旧 engine 报告不兼容，须重新运行 prepare；未知类型、空证据或不合法的父子组合会拒绝读取。缺失文件以 null 指纹表示，空文件有正常指纹。非阻断关联保存在 `related_moves` / `move_candidates` 中，有移动候选不等于有冲突。首次写入使用临时文件原子安装，拒绝覆盖已有结果，并设置只读权限。只读权限防止意外修改，不是防篡改认证。
 
 - `0`：完成，未发现当前内容规则要求审核的项。
 - `1`：完成，存在审核项；JSON 仍已写出，stderr 列出原因。

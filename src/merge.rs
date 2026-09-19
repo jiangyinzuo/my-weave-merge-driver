@@ -119,8 +119,10 @@ pub fn conflict_box(
     )
 }
 
-/// The independent, original-text line baseline. Never use weave's fallback as
-/// the baseline, and never mistake a process error for a clean merge.
+/// Run Git once on the original text, independently of weave. Git's diff3 and
+/// zdiff3 retain the initial conflict modes; plain merge may further resolve
+/// them. Thus plain conflicts are a subset of either style's conflicts.
+/// See docs/diff3-vs-zdiff3.md for the source audit and its assumptions.
 fn line_merge(
     base: &str,
     ours: &str,
@@ -135,45 +137,25 @@ fn line_merge(
         f.write_all(text.as_bytes())?;
         files.push(f);
     }
-    let run = |diff3: bool| -> Result<(String, bool)> {
-        let mut command = Command::new("git");
-        command.args(["-c", "merge.conflictStyle=merge", "merge-file", "-p"]);
-        if diff3 {
-            command.arg(match style {
-                ConflictStyle::Diff3 => "--diff3",
-                ConflictStyle::Zdiff3 => "--zdiff3",
-            });
-        }
-        let output = command
-            .arg(format!("--marker-size={width}"))
-            .args(["-L", &format!("ours: {}", safe_label(&labels.ours))])
-            .args(["-L", &format!("base: {}", safe_label(&labels.base))])
-            .args(["-L", &format!("theirs: {}", safe_label(&labels.theirs))])
-            .args(files.iter().map(|f| f.path()))
-            .output()
-            .context("无法运行 git merge-file")?;
-        match output.status.code() {
-            Some(code @ 0..=127) => Ok((String::from_utf8(output.stdout)?, code != 0)),
-            _ => bail!(
-                "git merge-file 失败：{}",
-                String::from_utf8_lossy(&output.stderr)
-            ),
-        }
-    };
-    // Plain Git decides the mandatory lower bound. Rendering in another
-    // style must never turn its conflict into success.
-    let plain = run(false)?;
-    if !plain.1 {
-        return Ok(plain);
-    }
-    let diff3 = run(true)?;
-    if diff3.1 {
-        Ok(diff3)
-    } else {
-        Ok((
-            conflict_box(base, ours, theirs, labels, width, "LINE_CONFLICT"),
-            true,
-        ))
+    let output = Command::new("git")
+        .args(["-c", "merge.conflictStyle=merge", "merge-file", "-p"])
+        .arg(match style {
+            ConflictStyle::Diff3 => "--diff3",
+            ConflictStyle::Zdiff3 => "--zdiff3",
+        })
+        .arg(format!("--marker-size={width}"))
+        .args(["-L", &format!("ours: {}", safe_label(&labels.ours))])
+        .args(["-L", &format!("base: {}", safe_label(&labels.base))])
+        .args(["-L", &format!("theirs: {}", safe_label(&labels.theirs))])
+        .args(files.iter().map(|f| f.path()))
+        .output()
+        .context("无法运行 git merge-file")?;
+    match output.status.code() {
+        Some(code @ 0..=127) => Ok((String::from_utf8(output.stdout)?, code != 0)),
+        _ => bail!(
+            "git merge-file 失败：{}",
+            String::from_utf8_lossy(&output.stderr)
+        ),
     }
 }
 

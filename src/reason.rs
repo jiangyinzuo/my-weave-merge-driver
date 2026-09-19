@@ -276,7 +276,7 @@ impl MoveEvidence {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub enum Evidence {
-    /// 普通 Git 行级合并实际返回冲突。
+    /// Git diff3/zdiff3 行级合并实际返回冲突，覆盖普通模式冲突。
     GitLineConflict,
     /// 未被上游实体原因覆盖的原文分区两侧均不等于 base，含格式与附着注释。
     RawBothChanged,
@@ -308,7 +308,7 @@ impl Evidence {
 
     pub fn summary(&self) -> String {
         let message = match self {
-            Self::GitLineConflict => "普通行级合并返回冲突".into(),
+            Self::GitLineConflict => "Git 行级合并返回冲突".into(),
             Self::RawBothChanged => "原文：ours、theirs 均相对 base 改变".into(),
             Self::WeaveActions { ours, theirs } => {
                 format!("分类：ours={}, theirs={}", ours.label(), theirs.label())

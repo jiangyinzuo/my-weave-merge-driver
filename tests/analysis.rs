@@ -182,7 +182,7 @@ fn immutable_result_rejects_stale_reversed_unknown_and_invalid_inputs() {
     std::fs::write(&bad, BROKEN_JSON).unwrap();
     assert!(analysis::load_for_driver(&bad, "source.go", texts).is_err());
     let mut json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
-    json["engine"] = "strict-weave-global-v3".into();
+    json["engine"] = "strict-weave-global-v4".into();
     std::fs::write(&bad, serde_json::to_vec(&json).unwrap()).unwrap();
     assert!(analysis::load_for_driver(&bad, "source.go", texts).is_err());
     json = serde_json::from_slice(&bytes).unwrap();

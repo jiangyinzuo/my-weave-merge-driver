@@ -23,7 +23,7 @@ BOM 也会归一化，原文分区无法完整还原时由能力降级保守阻�
 
 | `Kind` / 稳定代码 | 触发条件 | 子依据 | 默认展示 |
 | --- | --- | --- | --- |
-| `LineConflict` / `LINE_CONFLICT` | 原始三份文本的普通 Git merge-file 返回冲突；分区内行级冲突亦保留 | `GitLineConflict` | Git 行级冲突 |
+| `LineConflict` / `LINE_CONFLICT` | 原始三份文本的 Git merge-file --diff3/--zdiff3 返回冲突，覆盖普通模式冲突；分区内行级冲突亦保留 | `GitLineConflict` | Git 行级冲突 |
 | `EntityConflict` / `ENTITY_CONFLICT` | 优先保留 weave 拒绝；未拒绝目标用 weave 双方变化分类补充严格冲突；仍未覆盖时检查原文双方变化 | `RawBothChanged`、`WeaveActions`、`WeaveRefusal`，任一即可独立触发 | entity 需审核；额外动作/拒绝展开 |
 | `NonEntityConflict` / `UNMODELED_BOTH_CHANGED` | 对应的非实体分区相对 base 在两侧都变化 | `RawBothChanged` | 非实体区域双方修改 |
 | `AnalysisUnavailable` / `ENTITY_ANALYSIS_UNAVAILABLE` | 文件双方变化，且无法获得可靠原文分区或 weave 分类 | `PartitionUnavailable` 或 `WeaveUnavailable` | 无法可靠分析；整文件保守冲突 |
@@ -91,7 +91,7 @@ R 表示 rename candidate，RM 表示 rename + modified candidate；名称关联
 `normalize` 合并只会减少重复节点，不会消除最后一个冲突依据。
 非阻断的 related_moves 独立保存；其出现或去重不改变 conflicted()。
 
-全局分析 schema v2 序列化完整父子结构，engine 为 strict-weave-global-v4。
+全局分析 schema v2 序列化完整父子结构，engine 为 strict-weave-global-v5。
 旧算法报告必须拒绝并重新生成，避免重新注入被删掉的重复依据。
 JSON 结构错误、未知枚举、空证据或父子/目标类型不兼容均视为处理错误。
 

@@ -199,6 +199,26 @@ fn plain_git_conflicts_are_a_subset_of_strict_conflicts() {
                 .unwrap();
             let code = baseline.status.code().unwrap();
             assert!((0..=127).contains(&code));
+            // Independently test the Git property used by our single-run
+            // implementation, so entity checks cannot hide a line regression.
+            let styles = ["--diff3", "--zdiff3"].map(|style| {
+                let output = std::process::Command::new("git")
+                    .args(["-c", "merge.conflictStyle=merge", "merge-file", "-p", style])
+                    .args([&o, &b, &t])
+                    .output()
+                    .unwrap();
+                let styled_code = output.status.code().unwrap();
+                assert!((0..=127).contains(&styled_code));
+                assert!(
+                    code == 0 || styled_code != 0,
+                    "{style} lost plain conflict for {oi}/{ti}"
+                );
+                styled_code != 0
+            });
+            assert_eq!(
+                styles[0], styles[1],
+                "Git style verdict differs for {oi}/{ti}"
+            );
             let out = merge(
                 base,
                 &ours.ours,
@@ -228,6 +248,14 @@ fn plain_git_conflicts_are_a_subset_of_strict_conflicts() {
                 "style changed evidence for {oi}/{ti}"
             );
             assert!(out.reasons.iter().all(|r| r.valid()));
+            for (styled_conflict, result) in styles.into_iter().zip([&out, &compact]) {
+                if styled_conflict {
+                    assert!(
+                        result.reasons.iter().any(|r| r.kind == Kind::LineConflict),
+                        "lost Git line evidence for {oi}/{ti}"
+                    );
+                }
+            }
             if code != 0 {
                 git_conflicts += 1;
                 assert!(out.conflicted(), "missed plain Git conflict for {oi}/{ti}");

@@ -103,7 +103,7 @@ FIXTURE=entities/disjoint.go cargo test --locked --test fixtures -- --nocapture
 复用规则的回归测试验证：weave 已拒绝的 entity 只保留拒绝依据；尚未拒绝的 entity 使用上游分类执行严格策略；一个 entity 被拒绝不能跳过另一个 entity。`encoding.go` 包含真实 CRLF 字节，验证 weave 归一化后未识别的双方原文变化仍然冲突。
 
 - [tests/languages.rs](../tests/languages.rs)：从 weave 当前支持集与 sem-core code registry 派生测试范围，覆盖 34 个 grammar、84 个扩展名的实体分析及单方修改，逐 grammar 验证跨文件移动；所有源码从 `languages/` 读取。
-- [tests/merge.rs](../tests/merge.rs)：读取同一批 fixture，补充上游分类/拒绝、原文补充、确定性等结构化断言；枚举 64 组三方输入，对照真实的普通 `git merge-file`，验证其冲突未被消除。
+- [tests/merge.rs](../tests/merge.rs)：读取同一批 fixture，补充上游分类/拒绝、原文补充、确定性等结构化断言；枚举 64 组三方输入，直接运行普通、diff3、zdiff3 三种 `git merge-file`，验证普通冲突包含关系和两种展示模式判定一致，再检查 driver 保留行级原因。
 - [tests/git_workflow.rs](../tests/git_workflow.rs)：使用临时 Git 仓库，验证 driver 调用、版本标签、未解决 index stages、全局预分析只读采集、读取移动关联、Git 原生 abort，以及错误时不修改输入。专门展示双方文件相同时，预分析会报冲突但原生 Git 可跳过 driver 的边界。
 
 - [tests/analysis.rs](../tests/analysis.rs)：验证全局关联的确定性、歧义保留、复制/重命名边界、解析降级、全局结果只能增加冲突、结果只读及旧结果拒绝。
