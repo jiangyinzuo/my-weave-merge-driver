@@ -1,0 +1,46 @@
+<<<<<<< ours: feature/ours | ENTITY_CONFLICT：class Counter 需人工审核
+class Counter {
+public:
+    int first() const {
+        return 10;
+    }
+
+    int unchanged() const {
+        return 0;
+    }
+
+    int second() const {
+        return 2;
+    }
+};
+||||||| base: base-commit
+class Counter {
+public:
+    int first() const {
+        return 1;
+    }
+
+    int unchanged() const {
+        return 0;
+    }
+
+    int second() const {
+        return 2;
+    }
+};
+=======
+class Counter {
+public:
+    int first() const {
+        return 1;
+    }
+
+    int unchanged() const {
+        return 0;
+    }
+
+    int second() const {
+        return 20;
+    }
+};
+>>>>>>> theirs: feature/theirs

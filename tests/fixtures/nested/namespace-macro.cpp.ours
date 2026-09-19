@@ -1,0 +1,7 @@
+namespace app {
+#define SCALE(value) ((value) * 3)
+
+int score(int value) {
+    return SCALE(value);
+}
+}

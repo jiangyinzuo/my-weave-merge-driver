@@ -1,0 +1,12 @@
+namespace math {
+int score() {
+    int x = 1;
+    int y = 2;
+    int z = 3;
+    return x + y + z;
+}
+
+int unchanged() {
+    return 0;
+}
+}

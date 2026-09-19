@@ -335,6 +335,185 @@ fn distinct_entity_appends(base: &str, ours: &str, theirs: &str, path: &str) -> 
     matches!((added(ours), added(theirs)), (Some(o), Some(t)) if o.is_disjoint(&t))
 }
 
+/// Collect weave's refusals before applying any additional strict policy.
+fn weave_refusals(
+    conflicts: &[weave_core::conflict::EntityConflict],
+    parts: &ThreePartitions,
+) -> Vec<Reason> {
+    conflicts
+        .iter()
+        .enumerate()
+        .map(|(ordinal, conflict)| {
+            let subject = local_subject(parts, &conflict.entity_name, Some(&conflict.entity_type))
+                .unwrap_or_else(|| Subject::Weave {
+                    name: conflict.entity_name.clone(),
+                    source: WeaveSource::Refusal,
+                    ordinal,
+                });
+            Reason::new(
+                Kind::EntityConflict,
+                subject,
+                Evidence::WeaveRefusal {
+                    refusal: (&conflict.kind).into(),
+                },
+            )
+        })
+        .collect()
+}
+
+/// Supplement weave's refusals with the strict both-changed policy. A
+/// byte-identical final pair is not a clean fast path: both may differ from base.
+fn add_strict_entity_reasons(
+    base: &str,
+    ours: &str,
+    theirs: &str,
+    path: &str,
+    parts: &ThreePartitions,
+    reasons: &mut Vec<Reason>,
+) {
+    if ours == base || theirs == base {
+        return;
+    }
+    if !matches!(parts, (Some(_), Some(_), Some(_))) {
+        reasons.push(Reason::new(
+            Kind::AnalysisUnavailable,
+            Subject::File,
+            Evidence::PartitionUnavailable,
+        ));
+        return;
+    }
+    let Some(analysis) = analyze_default(base, ours, theirs, path) else {
+        reasons.push(Reason::new(
+            Kind::AnalysisUnavailable,
+            Subject::File,
+            Evidence::WeaveUnavailable,
+        ));
+        return;
+    };
+    let mut counts = BTreeMap::new();
+    for (triple, _) in analysis.iter() {
+        *counts.entry(analysis.label(triple)).or_insert(0) += 1;
+    }
+    for (ordinal, (triple, cell)) in analysis.iter().enumerate() {
+        let (o, t) = cell.actions();
+        let (ours, theirs) = (Change::from(o), Change::from(t));
+        if !ours.changed() || !theirs.changed() {
+            continue;
+        }
+        let name = analysis.label(triple);
+        let subject = if counts[&name] == 1 {
+            local_subject(parts, &name, None)
+        } else {
+            None
+        }
+        .unwrap_or(Subject::Weave {
+            name,
+            source: WeaveSource::Classification,
+            ordinal,
+        });
+        // weave owns refusal rules. Add our policy only for entities not
+        // already covered by a refusal with the same reliable identity.
+        if reasons
+            .iter()
+            .any(|r| r.kind == Kind::EntityConflict && r.subject == subject)
+        {
+            continue;
+        }
+        reasons.push(Reason::new(
+            Kind::EntityConflict,
+            subject,
+            Evidence::WeaveActions { ours, theirs },
+        ));
+    }
+}
+
+/// Reuse an entity decision, or record raw changes in an uncovered region.
+/// weave normalizes entity text and does not classify interstitial text.
+fn record_part_conflict(
+    base: &Part,
+    ours: &Part,
+    theirs: &Part,
+    reasons: &mut Vec<Reason>,
+) -> Option<Reason> {
+    let subject = base.subject();
+    if let Some(reason) = reasons
+        .iter()
+        .find(|r| r.kind == Kind::EntityConflict && r.subject == subject)
+    {
+        return Some(reason.clone());
+    }
+    if base.text == ours.text || base.text == theirs.text {
+        return None;
+    }
+    let reason = Reason::new(
+        if base.entity {
+            Kind::EntityConflict
+        } else {
+            Kind::NonEntityConflict
+        },
+        subject,
+        Evidence::RawBothChanged,
+    );
+    reasons.push(reason.clone());
+    Some(reason)
+}
+
+/// Add partition-level reasons and propose a rendering for strict region
+/// conflicts. The caller must still preserve whole-file Git and weave conflicts;
+/// this candidate alone cannot establish that splitting the file was safe.
+fn merge_partitions(
+    parts: &ThreePartitions,
+    both_changed: bool,
+    labels: &Labels,
+    width: usize,
+    style: ConflictStyle,
+    reasons: &mut Vec<Reason>,
+) -> Result<Option<String>> {
+    let (Some(base), Some(ours), Some(theirs)) = parts else {
+        return Ok(None);
+    };
+    if !same_keys(base, ours) || !same_keys(base, theirs) {
+        if both_changed {
+            reasons.push(Reason::new(
+                Kind::LayoutChanged,
+                Subject::File,
+                Evidence::LayoutChanged,
+            ));
+        }
+        return Ok(None);
+    }
+
+    let mut composed = String::new();
+    let mut strict_conflict = false;
+    for ((bp, op), tp) in base.iter().zip(ours).zip(theirs) {
+        if let Some(reason) = record_part_conflict(bp, op, tp, reasons) {
+            strict_conflict = true;
+            composed.push_str(&conflict_box(
+                &bp.text,
+                &op.text,
+                &tp.text,
+                labels,
+                width,
+                &reason.summary(),
+            ));
+        } else {
+            let (content, conflict) =
+                line_merge(&bp.text, &op.text, &tp.text, labels, width, style)?;
+            if conflict {
+                reasons.push(Reason::new(
+                    Kind::LineConflict,
+                    bp.subject(),
+                    Evidence::GitLineConflict,
+                ));
+            }
+            composed.push_str(&content);
+        }
+    }
+    Ok(strict_conflict.then_some(composed))
+}
+
+/// Merge using the whole-file Git baseline, then add entity and partition
+/// constraints. Choose the display only after all conflict reasons are known.
 pub fn merge_with_style(
     base: &str,
     ours: &str,
@@ -347,7 +526,12 @@ pub fn merge_with_style(
     validate_inputs([base, ours, theirs], width)?;
     let (line_content, line_conflict) = line_merge(base, ours, theirs, labels, width, style)?;
     let upstream = weave_core::entity_merge(base, ours, theirs, path);
-    let mut reasons = Vec::new();
+    let parts = (
+        partition(path, base),
+        partition(path, ours),
+        partition(path, theirs),
+    );
+    let mut reasons = weave_refusals(&upstream.conflicts, &parts);
     if line_conflict {
         reasons.push(Reason::new(
             Kind::LineConflict,
@@ -355,170 +539,35 @@ pub fn merge_with_style(
             Evidence::GitLineConflict,
         ));
     }
+    add_strict_entity_reasons(base, ours, theirs, path, &parts, &mut reasons);
 
-    // A byte-identical final pair is NOT a clean fast path: both can have
-    // changed the same entity relative to base.
-    let both_changed = ours != base && theirs != base;
-    let parts = (
-        partition(path, base),
-        partition(path, ours),
-        partition(path, theirs),
-    );
-    let reliable = parts.0.is_some() && parts.1.is_some() && parts.2.is_some();
-    for (ordinal, conflict) in upstream.conflicts.iter().enumerate() {
-        let subject = local_subject(&parts, &conflict.entity_name, Some(&conflict.entity_type))
-            .unwrap_or_else(|| Subject::Weave {
-                name: conflict.entity_name.clone(),
-                source: WeaveSource::Refusal,
-                ordinal,
-            });
-        reasons.push(Reason::new(
-            Kind::EntityConflict,
-            subject,
-            Evidence::WeaveRefusal {
-                refusal: (&conflict.kind).into(),
-            },
-        ));
-    }
-
-    if both_changed {
-        if !reliable {
-            reasons.push(Reason::new(
-                Kind::AnalysisUnavailable,
-                Subject::File,
-                Evidence::PartitionUnavailable,
-            ));
-        } else if let Some(analysis) = analyze_default(base, ours, theirs, path) {
-            let mut counts = BTreeMap::new();
-            for (triple, _) in analysis.iter() {
-                *counts.entry(analysis.label(triple)).or_insert(0) += 1;
-            }
-            for (ordinal, (triple, cell)) in analysis.iter().enumerate() {
-                let (o, t) = cell.actions();
-                let (ours, theirs) = (Change::from(o), Change::from(t));
-                if ours.changed() && theirs.changed() {
-                    let name = analysis.label(triple);
-                    let subject = if counts[&name] == 1 {
-                        local_subject(&parts, &name, None)
-                    } else {
-                        None
-                    }
-                    .unwrap_or(Subject::Weave {
-                        name,
-                        source: WeaveSource::Classification,
-                        ordinal,
-                    });
-                    // weave already owns refusal rules. Add our strict policy
-                    // only when this reliably identified entity has no refusal.
-                    if reasons
-                        .iter()
-                        .any(|r| r.kind == Kind::EntityConflict && r.subject == subject)
-                    {
-                        continue;
-                    }
-                    reasons.push(Reason::new(
-                        Kind::EntityConflict,
-                        subject,
-                        Evidence::WeaveActions { ours, theirs },
-                    ));
-                }
-            }
-        } else {
-            reasons.push(Reason::new(
-                Kind::AnalysisUnavailable,
-                Subject::File,
-                Evidence::WeaveUnavailable,
-            ));
-        }
-    }
-
-    // For unchanged entity order and exact byte partitions, render the whole
-    // conflicting entity while merging independent text outside that entity.
-    if let (Some(b), Some(o), Some(t)) = &parts {
-        if same_keys(b, o) && same_keys(b, t) {
-            let mut composed = String::new();
-            let mut entity_conflict = false;
-            for ((bp, op), tp) in b.iter().zip(o).zip(t) {
-                let subject = bp.subject();
-                let existing = reasons
-                    .iter()
-                    .find(|r| r.kind == Kind::EntityConflict && r.subject == subject)
-                    .cloned();
-                // Reuse the upstream decision/classification for rendering too.
-                // Only uncovered regions need byte-level strict checks: weave
-                // normalizes encoding, and does not classify interstitial text.
-                let conflict = existing.or_else(|| {
-                    if bp.text == op.text || bp.text == tp.text {
-                        return None;
-                    }
-                    let reason = Reason::new(
-                        if bp.entity {
-                            Kind::EntityConflict
-                        } else {
-                            Kind::NonEntityConflict
-                        },
-                        subject,
-                        Evidence::RawBothChanged,
-                    );
-                    reasons.push(reason.clone());
-                    Some(reason)
-                });
-                if let Some(reason) = conflict {
-                    entity_conflict = true;
-                    composed.push_str(&conflict_box(
-                        &bp.text,
-                        &op.text,
-                        &tp.text,
-                        labels,
-                        width,
-                        &reason.summary(),
-                    ));
-                } else {
-                    let (content, conflict) =
-                        line_merge(&bp.text, &op.text, &tp.text, labels, width, style)?;
-                    if conflict {
-                        reasons.push(Reason::new(
-                            Kind::LineConflict,
-                            bp.subject(),
-                            Evidence::GitLineConflict,
-                        ));
-                    }
-                    composed.push_str(&content);
-                }
-            }
-            // Keep every original line conflict, even when region splitting
-            // would resolve it. Upstream refusals may concern multiple regions.
-            if entity_conflict && !line_conflict && upstream.conflicts.is_empty() {
-                reason::normalize(&mut reasons);
-                return Ok(Outcome {
-                    content: composed,
-                    reasons,
-                    related_moves: Vec::new(),
-                });
-            }
-        } else if both_changed {
-            reasons.push(Reason::new(
-                Kind::LayoutChanged,
-                Subject::File,
-                Evidence::LayoutChanged,
-            ));
-        }
-    }
-
+    let composed = merge_partitions(
+        &parts,
+        ours != base && theirs != base,
+        labels,
+        width,
+        style,
+        &mut reasons,
+    )?;
+    // Splitting must not resolve a whole-file Git conflict. weave refusals
+    // may span multiple regions, so they also require the fallback below.
+    let composed = composed.filter(|_| !line_conflict && upstream.conflicts.is_empty());
     let compact_appends = style == ConflictStyle::Zdiff3
         && line_conflict
-        && reliable
+        && matches!(&parts, (Some(_), Some(_), Some(_)))
         && reasons
             .iter()
             .all(|r| matches!(r.kind, Kind::LineConflict | Kind::LayoutChanged))
         && distinct_entity_appends(base, ours, theirs, path);
+
     reason::normalize(&mut reasons);
-    let content = if reasons.is_empty() || (reasons.len() == 1 && line_conflict) || compact_appends
-    {
+    let content = if let Some(content) = composed {
+        content
+    } else if reasons.is_empty() || (reasons.len() == 1 && line_conflict) || compact_appends {
         line_content
     } else {
-        // Avoid trying to splice separately owned entity and line conflict
-        // ranges. This conservative fallback cannot lose either side's text.
+        // Avoid splicing separately owned entity and line conflict ranges.
+        // The conservative fallback keeps both sides' complete text.
         conflict_box(
             base,
             ours,

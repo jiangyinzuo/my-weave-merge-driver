@@ -1,0 +1,25 @@
+<<<<<<< ours: feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：module app 需人工审核
+namespace app {
+#define SCALE(value) ((value) * 3)
+
+int score(int value) {
+    return SCALE(value);
+}
+}
+||||||| base: base-commit
+namespace app {
+#define SCALE(value) ((value) * 2)
+
+int score(int value) {
+    return SCALE(value);
+}
+}
+=======
+namespace app {
+#define SCALE(value) ((value) * 4)
+
+int score(int value) {
+    return SCALE(value);
+}
+}
+>>>>>>> theirs: feature/theirs

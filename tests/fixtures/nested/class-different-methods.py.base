@@ -1,0 +1,9 @@
+class Counter:
+    def first(self):
+        return 1
+
+    def unchanged(self):
+        return 0
+
+    def second(self):
+        return 2

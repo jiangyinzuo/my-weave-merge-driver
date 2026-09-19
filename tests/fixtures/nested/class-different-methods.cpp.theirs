@@ -1,0 +1,14 @@
+class Counter {
+public:
+    int first() const {
+        return 1;
+    }
+
+    int unchanged() const {
+        return 0;
+    }
+
+    int second() const {
+        return 20;
+    }
+};
