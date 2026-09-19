@@ -2,7 +2,7 @@
 
 调研基于本项目固定的 weave-core `a3f501d19601126fefcc40a3ebb764b8d07d39fc` 和 sem-core `0.25.0`。以下记录上游匹配依据及本项目的复用边界；名称归一化跨文件候选已在 `src/analysis/moves.rs` 实现，依赖版本不变。
 
-## 结论
+## 可复用范围
 
 可以复用一部分，但当前公开 API 不能直接提供跨文件重命名候选及完整依据。
 
@@ -75,40 +75,13 @@ func new() string {
 
 sem-core 的默认相似度还包含文本 token 总数比例过滤，fuzzy 阶段阈值为 `0.8`；与 weave 的 `0.7`、短文本、调用佐证机制不同。不能因为 weave 依赖 sem-core 就将两套行为混为一谈。
 
-## 公开入口探针结果
+## 本项目的取舍
 
-使用临时 Rust 探针调用本项目依赖的 `analyze_default(base, branch, base, "probe.go")`，读取 public actions；仅为调研通过 Debug 输出核对私有 Link，不将其用于产品。另调用公开的归一化函数及 sem-core matcher 对照。源码和结果位于本地 `target/rename-research/`，不是新增的 fixture 自动断言。
+当前复用 `binding::replace_at_word_boundaries` 和 sem-core 的公开解析接口，直接比较名称归一化后的完整原文或有序语法表示。保留全部候选，不复用上游私有相似度、调用佐证和一对一选择；完整规则与格式边界集中在 [analysis.md](analysis.md#跨文件规则目录)，结构化依据见 [conflict-reasons.md](conflict-reasons.md#跨文件子依据)。
 
-| 输入变化 | weave actions（branch / 不变侧） | 探针显示的 Link |
-| --- | --- | --- |
-| `old → new`，其余文本完全相同 | `Renamed / Unchanged` | `BodyHash` |
-| `old → new`，同时 `"old" → "new"` | `Renamed / Unchanged` | `BodyHash` |
-| 改名并交换 `first()`、`second()` 调用顺序 | `RenameEdited / Unchanged` | `Signature ≈ 0.714286` |
-| 一个 old 变成同形 alpha 和 beta | old 被配到 alpha；beta 为 `Added / Absent` | old 使用 `BodyHash` |
-| 改名并把 `return 1` 改为 `return completelyDifferent()`，caller 同时改调用名 | `RenameEdited / Unchanged` | `CallSiteCorroborated ≈ 0.555556` |
-| 改名并将函数体缩进从空格改为 tab | `RenameEdited / Unchanged` | `Signature = 0.75` |
+没有使用 `structural_hash`：它会跳过注释、裁剪叶子首尾空白，且只返回 hash，不能满足原文保留和直接比较要求。语法比较仅忽略 token 间空白，不能将格式无关候选描述为语义等价。
 
-这里最后一行尤其说明：rename 分类不是格式化分析。同样的 Go 纯改名案例在不同文件路径下，sem-core 返回 `Moved`；字面量变化和交换调用次序案例则返回 deleted+added，进一步确认两套 matcher 不能直接替换。
-
-## 当前接入边界
-
-当前保留精确 move 检查，并增加名称不同的 deleted/added 候选：要求相同语言/grammar、相同 entity 类型、可靠原文区域，复用上述公开函数后逐 byte 比较归一化结果；不相同时，复用 sem-core 的 `parse_tree` 比较语法表示，只忽略 token 间空白。每个候选保留源/目标路径、旧名/新名和具体归一化依据；同形多目标全部报告。该规则比上游最终 matcher 更保守，也不声称与其所有 rename 分类相同。
-
-移动侧按 base → ours 和 base → theirs 分别分析。另一侧对源 entity 修改、删除或无法确认未变时，继续在相关路径增加审核原因。新增关联只能增加说明或冲突，不能取消 Git 行级冲突、weave 拒绝或既有严格原因。未匹配到候选仍不能说明不存在移动。
-
-要完整复用相似度及调用佐证，推荐上游提供独立的只读候选 API，复用已有 candidate generation，但返回选择前的关系和明确度量；跨文件接口还须携带路径、语言、作用域和源码范围。不能仅把多个 `RawEntity` 混入现有 Arena，因为其 key 没有文件路径，会让不同文件同名 entity 相互占用身份。
-
-`MoveEvidence` 已使用 `MoveMatch::Exact / NameNormalized` 区分依据，重命名候选保存 grammar/type、旧/新名称、两侧替换次数，报告升级为 schema v5 / engine v9。原文出现 `__ENTITY__` 时跳过归一化匹配；不会把 sentinel 当成身份。默认提示列出文本依据、位置、歧义数量和另一侧状态；详细模式补充公开函数、替换范围及限制。
-
-25 组新增多文件 fixture 覆盖双向 rename+move、纯移动、复制、多来源/目标（含精确候选混合）、注释/字符串、docstring、Unicode 自引用、另一侧删除/无法解析，以及 grammar、格式化、额外 body 编辑、词边界、sentinel、同文件排除。独立内部成员、相似度和调用佐证仍未纳入该规则。
-
-## 格式无关比较
-
-新增 `src/analysis/syntax.rs` 复用 sem-core 公开的 `language_config_for_content` 和 `parse_tree`。名称归一化后，直接比较完整有序语法表示，包括节点类型、字段名、是否 named、嵌套及叶子原文；保留注释/字符串/字符/模板等子树原文，不裁剪其内部空白。只忽略 token 之间的 ASCII 空白。解析失败、missing/error 节点或未覆盖非空白字节均放弃这个候选键。
-
-没有使用上游 `structural_hash`：该函数会跳过注释、裁剪叶子首尾空白，且仅返回 hash，不能满足这里的原文保留和直接比较要求。也没有使用空白分隔 token 集合相似度；当前要求表示完全相同，不做模糊阈值判断。
-
-`rename-format-file` 验证 `legacy/pricing.go → billing/prices.go`，同时 `calculateTotal → calculateTotals` 并格式化，与另一侧函数修改相遇；匹配 19 个 token，两个路径均审核。Python 正例允许缩进宽度改变；反例验证缩进改变嵌套、字面量/注释/模板内部空白及额外 body 编辑不被忽略。更多格式转换（如引号风格、分号或括号变化）并不保证匹配，且无论是否匹配都不放宽单文件冲突判定。
+若要复用更多上游规则，需要候选选择之前的只读 API，带明确度量、路径、语言、作用域和源码范围。仅公开最终 `Renamed` 或把多文件 entity 混入没有文件路径的 Arena，仍会丢失歧义或混淆身份。当前行为由 [multi-file fixtures](../tests/fixtures/multi-file/) 验证，不依赖临时探针或 Debug 输出。
 
 ## 源码依据（固定 revision）
 

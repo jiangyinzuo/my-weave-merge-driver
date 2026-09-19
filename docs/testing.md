@@ -1,40 +1,23 @@
-# 文本 fixture 测试
+# 测试与 fixture 维护
 
 driver 文本案例按场景分组在 [tests/fixtures/](../tests/fixtures/)，框架递归扫描 `*.base` 文件或目录自动发现用例。新增案例无需修改 Rust 代码。
 
-```text
-tests/fixtures/
-  entities/       # 同一实体修改、独立修改、完整范围展示
-    disjoint.go.base
-    disjoint.go.ours
-    disjoint.go.theirs
-    disjoint.go.output
-  languages/      # 上游各 code grammar 的示例
-    includes/     # C++ #include 修改、新增、删除、条件编译及独立修改对照
-  insertions/     # 双方新增行：不同内容、相同内容、共同边界、不同位置
-  nested/         # C++ / Python 非顶层 entity、类方法和宏；见专门的用例索引
-  layout/         # 相邻插入、增删、重排、非实体区域
-    adjacent.ts.base
-    adjacent.ts.ours
-    adjacent.ts.theirs
-    adjacent.ts.output
-    adjacent.ts.output-zdiff3
-  moves/          # 跨文件移动分析复用的文本
-  multi-file/     # 整组三方快照、全局分析报告及各路径的 driver 输出
-  encoding/       # CRLF、末尾无换行
-  fallback/       # 不支持语言、语法错误、重复名称、非法输入
-  git-baseline/   # 真实 Git 8×8 对照使用的版本
+常用入口：
+
+```sh
+cargo test --locked --test fixtures
+FIXTURE=entities/disjoint.go cargo test --locked --test fixtures -- --nocapture
+FIXTURE=multi-file/modify-vs-move cargo test --locked --test fixtures -- --nocapture
+cargo test --locked --test integration
 ```
 
-`a` 和 `disjoint.go` 是两个独立用例。四个文件分别保存 base、ours、theirs 和预期合并结果。允许空文件；空侧不能用说明文字代替。
+源码 fixtures 按 `entities/`、`languages/`、`insertions/`、`nested/`、`layout/`、`moves/`、`multi-file/`、`encoding/`、`fallback/`、`git-baseline/` 分类。完整源码必须来自 fixture，不在 Rust 中拼接生成；几行辅助文本（非法 JSON、Git attributes、状态标记等）可使用 Rust 常量。
 
-非顶层 entity 的 18 组人工检视案例及当前展示范围见 [nested-entity-fixtures.md](nested-entity-fixtures.md)。
-
-`insertions/` 的 4 组双方新增行用例均包含 `.output`、`.output-zdiff3` 和 `.stderr-details`，共验证 16 次 CLI 运行。具体输出和与原生 Git 的区别见 [diff3-vs-zdiff3.md](diff3-vs-zdiff3.md#双方新增行的用例)。
+人工阅读可从[嵌套 entity 索引](nested-entity-fixtures.md)、[双方新增行](diff3-vs-zdiff3.md#双方新增行的用例)和下方 include 对照开始。精确案例/CLI 运行数量以测试输出为准，不在各专题重复维护。
 
 ## C++ include 实验
 
-`languages/includes/` 的 10 组单文件案例保存三方源码、默认/zdiff3 输出、默认/详细诊断，共 40 次 CLI 断言。下表中的 Git 结果来自对同一输入运行普通 `git merge-file -p`；没有读取头文件内容或运行 C++ 预处理器。
+`languages/includes/` 保存三方源码、默认/zdiff3 输出及默认/详细诊断。下表中的 Git 结果来自对同一输入运行普通 `git merge-file -p`；没有读取头文件内容或运行 C++ 预处理器。
 
 | 案例 | 变化 | Git | driver 当前结果 |
 | --- | --- | --- | --- |
@@ -57,13 +40,24 @@ tests/fixtures/
 FIXTURE=languages/includes/replace.cpp cargo test --locked --test fixtures -- --nocapture
 ```
 
-## 自动发现与比较
+## 单文件：自动发现与比较
+
+同目录放置四个文件即可定义用例 `a`：
+
+```text
+a.base
+a.ours
+a.theirs
+a.output
+```
+
+三侧允许空文件，不能用说明文字代替。默认用例名也是源码路径；通常使用 `disjoint.go` 这样的带扩展名名称，以选择对应语言。
 
 每个案例在独立临时目录中调用真实的 `strict-weave driver`，比较写回 ours 的结果与 `.output`，逐 byte 比较，不忽略空白、换行风格或文件末尾换行。测试不会修改 fixture 输入，也不会自动更新预期。
 
 `.output-zdiff3` 是可选的额外断言。存在时，框架用原始三份输入在新的临时目录中再次运行 `driver --zdiff3`，比较该文件；原有 `.output` 的默认模式仍必测。不存在时只测试默认模式。两种模式共用由 `.output` 或 `.exit` 决定的预期退出码，防止展示选项改变冲突判定。
 
-四个文件即可运行。默认将不含分类目录的用例名作为源码路径：`disjoint.go` 使用 Go 解析器，`independent.ts` 使用 TypeScript 解析器；`a` 没有扩展名，按不支持的语言保守处理。要保留短名称 `a` 又指定语言，可添加 `a.path`，内容例如 `src/calc.go`。
+源码路径默认不含分类目录；无扩展名的 `a` 按不支持的语言保守处理，也可用 `a.path` 指定 `src/calc.go` 等路径。
 
 默认版本标签如下，预期输出使用同样的标签：
 
@@ -131,7 +125,7 @@ multi-file/
 
 每种模式先读取三份完整快照，调用与 prepare 相同的 `analysis::analyze` 并保存只读报告，再逐路径调用真实 `strict-weave driver --analysis ...`。所有文件使用同一份报告和原始输入，不把先合并的结果作为后续分析输入。未变化路径不会出现在报告中，对这些路径直接运行本地 driver。结束后检查报告未被修改。
 
-这套测试直接验证全局分析与多个文件 driver 的配合，不执行原生 `git merge`，也不模拟 Git 对删除、rename、同 blob 等路径的调度。driver 可能被 Git 跳过的边界继续由 `tests/git_workflow.rs` 验证。
+这套测试验证全局报告与逐文件 driver 的配合，不模拟原生 Git 对删除、rename、同 blob 的调度；真实操作由端到端测试覆盖。
 
 输入、输出约定：
 
@@ -144,89 +138,34 @@ multi-file/
 
 `.analysis` 必须提供，逐 byte 比较完整报告，包括所有原因、移动候选、歧义数量、另一侧状态、警告、缺失/空文件指纹及相关路径。三方标识固定为 `fixture:base / fixture:ours / fixture:theirs`，不需要构造 Git commit。它使用当前产品的报告序列化格式；分析生成失败会令该案例失败。
 
-已有 33 组多文件场景，其中原有移动场景：
+代表性用例包括 `modify-vs-move`、`pure-move`、`copy`、`ambiguous-move`、`rename-modify`、`rename-format-file`、`rename-both-move`。其余用例覆盖另一侧删除/解析失败、词边界、sentinel、grammar、注释/字面量空白和 Python 嵌套变化等匹配边界，详细预期直接查看各 `.analysis` 与输出目录。
 
-| 案例 | 检查内容 |
-| --- | --- |
-| `modify-vs-move` | ours 修改、theirs 移动；子目录路径、未变化文件、缺失与空文件，另有 zdiff3 断言 |
-| `move-vs-modify` | ours 移动、theirs 修改，验证方向对称 |
-| `pure-move` | 源文件删除、目标新增，另一侧未变；保留候选但不报冲突 |
-| `copy` | 源 entity 仍存在，复制不报移动候选 |
-| `ambiguous-move` | 两个目标全部保留，源与两个目标都报审核原因 |
-| `unknown-opposite` | 另一侧解析失败，显示 unknown 和关联不完整警告，保守报冲突 |
-| `empty-base` | 空 base，两侧分别新增文件，不误认为移动 |
+## 过滤与失败排查
 
-另有 18 组疑似重命名移动场景：
+`FIXTURE` 接受完整相对路径；文件名全局唯一时也可使用短名称。重名时必须提供相对路径。只声明默认输出时测试一次；有 `.output-zdiff3` 时额外测该模式；有 `.stderr-details` 时每种模式再测详细诊断。
 
-| 案例 | 检查内容 |
-| --- | --- |
-| `rename-modify`、`rename-ours` | 双向修改/重命名移动；源与目标均审核，前者含 zdiff3 断言 |
-| `rename-pure`、`rename-copy` | 纯重命名移动仅显示关联；保留源 entity 的复制不产生候选 |
-| `rename-ambiguous`、`rename-many-sources` | 所有来源/目标保留，数量包含同名精确移动，不选择唯一配对 |
-| `rename-literal-comment`、`rename-docstring` | 字符串和附着文本也可能被替换；不得宣称只改定义名 |
-| `rename-recursive-unicode` | Unicode 名称和自引用替换次数 |
-| `rename-unknown`、`rename-deleted` | 另一侧无法解析/已删除时保守审核 |
-| `rename-grammar-alias`、`rename-cross-grammar` | 同 grammar 的扩展名可匹配；不同 grammar 不作归一化匹配 |
-| `rename-format`、`rename-body-edit` | 格式差异通过语法回退匹配；额外内容变化不匹配，仍保留原有冲突 |
-| `rename-sentinel`、`rename-word-boundary`、`rename-same-file` | sentinel、非词边界子串、同文件排除 |
+逐 byte 比较不忽略空白、CRLF 或末尾换行。预期缺失、孤立输入、未知后缀、未找到用例或过滤器不匹配都失败；框架汇总失败，不因首个不匹配跳过后续完整案例。
 
-另有 7 组格式化边界案例：`rename-format-file`（文件改名移动、格式化、函数轻微改名）、`rename-format-python`（缩进宽度改变）、`rename-indent-structure`（缩进改变嵌套，拒绝匹配）、`rename-literal-whitespace`、`rename-comment-whitespace`、`rename-template-whitespace`（内部空白必须保留）、`rename-format-body-edit`（额外内容编辑不能被格式化掩盖）。
+失败时显示首个不同 byte、文本长度与 diff，实际产物留在 `target/fixture-failures/`，保留 fixture 子目录以及 zdiff3/details 模式后缀。多文件报告差异保存为 `<case>.actual-analysis`，源码结果按场景内路径保存。
 
-`rename-both-move` 另验证 ours 同名移动、theirs 改名到两个候选目标：旧文件和各目标的两侧 marker 提示、另一侧候选及详细依据、默认/zdiff3、自定义 11 字符 marker，保留全部歧义。
-
-这些案例全部断言默认和详细 stderr，以及 schema v5 / engine v9 的 `.analysis`。报告用 `matched_by` 明确区分精确移动与名称归一化，并检查替换次数、歧义数量和另一侧状态。
-
-新增场景只需添加这些目录和文本，无需改 Rust 测试。可先用空文件起草 `.analysis` 和输出预期，运行后阅读失败 diff 及实际产物，确认符合要求后手工填写；框架没有自动接受结果的开关。
-
-## 运行
-
-```sh
-cargo test --locked --test fixtures -- --nocapture
-```
-
-只运行一个用例：
-
-```sh
-FIXTURE=entities/disjoint.go cargo test --locked --test fixtures -- --nocapture
-
-# 一组多文件的全局报告、默认/zdiff3 输出和详细诊断
-FIXTURE=multi-file/modify-vs-move cargo test --locked --test fixtures -- --nocapture
-```
-
-过滤器接受完整相对路径；文件名在所有目录中唯一时，也兼容 `FIXTURE=disjoint.go`。重名时必须给出相对路径，避免选错用例。
-
-`FIXTURE=layout/adjacent.ts` 会检查默认、zdiff3 及两者的详细原因模式，共四次独立运行。需要检查诊断的案例提供 `.stderr` 和 `.stderr-details`；空文件断言没有诊断。该案例在 zdiff3 模式下将未改动的 `existing()` 及共同空行留在块外，仍保留 `alpha()` / `beta()` 的冲突，退出码保持 `1`。
-
-输出不一致时，框架显示首个不同 byte 的位置、长度和文本 diff，并将实际输出留在 `target/fixture-failures/`。预期文件缺失、孤立输入、未知后缀、无测试用例或指定了不存在的用例，都视为失败。文件按完整相对路径排序，失败会汇总，不会因首个不匹配就跳过其它完整用例。若差异仅在 CRLF 等不可见字符，byte 位置与长度仍会指出差异。
-
-失败产物保留 fixture 子目录，避免同名案例相互覆盖。zdiff3 的失败产物名称包含 `.zdiff3`，详细模式再加 `.details`，不会互相覆盖。
-
-多文件产物另外保留场景内源码路径，例如 `multi-file/modify-vs-move/src/source.go.actual`；报告差异保存在 `multi-file/modify-vs-move.actual-analysis`。
-
-修改预期前，应检查差异是否符合需求。没有自动接受当前输出的“更新快照”模式。
+**没有自动更新预期的开关。** 阅读实际结果与需求、确认差异正确后，再手工修改 fixture。CRLF/NUL 等测试保存真实字节，不应由编辑器归一化。
 
 ## 其它测试
 
-完整合并用例共用磁盘上的源码文本，读取入口在 [tests/common/mod.rs](../tests/common/mod.rs)；不在 Rust 中用 `replace`、`format!` 或字符串拼接生成 base / ours / theirs 或预期源码。只涉及文本结果的旧测试已并入自动发现框架，结构化原因和性质断言继续保留。
+共享源码读取入口是 [tests/common/mod.rs](../tests/common/mod.rs)，单/多文件框架分别在 [tests/fixtures.rs](../tests/fixtures.rs) 和 [fixture_support/multi.rs](../tests/fixture_support/multi.rs)。框架自身检查缺失/空快照、预期路径覆盖和递归发现规则。
 
-- `tests/fixtures/`：115 组单文件案例、33 组多文件案例，共 352 次 driver CLI 组合运行（单文件 188 次、多文件 164 次）。Git 的 8×8 对照从 `git-variant-0.ts` 到 `git-variant-7.ts` 读取固定版本，只组合已有文本，不生成源码。
-- 少量几行的辅助文本（原因提示、非法 JSON、控制字符、Git attributes 及工作区状态标记）直接使用 Rust 常量，放在对应测试附近；跨测试共用的常量放在 `tests/common/mod.rs`，无需单独建文件。
+| 测试 | 断言 |
+| --- | --- |
+| [merge.rs](../tests/merge.rs) | weave 复用、原文补充、确定性、方向对称；固定 8×8 三方组合对照普通/diff3/zdiff3 Git，验证冲突包含关系并保留行级原因 |
+| [conflict_blocks.rs](../tests/conflict_blocks.rs) | 沿三种 marker 分支还原原文、共同文本裁剪、换行与强制冲突 |
+| [analysis.rs](../tests/analysis.rs) | 全局候选、歧义、格式/重命名边界、报告只读及过期输入拒绝 |
+| [reasons.rs](../tests/reasons.rs) | 全部父子原因、双方动作、weave 拒绝、来源、归并、结构校验与序列化 |
+| [languages.rs](../tests/languages.rs) | 从上游 registry 派生 grammar/扩展名覆盖，逐语言验证 entity 与跨文件候选 |
+| [git_workflow.rs](../tests/git_workflow.rs) | 原生 driver 标签/index stages、prepare 只读采集、报告消费、Git 跳过 driver 的边界及错误不改写输入 |
 
-全局分析和 Git 流程测试复用 `move-source.go`、`move-target.go` 等案例，代码只组织路径、快照与 Git 操作。来源枚举、证据组合、非法缓存字段变异等结构化断言仍由 Rust 表达。
+Git 的 8×8 对照只组合 `git-baseline/` 中固定源码，不生成随机源码。fixture 和结构化性质测试互补，不能只因输出快照通过就取消包含关系检查。
 
-多文件框架位于 `tests/fixture_support/multi.rs`，与单文件案例共用 CLI 执行及比较函数。框架本身还验证缺失快照不能误当空快照、预期路径遗漏/多余必须失败，以及源码文件名不会被误发现为独立案例。
-
-复用规则的回归测试验证：weave 已拒绝的 entity 只保留拒绝依据；尚未拒绝的 entity 使用上游分类执行严格策略；一个 entity 被拒绝不能跳过另一个 entity。`encoding.go` 包含真实 CRLF 字节，验证 weave 归一化后未识别的双方原文变化仍然冲突。
-
-- [tests/languages.rs](../tests/languages.rs)：从 weave 当前支持集与 sem-core code registry 派生测试范围，覆盖 34 个 grammar、84 个扩展名的实体分析及单方修改，逐 grammar 验证跨文件移动；所有源码从 `languages/` 读取。
-- [tests/merge.rs](../tests/merge.rs)：读取同一批 fixture，补充上游分类/拒绝、原文补充、确定性等结构化断言；枚举 64 组三方输入，直接运行普通、diff3、zdiff3 三种 `git merge-file`，验证普通冲突包含关系和两种展示模式判定一致，再检查 driver 保留行级原因。
-- [tests/git_workflow.rs](../tests/git_workflow.rs)：使用临时 Git 仓库，验证 driver 调用、版本标签、未解决 index stages、全局预分析只读采集、读取移动关联、Git 原生 abort，以及错误时不修改输入。专门展示双方文件相同时，预分析会报冲突但原生 Git 可跳过 driver 的边界。
-
-- [tests/analysis.rs](../tests/analysis.rs)：验证全局关联的确定性、歧义保留、复制/重命名边界、解析降级、全局结果只能增加冲突、结果只读及旧结果拒绝。
-
-- [tests/reasons.rs](../tests/reasons.rs)：父子模型的完整原因目录、全部双方变化组合、全部上游拒绝类型及方向、精确归并、保留歧义、序列化和非法结构检查。来源覆盖 `git`、`weave`、`analyze`，同时验证多条 weave 依据只归属一个来源、weave 无分类时的阻断归属 analyze。原因目录见 [conflict-reasons.md](conflict-reasons.md)。
-
-运行全部验证：
+完整验证：
 
 ```sh
 cargo fmt --all -- --check
@@ -235,4 +174,24 @@ cargo test --locked
 RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps
 ```
 
-共同文本裁剪的原文还原检查见 `tests/conflict_blocks.rs`；规则见 [conflict-rendering.md](conflict-rendering.md)。
+## 真实 Git CLI 端到端测试
+
+入口为 [tests/integration.rs](../tests/integration.rs)，实现按操作放在 [tests/integration/](../tests/integration/)。运行：
+
+```sh
+cargo test --locked --test integration
+cargo test --locked --test integration rebase::
+cargo test --locked --test integration cross_file_move -- --nocapture
+```
+
+每个测试在 `/tmp` 创建独立的真实 Git 仓库，配置测试身份，复制已有 fixtures，实际执行 checkout/branch/add/commit 等命令，再调用编译出的 `strict-weave` 或原生 `git`。Git 进程没有 mock；pull 的 remote 也是本地临时仓库，不访问网络。不读取用户 global/system Git 配置，不继承外部 Git 操作环境或分析报告；editor 使用确定性的短命令。测试结束自动清理临时目录。仓库名包含空格和单引号，同时验证 shell 参数引用。
+
+| 文件 | 验证内容 |
+| --- | --- |
+| `support.rs` | 隔离仓库、进程环境、复制 fixture、Git commit、原文及状态断言 |
+| `merge.rs` | 独立 entity 合并、同 function 不同行冲突、同 blob 修改、行级冲突下限、跨文件移动、ff/no-ff/squash/no-commit/abort、dirty/多 base/未知参数拒绝、配置隔离、Git alias、linked worktree、子目录以外的冲突 |
+| `rebase.rs` | 每步报告、后续步骤冲突、continue 重新检查、skip/abort、交互式 reorder/drop/edit/squash/fixup、edit-todo、root/onto/branch、rebase-merges 的拓扑和 merge 步骤检查、editor 失败 |
+| `pull_stash.rs` | 本地 fetch 后 merge/rebase/interactive/merges/ff-only、fetch 后冲突停止、stash apply/pop、--index、工作区/index 双层修改、stash 第三 parent、移动到未跟踪文件、从子目录执行 |
+| `native.rs` | 直接执行 `git merge/rebase/cherry-pick/stash pop`，真实调用 driver 产生 marker 和未解决 index stages，并验证 abort 或 stash 保留 |
+
+仓库历史和预期状态由 Rust 表达，源码与最终文件读取已有 fixture。断言包括退出码、HEAD/父 commit/分支、文件原文、index tree/stages、stash 引用及报告；区分“预分析停止、尚未应用步骤”和“原生 Git 已产生未解决冲突”。原生行级 driver 对照用于确认严格规则确实拦截了 Git 会接受的修改。

@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use strict_weave::{
     analysis,
     merge::{self, Labels},
-    repository,
+    repository, workflow,
 };
 
 #[derive(Parser)]
@@ -17,7 +17,19 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// Git merge driver；prepare 子命令生成显式三方全局分析
-    Driver(Driver),
+    Driver(Box<Driver>),
+    /// 全局预分析通过后执行原生 Git merge
+    Merge(workflow::MergeArgs),
+    /// 在每个 pick 前检查的原生 Git rebase
+    Rebase(workflow::RebaseArgs),
+    /// fetch 后预分析，再执行 merge 或 rebase
+    Pull(workflow::PullArgs),
+    /// 预分析后执行 stash apply/pop
+    Stash(workflow::StashArgs),
+    #[command(hide = true)]
+    RebaseTodo { path: PathBuf },
+    #[command(hide = true)]
+    RebaseCheck { commit: String },
 }
 
 #[derive(Args)]
@@ -69,7 +81,15 @@ enum DriverAction {
 }
 
 fn run() -> Result<u8> {
-    let Commands::Driver(driver) = Cli::parse().command;
+    let driver = match Cli::parse().command {
+        Commands::Driver(driver) => *driver,
+        Commands::Merge(args) => return workflow::merge(args),
+        Commands::Rebase(args) => return workflow::rebase(args),
+        Commands::Pull(args) => return workflow::pull(args),
+        Commands::Stash(args) => return workflow::stash(args),
+        Commands::RebaseTodo { path } => return workflow::rebase_todo(&path),
+        Commands::RebaseCheck { commit } => return workflow::rebase_check(&commit),
+    };
     if let Some(DriverAction::Prepare {
         base,
         ours,

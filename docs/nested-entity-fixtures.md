@@ -2,7 +2,7 @@
 
 用例位于 [tests/fixtures/nested/](../tests/fixtures/nested/)，由现有框架自动发现。每组包含 `.base`、`.ours`、`.theirs`、`.output` 和 `.stderr-details`；后两者分别展示写回源码的冲突块和 `--explain-reasons` 的完整诊断。
 
-这些 fixture 记录三方共同文本裁剪后的展示。判定仍以顶层 entity 为准，不分析内部方法；块外保留三方相同的前后文。早期完整 entity 展示基线可在 commit `8a0f513` 中查看，当前规则见 [conflict-rendering.md](conflict-rendering.md)。
+这些 fixture 记录三方共同文本裁剪后的展示。判定仍以顶层 entity 为准，不分析内部方法；块外保留三方相同的前后文。当前规则见 [conflict-rendering.md](conflict-rendering.md)。
 
 ## 用例索引
 
@@ -21,7 +21,7 @@
 
 C++ 的 namespace 在上游 entity 分类中显示为 `module`。宏用例的 `#define` 在源码位置上位于 namespace 花括号内，但预处理宏没有 C++ namespace 作用域；这个用例观察的是原文所在区域的冲突，不验证宏展开或语义依赖。Python 没有对应的 namespace 声明或 C++ 预处理宏，使用 class、嵌套 class 和嵌套 function 展示层级。
 
-## 新增边界用例
+## 边界用例
 
 以下 10 组同样提供 output 和详细原因断言，均保持 conflict：
 

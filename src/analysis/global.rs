@@ -168,7 +168,9 @@ fn tree(revision: &str) -> Result<(String, BTreeMap<String, Entry>)> {
     ])?)?
     .trim_end()
     .to_owned();
-    let bytes = git(&["ls-tree", "-r", "-z", &id])?;
+    // Without --full-tree, Git silently scopes paths to the caller's cwd.
+    // Global analysis must also see conflicts outside that subdirectory.
+    let bytes = git(&["ls-tree", "--full-tree", "-r", "-z", &id])?;
     let mut entries = BTreeMap::new();
     for row in bytes.split(|b| *b == 0).filter(|r| !r.is_empty()) {
         let row = std::str::from_utf8(row).context("初版不支持非 UTF-8 路径")?;

@@ -1,8 +1,18 @@
 # 自生成冲突块与共同文本裁剪
 
-实现集中在 `src/merge/conflict.rs`，对外仍通过 `merge::conflict_box` 调用。实体分区冲突、整文件保守回退、全局分析新增冲突使用同一个渲染函数；调用方决定原因和输入范围，渲染函数不决定 clean/conflict。
+实现集中在 `src/merge/conflict.rs`，对外通过 `merge::conflict_box` 调用。实体分区冲突、整文件保守回退、全局分析新增冲突使用同一个渲染函数；调用方决定原因和输入范围，渲染函数不决定 clean/conflict。
 
 单文件分析先在 `src/analysis/local.rs` 收集完整原因及 Git 输出，再由 `src/merge/render.rs` 只读选择展示；渲染阶段不追加或删除冲突原因。分析规则入口见 [analysis.md](analysis.md)。
+
+## 展示选择
+
+1. 整文件没有 Git 冲突或 weave 拒绝，且有可靠分区时，可逐分区展示严格冲突。
+2. 没有原因、仅有行级原因，或满足 zdiff3 的安全追加条件时，采用 Git 输出。
+3. 其余情况保守使用整文件三方块，不拼接不同来源的冲突范围。
+
+三条规则按顺序选择；它们不改变原因或退出码。安全追加特例见 [diff3-vs-zdiff3.md](diff3-vs-zdiff3.md#当前展示策略)。
+
+## 共同文本裁剪
 
 默认裁掉 base、ours、theirs 三方逐 byte 相同的前缀行和后缀行，将共同上下文原样放在 marker 外。中间内容依然用带 base 的三方 marker 包装，原因保持原来的 entity 或文件范围。这个过程不分析内部方法、不匹配 diff hunk、不修改 weave-core。
 
@@ -13,7 +23,7 @@
 - 只有三方共同文本才可移出；ours/theirs 相同但不同于 base 的修改必须保留在块内。
 - 裁剪前缀后再比较后缀，避免重复行导致两个裁剪范围交叉。
 - 比较保留换行符的完整行，区分 LF、CRLF 和无末尾换行。前缀必须以换行结束，防止 marker 接在源码同一行上。
-- 共同的无换行末行可以作为后缀原样保留；冲突区内无末尾换行的文本仍需补一个换行容纳 marker，这是原渲染器已有的行为。
+- 共同的无换行末行可以作为后缀原样保留；冲突区内无末尾换行的文本仍需补一个换行容纳 marker，以保证 marker 独占一行。
 - 三方完全相同（包括全空）时保留完整冲突块。调用方可能因全局分析或其他外部原因要求审核，渲染器不能将它消除。
 - 自生成的每个冲突块始终保留四条 marker；裁剪不删原因、不改退出码，也不将不同实体块合并或重排。
 
@@ -25,7 +35,7 @@ Git zdiff3 可以移出仅 ours/theirs 相同、与 base 不同的边界行。�
 
 ## 测试
 
-文本 fixture 保存实际三方输入和预期输出；原有 57 份 output 缩短，更新前逐一验证了沿三种 marker 分支还原出的文本与旧 output 相同，原有详细诊断和退出码未变化。nested 用例增加 10 组边界场景，详见 [nested-entity-fixtures.md](nested-entity-fixtures.md)。
+文本 fixture 保存三方输入、预期输出及诊断；内部成员、重载、重排、相同修改等展示边界见 [nested-entity-fixtures.md](nested-entity-fixtures.md)。
 
 `tests/conflict_blocks.rs` 从 fixture 读取 64 组三方组合，分别沿 base/ours/theirs 分支还原完整文本，检查 byte 保真；另外覆盖全相同强制冲突、空内容、插入/删除、重复边界行、CRLF 和无末尾换行。测试中的几行辅助字符串仅用于换行和 marker 边界。
 

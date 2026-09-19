@@ -1,54 +1,11 @@
-基于[weave](https://github.com/Ataraxy-Labs/weave)的weave-core实现严格的、同时基于entity和行级的git merge driver。
+# 项目约束
 
-## 功能需求
+基于 [weave-core](https://github.com/Ataraxy-Labs/weave) 实现严格的 entity + 行级 Git merge driver。需求及示例集中维护于 [docs/requirement.md](docs/requirement.md)，当前状态见 [WIP.md](WIP.md)。
 
-### 当两个分支同时修改同一个函数的不同内容时，产生merge conflict
-
-例如base commit: 保留xyz
-```go
-func a() int {
-    x := 1
-    y := 2
-    z := 3
-    return y
-}
-```
-
-update1 commit: 保留xy
-```go
-func a() int {
-    x := 1
-    y := 2
-    return y
-}
-```
-
-update2 commit: 保留yz
-```go
-func a() int {
-    y := 2
-    z := 3
-    return y
-}
-```
-
-行级diff中，update1和update2不会报merge conflict，但我认为它们修改了相同函数，理应让人类进一步判断其中的逻辑是否实现正确，故需要报merge conflict。
-
-### 保留行级diff产生的merge conflict，但产生更加人类友好的merge conflict信息
-
-当 Git 行级合并实际产生 conflict 时，即使 weave 能自动合并，也必须保留 conflict，并提供实体层级的原因说明。具体示例见 [requirement.md](docs/requirement.md) 中的示例 B。
-
-值得注意的是，[weave的README](https://github.com/Ataraxy-Labs/weave/blob/main/README.md#weave-vs-git-merge)
-中列举了很多line-based merger会报错，weave会自动合并的场景，我希望保持对它们报merge conflict，但给出友好的、方便人类阅读的merge conflict保持信息。
-
-### 人类友好的merge conflict 信息增强
-
-- 传统merge conflict信息中，很难分清谁是ours，谁是theirs。我希望标明具体的branch/cherry-pick信息。
-- 在merge conflict信息中尽量支持中文。
-- 信息保持简洁，function、branch、ours、theirs、base 等基础术语保留英文，不必逐一翻译；中文用于解释冲突原因和必要的操作上下文。
-- 提示由确定性的实体分析、文本 diff、Git 上下文及固定模板生成，不推断业务意图或正确结果。启发式匹配应提供依据并标注不确定性；人工处理建议不代表程序已验证语义。
-- 尽量给出基于entity的merge conflict信息，而不是基于行的。
-
-### 注重正确性和确定性
-
-朴素的git line-based merge driver会报的merge conflict，本merge-driver一定也要能报。禁止漏报merge conflict！
+- **禁止漏报 Git 行级冲突。** 原始三方文本的 Git 行级合并发生 conflict 时，即使 weave 能自动合并，也必须保留冲突。
+- **同一 function 双方修改必须冲突。** 包括修改不同行、得到完全相同结果；判定比较明确的 base / ours / theirs 快照。示例 A 展示双方删除同一函数中不同语句的情形。
+- 复用 weave 的匹配、分类与拒绝，仅补充上游未拒绝的严格规则；不能为简化展示取消任何必要冲突。
+- 注重正确性和确定性。无法可靠分析时保守冲突或明确报错，不能误报成功。
+- 提示尽量使用中文；function、branch、ours、theirs、base 等基础术语保留英文。使用可靠的 Git 标签和操作上下文说明双方身份，不能猜测分支来源。
+- 提示由实体分析、文本 diff、Git 上下文和固定模板生成，不推断业务意图或正确结果。启发式匹配须提供依据、保留歧义并标注“疑似”；人工建议不代表语义验证。
+- 优先提供 entity 层级原因及可读的冲突块。需求示例 B 说明不同 entity 仍须保留行级冲突的情况。

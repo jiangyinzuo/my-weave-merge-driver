@@ -295,7 +295,7 @@ fn preparation_detects_identical_edits_even_when_native_git_skips_driver() {
 }
 
 #[test]
-fn stale_analysis_fails_before_driver_writes_and_no_workflow_or_diff_commands_exist() {
+fn stale_analysis_fails_before_driver_writes_and_unsupported_commands_are_rejected() {
     let temp = init("calc.go", BASE);
     let root = temp.path();
     let changed = text("entities/unilateral.go", "ours");
@@ -345,7 +345,7 @@ fn stale_analysis_fails_before_driver_writes_and_no_workflow_or_diff_commands_ex
         std::fs::read(root.join("o")).unwrap(),
         STALE_TEXT.as_bytes()
     );
-    for cmd in ["diff", "merge", "rebase", "cherry-pick", "stash"] {
+    for cmd in ["diff", "cherry-pick", "stash"] {
         assert_eq!(tool(root, &[cmd]).status.code(), Some(2));
     }
 }
