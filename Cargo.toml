@@ -1,0 +1,22 @@
+[package]
+name = "strict-weave"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Conservative entity and line based Git merge driver"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+tempfile = "3"
+weave-core = { git = "https://github.com/Ataraxy-Labs/weave", rev = "a3f501d19601126fefcc40a3ebb764b8d07d39fc" }
+sem-core = { version = "=0.25.0", default-features = false }
+sha2 = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.dev]
+debug = 0
+
+[profile.test]
+debug = 0

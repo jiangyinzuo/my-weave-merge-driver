@@ -1,0 +1,10 @@
+<<<<<<< ours: feature/ours | ENTITY_BOTH_CHANGED：a [ours=deleted, theirs=modified]; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化，保留整文件冲突; LINE_CONFLICT：Git 行级冲突; WEAVE_REFUSAL：function a [modify_delete]
+||||||| base: base-commit
+func a() int {
+    return 1
+}
+=======
+func a() int {
+    return 2
+}
+>>>>>>> theirs: feature/theirs

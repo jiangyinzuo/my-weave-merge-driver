@@ -1,0 +1,444 @@
+//! Explicit three-tree analysis. This module never runs or controls a Git merge.
+//! Cached findings can only add conflicts; every driver call still checks its inputs.
+use crate::merge::{self, Labels, Outcome};
+use anyhow::{bail, Context, Result};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    io::{Read, Write},
+    path::Path,
+    process::Command,
+};
+
+const MAX_TOTAL: usize = 64 * 1024 * 1024;
+const ENGINE: &str = "strict-weave-global-v1";
+type Snapshot = BTreeMap<String, String>;
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Report {
+    pub schema_version: u32,
+    pub engine: String,
+    /// Always base, ours, theirs; resolved trees, never guessed merge bases.
+    pub trees: [String; 3],
+    pub files: BTreeMap<String, FileAnalysis>,
+    pub move_candidates: Vec<MoveCandidate>,
+    pub warnings: Vec<String>,
+}
+
+impl Report {
+    pub fn conflicted(&self) -> bool {
+        self.files.values().any(|f| !f.reasons.is_empty())
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FileAnalysis {
+    /// SHA-256 of raw bytes in base, ours, theirs. None means path absent.
+    pub fingerprints: [Option<String>; 3],
+    pub reasons: Vec<String>,
+    pub notes: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Location {
+    pub path: String,
+    pub entity: String,
+    /// Starts at the entity region, including attached comments.
+    pub line: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MoveCandidate {
+    pub side: String,
+    pub base: Location,
+    pub target: Location,
+    pub source_count: usize,
+    pub destination_count: usize,
+    pub opposite_changed: bool,
+    pub evidence: String,
+}
+
+struct Entity {
+    key: String,
+    location: Location,
+    text: String,
+}
+type Entities = BTreeMap<String, Entity>;
+
+fn entities(path: &str, text: &str) -> Option<Entities> {
+    let mut result = BTreeMap::new();
+    let mut line = 1;
+    for part in merge::partition(path, text)? {
+        let next = line + part.text.bytes().filter(|b| *b == b'\n').count();
+        if part.entity {
+            result.insert(
+                part.key.clone(),
+                Entity {
+                    key: part.key,
+                    location: Location {
+                        path: path.into(),
+                        entity: part.label,
+                        line,
+                    },
+                    text: part.text,
+                },
+            );
+        }
+        line = next;
+    }
+    Some(result)
+}
+
+fn fingerprint(text: &str) -> String {
+    format!("{:x}", Sha256::digest(text.as_bytes()))
+}
+
+/// Text snapshots are internal/library inputs, not a public diff command.
+/// Missing paths and present empty files remain distinct in the report.
+pub fn analyze(snapshots: &[Snapshot; 3], trees: [String; 3]) -> Result<Report> {
+    let mut total = 0usize;
+    for snapshot in snapshots {
+        for (path, text) in snapshot {
+            if path.is_empty() {
+                bail!("空路径不受支持");
+            }
+            merge::validate_text(text.as_bytes()).with_context(|| format!("读取 {path}"))?;
+            total += text.len();
+            if total > MAX_TOTAL {
+                bail!("三方分析文本超过 64 MiB");
+            }
+        }
+    }
+    let mut report = Report {
+        schema_version: 1,
+        engine: ENGINE.into(),
+        trees,
+        files: BTreeMap::new(),
+        move_candidates: Vec::new(),
+        warnings: Vec::new(),
+    };
+    let paths: BTreeSet<_> = snapshots.iter().flat_map(|s| s.keys()).collect();
+    let mut parsed: [BTreeMap<String, Option<Entities>>; 3] = Default::default();
+    for path in paths {
+        let texts = snapshots.each_ref().map(|s| s.get(path));
+        if texts[0] == texts[1] && texts[0] == texts[2] {
+            continue;
+        }
+        let contents = texts.map(|t| t.map(String::as_str).unwrap_or(""));
+        // Same original-byte baseline and entity rules as the actual driver.
+        let outcome = merge::merge(
+            contents[0],
+            contents[1],
+            contents[2],
+            path,
+            &Labels::default(),
+            7,
+        )
+        .with_context(|| format!("分析 {path}"))?;
+        report.files.insert(
+            path.clone(),
+            FileAnalysis {
+                fingerprints: texts.map(|t| t.map(|s| fingerprint(s))),
+                reasons: outcome.reasons,
+                notes: Vec::new(),
+            },
+        );
+        for side in 0..3 {
+            let parts = if texts[side].is_some() {
+                entities(path, contents[side])
+            } else {
+                Some(BTreeMap::new())
+            };
+            if parts.is_none() {
+                report.warnings.push(format!(
+                    "ENTITY_ANALYSIS_UNAVAILABLE：{}:{path}；移动关联不完整，单文件严格检查仍执行",
+                    ["base", "ours", "theirs"][side]
+                ));
+            }
+            parsed[side].insert(path.clone(), parts);
+        }
+    }
+    for (side, name) in [(1, "ours"), (2, "theirs")] {
+        let other = 3 - side;
+        let mut deleted: BTreeMap<(&str, &str), Vec<&Entity>> = BTreeMap::new();
+        let mut added: BTreeMap<(&str, &str), Vec<&Entity>> = BTreeMap::new();
+        for (path, base) in &parsed[0] {
+            let (Some(base), Some(current)) = (base.as_ref(), parsed[side][path].as_ref()) else {
+                continue;
+            };
+            for (key, entity) in base {
+                if !current.contains_key(key) {
+                    deleted
+                        .entry((&entity.key, &entity.text))
+                        .or_default()
+                        .push(entity);
+                }
+            }
+            for (key, entity) in current {
+                if !base.contains_key(key) {
+                    added
+                        .entry((&entity.key, &entity.text))
+                        .or_default()
+                        .push(entity);
+                }
+            }
+        }
+        for (key, sources) in deleted {
+            let Some(targets) = added.get(&key) else {
+                continue;
+            };
+            if sources.len().saturating_mul(targets.len()) > 10_000 - report.move_candidates.len() {
+                bail!("移动候选超过 10000，无法完整生成报告；未写出分析文件");
+            }
+            for source in &sources {
+                let opposite_changed = match parsed[other][&source.location.path].as_ref() {
+                    Some(entities) => entities
+                        .get(&source.key)
+                        .is_none_or(|e| e.text != source.text),
+                    None => true, // Unknown is not evidence of an unchanged entity.
+                };
+                for target in targets {
+                    if source.location.path == target.location.path {
+                        continue;
+                    }
+                    let note = format!("MOVE_CANDIDATE：{name} 疑似移动 {} · {}:{} → {}:{}；依据：源 deleted、目标 added，类型/名称/原始实体区域文本相同（含附着注释）；sources={}，destinations={}", source.location.entity, source.location.path, source.location.line, target.location.path, target.location.line, sources.len(), targets.len());
+                    for path in [&source.location.path, &target.location.path] {
+                        let file = report.files.get_mut(path).expect("changed candidate path");
+                        file.notes.push(note.clone());
+                        if opposite_changed {
+                            file.reasons.push(format!("GLOBAL_MODIFY_VS_MOVE：{}；另一侧改变了 base 实体或无法确认未改变，需共同审核", note));
+                        }
+                    }
+                    report.move_candidates.push(MoveCandidate {
+                        side: name.into(), base: source.location.clone(), target: target.location.clone(),
+                        source_count: sources.len(), destination_count: targets.len(), opposite_changed,
+                        evidence: "类型、名称、原始实体区域文本完全相同；源 deleted、目标 added；不证明语义身份".into(),
+                    });
+                }
+            }
+        }
+    }
+    for file in report.files.values_mut() {
+        file.reasons.sort();
+        file.reasons.dedup();
+        file.notes.sort();
+        file.notes.dedup();
+    }
+    report.warnings.sort();
+    report.warnings.dedup();
+    Ok(report)
+}
+
+fn git(args: &[&str]) -> Result<Vec<u8>> {
+    let output = Command::new("git")
+        .env("GIT_OPTIONAL_LOCKS", "0")
+        .args(args)
+        .output()
+        .context("无法运行 git")?;
+    if !output.status.success() {
+        bail!(
+            "git {} 失败：{}",
+            args.join(" "),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+    Ok(output.stdout)
+}
+
+#[derive(PartialEq, Eq)]
+struct Entry {
+    mode: String,
+    oid: String,
+}
+
+fn tree(revision: &str) -> Result<(String, BTreeMap<String, Entry>)> {
+    let id = String::from_utf8(git(&[
+        "rev-parse",
+        "--verify",
+        "--end-of-options",
+        &format!("{revision}^{{tree}}"),
+    ])?)?
+    .trim_end()
+    .to_owned();
+    let bytes = git(&["ls-tree", "-r", "-z", &id])?;
+    let mut entries = BTreeMap::new();
+    for row in bytes.split(|b| *b == 0).filter(|r| !r.is_empty()) {
+        let row = std::str::from_utf8(row).context("初版不支持非 UTF-8 路径")?;
+        let (meta, path) = row.split_once('\t').context("无效的 ls-tree 输出")?;
+        let fields: Vec<_> = meta.split_whitespace().collect();
+        if fields.len() != 3 {
+            bail!("无效的 ls-tree 元数据");
+        }
+        entries.insert(
+            path.into(),
+            Entry {
+                mode: fields[0].into(),
+                oid: fields[2].into(),
+            },
+        );
+    }
+    Ok((id, entries))
+}
+
+/// Only reads trees/blobs. Does not infer operation context from HEAD/state files,
+/// and does not invoke external diff, filters, hooks, merge or index writes.
+pub fn prepare(revisions: [&str; 3]) -> Result<Report> {
+    let trees = [
+        tree(revisions[0])?,
+        tree(revisions[1])?,
+        tree(revisions[2])?,
+    ];
+    let mut snapshots: [Snapshot; 3] = Default::default();
+    let paths: BTreeSet<_> = trees
+        .iter()
+        .flat_map(|(_, entries)| entries.keys())
+        .collect();
+    let mut total = 0usize;
+    let mut metadata_only = Vec::new();
+    for path in paths {
+        let entries = trees.each_ref().map(|(_, e)| e.get(path));
+        if entries[0] == entries[1] && entries[0] == entries[2] {
+            continue;
+        }
+        for side in 0..3 {
+            if let Some(entry) = entries[side] {
+                if !matches!(entry.mode.as_str(), "100644" | "100755") {
+                    bail!("初版分析不支持变化的 symlink/submodule：{path}");
+                }
+                let size = String::from_utf8(git(&["cat-file", "-s", &entry.oid])?)?
+                    .trim()
+                    .parse::<usize>()?;
+                total = total.checked_add(size).context("分析输入大小溢出")?;
+                if size > merge::MAX_BYTES || total > MAX_TOTAL {
+                    bail!("分析文本超过大小限制：{path}");
+                }
+                let bytes = git(&["cat-file", "blob", &entry.oid])?;
+                snapshots[side].insert(
+                    path.clone(),
+                    merge::validate_text(&bytes)
+                        .with_context(|| format!("读取 {path}"))?
+                        .to_owned(),
+                );
+            }
+        }
+        metadata_only.push(path.clone());
+    }
+    let mut report = analyze(&snapshots, trees.each_ref().map(|(id, _)| id.clone()))?;
+    // Include fingerprints even for mode-only changes: the driver can still be
+    // called there. Git, not this content driver, owns mode conflict handling.
+    for path in metadata_only {
+        report
+            .files
+            .entry(path.clone())
+            .or_insert_with(|| FileAnalysis {
+                fingerprints: snapshots
+                    .each_ref()
+                    .map(|s| s.get(&path).map(|t| fingerprint(t))),
+                reasons: Vec::new(),
+                notes: Vec::new(),
+            });
+    }
+    Ok(report)
+}
+
+/// Atomically creates a new read-only result; no replacement of existing files.
+pub fn save(path: &Path, report: &Report) -> Result<()> {
+    let bytes = serde_json::to_vec_pretty(report)?;
+    if bytes.len() + 1 > MAX_TOTAL {
+        bail!("分析结果超过 64 MiB");
+    }
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let mut file = tempfile::NamedTempFile::new_in(parent)?;
+    file.write_all(&bytes)?;
+    file.write_all(b"\n")?;
+    let mut permissions = file.as_file().metadata()?.permissions();
+    permissions.set_readonly(true);
+    file.as_file().set_permissions(permissions)?;
+    file.as_file().sync_all()?;
+    file.persist_noclobber(path)
+        .map_err(|e| e.error)
+        .context("无法新建分析文件；不覆盖已有结果")?;
+    Ok(())
+}
+
+pub fn load_for_driver(path: &Path, source: &str, texts: [&str; 3]) -> Result<FileAnalysis> {
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)
+        .context("读取全局分析文件")?
+        .take((MAX_TOTAL + 1) as u64)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() > MAX_TOTAL {
+        bail!("全局分析文件超过 64 MiB");
+    }
+    let mut report: Report = serde_json::from_slice(&bytes).context("无效的全局分析文件")?;
+    if report.schema_version != 1 || report.engine != ENGINE {
+        bail!("全局分析版本不兼容");
+    }
+    let file = report
+        .files
+        .remove(source)
+        .context("全局分析未包含此路径；不能确认上下文，拒绝使用")?;
+    for side in 0..3 {
+        let matches = match &file.fingerprints[side] {
+            Some(expected) => *expected == fingerprint(texts[side]),
+            None => texts[side].is_empty(),
+        };
+        if !matches {
+            bail!(
+                "全局分析输入不匹配：{}；可能过期、路径变化、虚拟 base 或输入转换；保持 ours 不变",
+                ["base", "ours", "theirs"][side]
+            );
+        }
+    }
+    Ok(file)
+}
+
+pub fn augment(
+    outcome: &mut Outcome,
+    global: &FileAnalysis,
+    texts: [&str; 3],
+    labels: &Labels,
+    width: usize,
+) {
+    let already_conflicted = outcome.conflicted();
+    for reason in &global.reasons {
+        // Preparation uses the default display. Keep the current driver's
+        // layout explanation when optional zdiff3 selected a narrower scope.
+        if reason.starts_with("ENTITY_LAYOUT_CHANGED：")
+            && outcome
+                .reasons
+                .iter()
+                .any(|r| r.starts_with("ENTITY_LAYOUT_CHANGED："))
+        {
+            continue;
+        }
+        outcome.reasons.push(reason.clone());
+    }
+    if !outcome.reasons.is_empty() {
+        for note in &global.notes {
+            if !outcome.reasons.iter().any(|reason| reason.contains(note)) {
+                outcome.reasons.push(note.clone());
+            }
+        }
+        outcome.reasons.sort();
+        outcome.reasons.dedup();
+        if !already_conflicted {
+            outcome.content = merge::conflict_box(
+                texts[0],
+                texts[1],
+                texts[2],
+                labels,
+                width,
+                "GLOBAL_ANALYSIS：全局关联要求人工审核",
+            );
+        }
+    }
+}

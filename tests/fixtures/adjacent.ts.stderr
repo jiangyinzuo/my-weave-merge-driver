@@ -1,0 +1,8 @@
+冲突 · adjacent.ts
+ours   : feature/ours
+base   : base-commit
+theirs : feature/theirs
+原因：ENTITY_LAYOUT_CHANGED：实体增删或顺序变化，保留整文件冲突
+原因：LINE_CONFLICT：Git 行级冲突
+需人工处理：选择一侧 / 编辑合并结果。
+

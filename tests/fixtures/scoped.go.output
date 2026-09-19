@@ -1,0 +1,17 @@
+<<<<<<< ours: feature/ours | ENTITY_BOTH_CHANGED：function a
+func a() int {
+    return 2
+}
+||||||| base: base-commit
+func a() int {
+    return 1
+}
+=======
+func a() int {
+    return 2
+}
+>>>>>>> theirs: feature/theirs
+
+func b() int {
+    return 20
+}

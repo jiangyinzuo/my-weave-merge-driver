@@ -1,0 +1,7 @@
+func a() int {
+    return 1
+}
+
+func b() int {
+    return 10
+}

@@ -1,0 +1,11 @@
+<<<<<<< ours: feature/ours | ENTITY_LAYOUT_CHANGED：实体增删或顺序变化，保留整文件冲突; LINE_CONFLICT：Git 行级冲突
+export function existing() { return 0; }
+
+export function alpha() { return 1; }
+||||||| base: base-commit
+export function existing() { return 0; }
+=======
+export function existing() { return 0; }
+
+export function beta() { return 2; }
+>>>>>>> theirs: feature/theirs
