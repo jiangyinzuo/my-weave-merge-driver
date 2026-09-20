@@ -3,23 +3,23 @@ use super::partition::{same_keys, Part, ThreePartitions};
 use crate::reason::{Evidence, Kind, Reason, Subject};
 
 /// 三侧身份和顺序已对齐；reason 仅保存严格原文/实体判定。
-pub(super) struct Region {
-    pub base: Part,
-    pub ours: Part,
-    pub theirs: Part,
+pub(super) struct Region<'a> {
+    pub base: &'a Part,
+    pub ours: &'a Part,
+    pub theirs: &'a Part,
     pub reason: Option<Reason>,
 }
 
 /// 无可靠分区时不猜测范围；布局不同且文件双方变化时保守阻断。
-pub(super) fn analyze_regions(
-    parts: ThreePartitions,
+pub(super) fn analyze_regions<'a>(
+    parts: &'a ThreePartitions,
     both_changed: bool,
     reasons: &mut Vec<Reason>,
-) -> Option<Vec<Region>> {
+) -> Option<Vec<Region<'a>>> {
     let (Some(base), Some(ours), Some(theirs)) = parts else {
         return None;
     };
-    if !same_keys(&base, &ours) || !same_keys(&base, &theirs) {
+    if !same_keys(base, ours) || !same_keys(base, theirs) {
         if both_changed {
             reasons.push(Reason::new(
                 Kind::LayoutChanged,
@@ -30,11 +30,11 @@ pub(super) fn analyze_regions(
         return None;
     }
     Some(
-        base.into_iter()
+        base.iter()
             .zip(ours)
             .zip(theirs)
             .map(|((base, ours), theirs)| {
-                let reason = record_part_conflict(&base, &ours, &theirs, reasons);
+                let reason = record_part_conflict(base, ours, theirs, reasons);
                 Region {
                     base,
                     ours,

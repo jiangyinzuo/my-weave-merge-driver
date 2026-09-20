@@ -250,3 +250,56 @@ fn noninteractive_rebase_can_edit_todo_after_a_blocked_step() {
     assert_eq!(r.head(), r.git(&["rev-parse", "other"]));
     r.assert_clean();
 }
+
+#[test]
+fn invalid_remaining_todo_does_not_consume_a_blocked_step() {
+    let r = Repo::new(SIMPLE, "calc.go");
+    r.diverge(SIMPLE, "calc.go");
+    assert_code(&r.tool(&["rebase", "other"]), 1);
+    let before = r.head();
+    let state: serde_json::Value =
+        serde_json::from_slice(&fs::read(r.path().join(".git/strict-weave/rebase.json")).unwrap())
+            .unwrap();
+    let blocked = std::path::Path::new(state["directory"].as_str().unwrap()).join("blocked");
+    let instruction = fs::read(&blocked).unwrap();
+    let path = r.path().join(".git/rebase-merge/git-rebase-todo");
+    let original = fs::read_to_string(&path).unwrap();
+    // A real target change is not Git's harmless short-hash expansion.
+    let pick = original
+        .lines()
+        .find(|line| line.starts_with("pick "))
+        .unwrap();
+    let old_hash = pick.split_whitespace().nth(1).unwrap();
+    let altered_pick = pick.replacen(old_hash, &before, 1);
+    let changed_target = original.replace(pick, &altered_pick);
+    fs::write(&path, &changed_target).unwrap();
+    let out = r.tool(&["rebase", "--skip"]);
+    assert_code(&out, 129);
+    assert!(stderr(&out).contains("待办列表已变化"));
+    assert_eq!(fs::read_to_string(&path).unwrap(), changed_target);
+    assert_eq!(fs::read(&blocked).unwrap(), instruction);
+    assert_eq!(r.head(), before);
+
+    let invalid = format!("{original}\nunsupported-command\n");
+    fs::write(&path, &invalid).unwrap();
+
+    let out = r.tool(&["rebase", "--skip"]);
+    assert_code(&out, 129);
+    assert!(
+        stderr(&out).contains("不支持的 rebase todo 指令"),
+        "{}\ntodo={invalid}",
+        stderr(&out)
+    );
+    assert_eq!(fs::read_to_string(&path).unwrap(), invalid);
+    assert_eq!(fs::read(&blocked).unwrap(), instruction);
+    assert_eq!(r.head(), before);
+    r.assert_file("calc.go", SIMPLE, "theirs");
+    assert!(!r.path().join(".git/strict-weave/workflow.lock").exists());
+
+    // Correcting the todo must still permit exactly the original blocked skip.
+    fs::write(path, original).unwrap();
+    r.ok(&["rebase", "--skip"]);
+    assert_eq!(r.head(), r.git(&["rev-parse", "other"]));
+    assert!(!blocked.exists());
+    r.assert_clean();
+}

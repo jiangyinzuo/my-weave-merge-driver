@@ -211,3 +211,67 @@ fn stash_subdirectory_analysis_includes_untracked_files_outside_that_directory()
     assert_code(&out, 129);
     assert!(!r.git(&["stash", "list"]).is_empty());
 }
+
+#[test]
+fn pull_rejects_an_existing_lock_before_fetching() {
+    let remote = Repo::new(INDEPENDENT, "calc.rs");
+    let local = Repo::new(INDEPENDENT, "calc.rs");
+    local.git(&["remote", "add", "origin", remote.path().to_str().unwrap()]);
+    local.git(&["fetch", "-q", "origin", "main"]);
+    local.git(&["reset", "--hard", "FETCH_HEAD"]);
+    let fetch_head = fs::read(local.path().join(".git/FETCH_HEAD")).unwrap();
+    let refs = local.git(&["show-ref"]);
+    let head = local.head();
+    remote.copy(INDEPENDENT, "theirs", "calc.rs");
+    remote.commit("remote update");
+    let lock = local.path().join(".git/strict-weave/workflow.lock");
+    fs::create_dir_all(lock.parent().unwrap()).unwrap();
+    fs::write(&lock, "existing operation").unwrap();
+    for mode in ["--no-rebase", "--rebase", "--rebase=merges"] {
+        let out = local.tool(&["pull", mode, "origin", "main"]);
+        assert_code(&out, 129);
+        assert!(stderr(&out).contains("workflow.lock"));
+        assert_eq!(
+            fs::read(local.path().join(".git/FETCH_HEAD")).unwrap(),
+            fetch_head
+        );
+        assert_eq!(local.git(&["show-ref"]), refs);
+        assert_eq!(local.head(), head);
+        assert_eq!(fs::read_to_string(&lock).unwrap(), "existing operation");
+        local.assert_clean();
+    }
+}
+
+#[test]
+fn pull_holds_one_lock_through_fetch_and_delegation_and_releases_on_failure() {
+    for mode in ["--no-rebase", "--rebase"] {
+        let remote = Repo::new(INDEPENDENT, "calc.rs");
+        let local = Repo::new(INDEPENDENT, "calc.rs");
+        local.git(&["remote", "add", "origin", remote.path().to_str().unwrap()]);
+        local.git(&["fetch", "-q", "origin", "main"]);
+        local.git(&["reset", "--hard", "FETCH_HEAD"]);
+        remote.copy(INDEPENDENT, "theirs", "calc.rs");
+        remote.commit("remote edit");
+        local.copy(INDEPENDENT, "ours", "calc.rs");
+        local.commit("local edit");
+        let lock = local.path().join(".git/strict-weave/workflow.lock");
+        let quoted = lock.to_str().unwrap().replace('\'', "'\\''");
+        // A local upload-pack succeeds only when the caller already holds its
+        // workflow lock. Git supplies the remote path as the final argument.
+        local.git(&[
+            "config",
+            "remote.origin.uploadpack",
+            &format!("test -f '{quoted}' && git-upload-pack"),
+        ]);
+        local.ok(&["pull", mode, "origin", "main"]);
+        assert!(!lock.exists());
+        local.assert_file("calc.rs", INDEPENDENT, "output");
+        local.assert_clean();
+        local.git(&["config", "remote.origin.uploadpack", "false"]);
+        assert!(!local
+            .tool(&["pull", mode, "origin", "main"])
+            .status
+            .success());
+        assert!(!lock.exists());
+    }
+}

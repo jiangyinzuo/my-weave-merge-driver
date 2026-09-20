@@ -190,8 +190,8 @@ cargo test --locked --test integration cross_file_move -- --nocapture
 | --- | --- |
 | `support.rs` | 隔离仓库、进程环境、复制 fixture、Git commit、原文及状态断言 |
 | `merge.rs` | 独立 entity 合并、同 function 不同行冲突、同 blob 修改、行级冲突下限、跨文件移动、ff/no-ff/squash/no-commit/abort、dirty/多 base/未知参数拒绝、配置隔离、Git alias、linked worktree、子目录以外的冲突 |
-| `rebase.rs` | 每步报告、后续步骤冲突、continue 重新检查、skip/abort、交互式 reorder/drop/edit/squash/fixup、edit-todo、root/onto/branch、rebase-merges 的拓扑和 merge 步骤检查、editor 失败 |
-| `pull_stash.rs` | 本地 fetch 后 merge/rebase/interactive/merges/ff-only、fetch 后冲突停止、stash apply/pop、--index、工作区/index 双层修改、stash 第三 parent、移动到未跟踪文件、从子目录执行 |
+| `rebase.rs` | 每步报告、后续步骤冲突、continue 重新检查、skip/abort、无效剩余 todo 保留阻断记录以便重试、交互式 reorder/drop/edit/squash/fixup、edit-todo、root/onto/branch、rebase-merges 的拓扑和 merge 步骤检查、editor 失败 |
+| `pull_stash.rs` | 本地 fetch 后 merge/rebase/interactive/merges/ff-only、fetch 后冲突停止、fetch 前获取锁及操作全程持锁/失败释放、stash apply/pop、--index、工作区/index 双层修改、stash 第三 parent、移动到未跟踪文件、从子目录执行 |
 | `native.rs` | 直接执行 `git merge/rebase/cherry-pick/stash pop`，真实调用 driver 产生 marker 和未解决 index stages，并验证 abort 或 stash 保留 |
 
 仓库历史和预期状态由 Rust 表达，源码与最终文件读取已有 fixture。断言包括退出码、HEAD/父 commit/分支、文件原文、index tree/stages、stash 引用及报告；区分“预分析停止、尚未应用步骤”和“原生 Git 已产生未解决冲突”。原生行级 driver 对照用于确认严格规则确实拦截了 Git 会接受的修改。

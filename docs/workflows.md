@@ -32,7 +32,7 @@
 
 成功检查的报告成为该步骤的 active 报告，原生 Git 调用 driver 时校验三方指纹。下一步重新分析，不能复用整个序列开始时的报告。保留 merge commit 时，即使原 merge 曾被 Git 行级合并接受，重建它仍须通过严格检查。
 
-发现审核项时停止在该步骤**执行之前**；此前步骤可能已经重放，Git 也可能已经切换分支或 detach HEAD。此时没有该步骤的冲突文件或 index stages。`strict-weave rebase --continue` 重新检查，`--skip` 仅删除被阻止的那一步，`--abort` 由 Git 恢复原分支。`--skip` 无法确认 todo 与被阻止步骤对应时拒绝操作。原生 Git 在真正重放时出现的冲突，仍按 Git 提示编辑、add，再使用包装命令 continue。
+发现审核项时停止在该步骤**执行之前**；此前步骤可能已经重放，Git 也可能已经切换分支或 detach HEAD。此时没有该步骤的冲突文件或 index stages。`strict-weave rebase --continue` 重新检查，`--skip` 仅删除被阻止的那一步，`--abort` 由 Git 恢复原分支。`--skip` 允许 Git 将 todo 的短 hash 展开为同一个 commit 的完整 hash，其余指令字段必须一致；无法确认对应步骤时拒绝操作；先校验并原子写入剩余 todo，再清除阻断记录，校验或写入失败时保留记录供重试。原生 Git 在真正重放时出现的冲突，仍按 Git 提示编辑、add，再使用包装命令 continue。
 
 为确保每个选中 commit 实际进入检查流程，显式启用 `--force-rebase --reapply-cherry-picks --empty=keep --keep-empty --no-fork-point`。这与 Git 默认跳过已应用 patch、丢弃空 commit 的行为不同。关闭自动 squash、autostash、updateRefs 和缩写 todo；可在交互 todo 中显式安排 squash/fixup/update-ref。`--rebase-merges` 使用 Git 默认的 no-rebase-cousins；暂不接受其它模式值和 apply backend。
 
@@ -42,7 +42,7 @@
 
 先要求干净且无进行中操作，再执行原生 `git fetch`，固定 FETCH_HEAD，交给上述 merge/rebase 流程。省略 remote/branch 时分别读取当前 branch 的 remote/merge 配置；显式更换 remote 时建议同时传 branch。只 fetch 一个 ref，不递归 submodule，不接受多个 refspec 或带目标更新的 `src:dst`。
 
-rebase 模式优先取命令行，其次 `branch.<name>.rebase`，再取 `pull.rebase`，未设置则 merge。`--ff-only` 优先要求 fast-forward。ff、commit 等选择按此接口参数确定，不继承 `pull.ff`；需要限制 fast-forward 时请显式传 `--ff-only`。
+rebase 模式优先取命令行，其次 `branch.<name>.rebase`，再取 `pull.rebase`，仅配置未设置时回退到下一层，读取失败则报错；均未设置时 merge。`--ff-only` 优先要求 fast-forward。ff、commit 等选择按此接口参数确定，不继承 `pull.ff`；需要限制 fast-forward 时请显式传 `--ff-only`。
 
 预分析停止时 fetch 已完成，远端跟踪 refs 和 FETCH_HEAD 可能已更新；merge 模式的本地 HEAD 和文件尚未合并。rebase 模式按逐步骤规则停止，后续使用 `strict-weave rebase --continue/--abort`。
 
@@ -54,10 +54,17 @@ rebase 模式优先取命令行，其次 `branch.<name>.rebase`，再取 `pull.r
 
 ## 报告与边界
 
-报告保存在该 worktree 的 Git 目录下 `strict-weave/report-*/analysis.json`；rebase 使用 `strict-weave/rebase-*/report-*/analysis.json`，逐步原子替换 `strict-weave/rebase-*/active.json`。归档报告只读并保留供检查，完成后可手动清理。rebase 的 `rebase.json` 在结束/abort/quit 后清理。`workflow.lock` 防止同一 worktree 中两个包装操作重叠；异常终止可能留下锁，确认没有运行中的操作后再删除。
+报告保存在该 worktree 的 Git 目录下 `strict-weave/report-*/analysis.json`；rebase 使用 `strict-weave/rebase-*/report-*/analysis.json`，逐步原子替换 `strict-weave/rebase-*/active.json`。归档报告只读并保留供检查，完成后可手动清理。rebase 的 `rebase.json` 在结束/abort/quit 后清理；启动或 editor 失败且没有原生 rebase 状态时也清理。`workflow.lock` 覆盖整个包装操作，包括 pull 的 fetch 及后续 merge/rebase，防止同一 worktree 中两个包装操作重叠；异常终止可能留下锁，确认没有运行中的操作后再删除。
 
 执行原生操作时临时把 `merge.strict-weave.driver` 指向当前可执行文件，关闭 rerere 和 renormalize；不写永久配置、不安装 hooks。此临时配置使用默认 diff3 和简洁 driver 诊断；已有 driver 配置中的展示选项不会继承。文件 driver 的选择仍由 `.gitattributes` 决定，其它 driver 保持 Git 行为。预分析本身检查全部变化路径，不局限于 attributes。
 
 这补上了已实现规则中 Git 跳过 driver 的部分盲区，包括双方相同修改，但不是语义正确性或所有移动检测的证明。分析输入限制仍见 [全局分析协议](global-analysis.md)。无法构造可靠上下文时停止；filters 转换、文件 rename 等造成报告输入失配时 driver 报错，不静默使用旧报告。mode 冲突由原生 Git 处理。
 
 包装锁不能锁住其它进程运行的原生 Git，也不能约束 hook/editor/自定义 exec 在检查后修改仓库。操作期间应避免并发修改同一 worktree。当前在 Git 2.53.0 上验证；测试方法见 [testing.md](testing.md#真实-git-cli-端到端测试)。
+
+## 代码职责
+
+- `workflow/args.rs` 负责 CLI 参数与互斥校验，转换成内部的开始/恢复请求；操作实现直接接收这些请求。
+- `workflow/mod.rs` 统一持有操作锁、Git 基础调用和预分析入口；pull 将同一个操作上下文交给 merge/rebase，不重复获取锁。
+- `workflow/rebase/mod.rs` 调度原生 Git；`todo.rs` 解析/转换指令（commit 解析由调用方提供），`state.rs` 管理状态与报告生命周期，`callbacks.rs` 执行逐步骤检查及 editor 回调。回调沿用父进程持有的锁。
+- `repository.rs` 统一输出 driver、独立 prepare 和操作预分析的原因及关联信息。

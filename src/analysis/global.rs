@@ -1,7 +1,7 @@
 //! Explicit three-tree analysis. This module never runs or controls a Git merge.
 //! Cached findings can only add conflicts; every driver call still checks its inputs.
 use super::moves::{conflict_reason, entities, find_candidates, ParsedSnapshots};
-use crate::merge::{self, Labels, Outcome};
+use crate::merge::{self, ConflictStyle, Labels, Outcome};
 pub use crate::reason::Location;
 use crate::reason::{self, MoveEvidence, Reason};
 use anyhow::{bail, Context, Result};
@@ -84,26 +84,28 @@ pub fn analyze(snapshots: &[Snapshot; 3], trees: [String; 3]) -> Result<Report> 
         }
         let contents = texts.map(|t| t.map(String::as_str).unwrap_or(""));
         // Same original-byte baseline and entity rules as the actual driver.
-        let outcome = merge::merge(
+        let local = super::local::analyze(
             contents[0],
             contents[1],
             contents[2],
             path,
             &Labels::default(),
             7,
+            ConflictStyle::Diff3,
         )
         .with_context(|| format!("分析 {path}"))?;
         report.files.insert(
             path.clone(),
             FileAnalysis {
                 fingerprints: texts.map(|t| t.map(|s| fingerprint(s))),
-                reasons: outcome.reasons,
+                reasons: local.reasons,
                 related_moves: Vec::new(),
             },
         );
-        for side in 0..3 {
+        let (base, ours, theirs) = local.partitions;
+        for (side, partitions) in [base, ours, theirs].into_iter().enumerate() {
             let parts = if texts[side].is_some() {
-                entities(path, contents[side])
+                partitions.map(|parts| entities(path, contents[side], parts))
             } else {
                 Some(BTreeMap::new())
             };

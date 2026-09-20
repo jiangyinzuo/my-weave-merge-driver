@@ -1,6 +1,6 @@
 //! 跨文件移动及重命名候选：先匹配原文，再匹配同 grammar/type 的名称归一化原文。
 //! 匹配只读取三份快照，不写报告或运行 Git。
-use super::partition::partition;
+use super::partition::Part;
 use super::syntax::{normalized_syntax, Syntax};
 use crate::reason::{
     Evidence, Kind, Location, MoveEvidence, MoveMatch, Opposite, OppositeMove, Reason,
@@ -25,11 +25,11 @@ pub(super) struct Entity {
 pub(super) type Entities = BTreeMap<String, Entity>;
 type ExactBucket<'a> = (Vec<&'a Entity>, Vec<&'a Entity>);
 
-pub(super) fn entities(path: &str, text: &str) -> Option<Entities> {
+pub(super) fn entities(path: &str, text: &str, parts: Vec<Part>) -> Entities {
     let mut result = BTreeMap::new();
     let mut line = 1;
     let grammar = language_config_for_content(text, path).map(|config| config.id);
-    for part in partition(path, text)? {
+    for part in parts {
         let next = line + part.text.bytes().filter(|b| *b == b'\n').count();
         if part.entity {
             result.insert(
@@ -50,7 +50,7 @@ pub(super) fn entities(path: &str, text: &str) -> Option<Entities> {
         }
         line = next;
     }
-    Some(result)
+    result
 }
 
 /// None 表示解析失败，空 map 表示已确认不存在 entity。

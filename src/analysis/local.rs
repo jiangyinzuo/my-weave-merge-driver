@@ -2,7 +2,7 @@
 //! 返回全部原因及可用的展示材料；调用方只能选择展示，不能撤销原因。
 use super::{
     line::line_merge,
-    partition::{distinct_entity_appends, partition},
+    partition::{distinct_entity_appends, partition, ThreePartitions},
     raw::{analyze_regions, Region},
     upstream::{add_strict_entity_reasons, weave_refusals},
 };
@@ -11,13 +11,14 @@ use crate::reason::{self, Evidence, Kind, Reason, Subject};
 use anyhow::Result;
 
 pub(crate) enum RegionMerge {
-    Strict { texts: [String; 3], reason: Reason },
+    Strict { index: usize, reason: Reason },
     Line(String),
 }
 
 /// 分析后的只读展示材料。全文件与分区的 Git 输出均已完成计算。
 pub(crate) struct LocalAnalysis {
     pub reasons: Vec<Reason>,
+    pub partitions: ThreePartitions,
     pub line_content: String,
     pub line_conflict: bool,
     pub weave_refused: bool,
@@ -26,7 +27,7 @@ pub(crate) struct LocalAnalysis {
     pub compact_appends: bool,
 }
 
-/// 输入须经过 merge 入口校验。分析规则的顺序与覆盖关系集中在此处。
+/// 单文件与全局入口共用输入校验及完整规则；仅最终展示由调用方选择。
 pub(crate) fn analyze(
     base: &str,
     ours: &str,
@@ -36,6 +37,7 @@ pub(crate) fn analyze(
     width: usize,
     style: ConflictStyle,
 ) -> Result<LocalAnalysis> {
+    crate::merge::validate_inputs([base, ours, theirs], width)?;
     // 1. 原始整文件 Git 冲突是独立下限，不能被后续分析消除。
     let (line_content, line_conflict) = line_merge(base, ours, theirs, labels, width, style)?;
     let upstream = weave_core::entity_merge(base, ours, theirs, path);
@@ -58,7 +60,7 @@ pub(crate) fn analyze(
     add_strict_entity_reasons(base, ours, theirs, path, &parts, &mut reasons);
 
     // 3. 检查布局与未覆盖原文；为已有原因补充确定性的相同结果说明。
-    let regions = analyze_regions(parts, ours != base && theirs != base, &mut reasons);
+    let regions = analyze_regions(&parts, ours != base && theirs != base, &mut reasons);
 
     // 4. 没有严格原因的区域由 Git 合并；其冲突也必须在分析阶段记录。
     let regions = regions
@@ -77,6 +79,7 @@ pub(crate) fn analyze(
     reason::normalize(&mut reasons);
     Ok(LocalAnalysis {
         reasons,
+        partitions: parts,
         line_content,
         line_conflict,
         weave_refused: !upstream.conflicts.is_empty(),
@@ -87,19 +90,16 @@ pub(crate) fn analyze(
 
 /// 已有严格原因的区域保留三方原文，其余区域记录 Git 输出及行级原因。
 fn analyze_region_lines(
-    regions: Vec<Region>,
+    regions: Vec<Region<'_>>,
     labels: &Labels,
     width: usize,
     style: ConflictStyle,
     reasons: &mut Vec<Reason>,
 ) -> Result<Vec<RegionMerge>> {
     let mut result = Vec::with_capacity(regions.len());
-    for region in regions {
+    for (index, region) in regions.into_iter().enumerate() {
         if let Some(reason) = region.reason {
-            result.push(RegionMerge::Strict {
-                texts: [region.base.text, region.ours.text, region.theirs.text],
-                reason,
-            });
+            result.push(RegionMerge::Strict { index, reason });
             continue;
         }
         let (content, conflict) = line_merge(
@@ -120,4 +120,15 @@ fn analyze_region_lines(
         result.push(RegionMerge::Line(content));
     }
     Ok(result)
+}
+
+impl LocalAnalysis {
+    /// Strict region indices are produced only after all three layouts align.
+    pub fn region_texts(&self, index: usize) -> [&str; 3] {
+        [&self.partitions.0, &self.partitions.1, &self.partitions.2].map(|parts| {
+            parts.as_ref().expect("aligned partitions")[index]
+                .text
+                .as_str()
+        })
+    }
 }

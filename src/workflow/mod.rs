@@ -1,21 +1,57 @@
 //! Optional Git orchestration. Core analysis and the driver remain independent.
 //! Reject ambiguous contexts; Git owns commits, index conflicts and rollback.
+mod args;
 mod merge;
 mod pull;
 mod rebase;
 mod stash;
-pub use merge::{run as merge, MergeArgs};
-pub use pull::{run as pull, PullArgs};
-pub use rebase::{check as rebase_check, edit_todo as rebase_todo, run as rebase, RebaseArgs};
-pub use stash::{run as stash, StashArgs};
+pub use args::{MergeArgs, PullArgs, RebaseArgs, StashArgs};
+pub use rebase::{check as rebase_check, edit_todo as rebase_todo};
 
-use crate::{analysis, merge::safe_label, repository};
+use crate::{analysis, repository};
 use anyhow::{bail, Context, Result};
 use std::{
     fs,
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
+
+/// One lock spans every phase of an operation, including pull's fetch and
+/// delegated merge/rebase. Sequencer callbacks run under their parent's lock.
+struct Operation {
+    git_dir: PathBuf,
+    workspace: PathBuf,
+    _lock: Lock,
+}
+impl Operation {
+    fn acquire() -> Result<Self> {
+        let git_dir = git_dir()?;
+        let workspace = workspace(&git_dir)?;
+        let lock = Lock::acquire(&workspace)?;
+        Ok(Self {
+            git_dir,
+            workspace,
+            _lock: lock,
+        })
+    }
+}
+
+pub fn merge(args: MergeArgs) -> Result<u8> {
+    let request = args.try_into()?;
+    merge::run(&Operation::acquire()?, request)
+}
+pub fn rebase(args: RebaseArgs) -> Result<u8> {
+    let request = args.try_into()?;
+    rebase::run(&Operation::acquire()?, request)
+}
+pub fn pull(args: PullArgs) -> Result<u8> {
+    let options = args.try_into()?;
+    pull::run(&Operation::acquire()?, options)
+}
+pub fn stash(args: StashArgs) -> Result<u8> {
+    let options = args.try_into()?;
+    stash::run(&Operation::acquire()?, options)
+}
 
 /// Never inherit an unrelated analysis report into a new operation.
 fn git() -> Command {
@@ -36,6 +72,34 @@ fn read(args: &[&str]) -> Result<String> {
     Ok(String::from_utf8(output.stdout)?
         .trim_end_matches('\n')
         .into())
+}
+
+/// Only exit 1 means absent for the supported optional queries (config,
+/// symbolic-ref, merge-base). I/O errors and other Git failures propagate.
+fn read_optional(args: &[&str]) -> Result<Option<String>> {
+    let output = git().env("GIT_OPTIONAL_LOCKS", "0").args(args).output()?;
+    match output.status.code() {
+        Some(0) => Ok(Some(
+            String::from_utf8(output.stdout)?
+                .trim_end_matches('\n')
+                .into(),
+        )),
+        Some(1) => Ok(None),
+        _ => bail!(
+            "git {}：{}",
+            args.join(" "),
+            String::from_utf8_lossy(&output.stderr)
+        ),
+    }
+}
+
+fn merge_base(ours: &str, theirs: &str) -> Result<String> {
+    let bases = read_optional(&["merge-base", "--all", ours, theirs])?.unwrap_or_default();
+    let mut lines = bases.lines();
+    match (lines.next(), lines.next()) {
+        (Some(base), None) => Ok(base.into()),
+        _ => bail!("需要唯一 merge base；多 base/虚拟 base 和无共同历史暂不支持"),
+    }
 }
 
 fn commit(revision: &str) -> Result<String> {
@@ -126,22 +190,7 @@ fn prepare(directory: &Path, revisions: [&str; 3], detailed: bool) -> Result<(Pa
     let path = folder.path().join("analysis.json");
     analysis::save(&path, &report)?;
     let _ = folder.keep();
-    for warning in &report.warnings {
-        eprintln!("strict-weave：{}", safe_label(warning));
-    }
-    for (path, file) in &report.files {
-        if !file.reasons.is_empty() {
-            eprintln!("需审核 · {}", safe_label(path));
-        }
-        for reason in &file.reasons {
-            for line in reason.lines(detailed) {
-                eprintln!("{line}");
-            }
-        }
-        for line in repository::related_move_lines(&file.reasons, &file.related_moves, detailed) {
-            eprintln!("{line}");
-        }
-    }
+    repository::report_analysis(&report, "需审核", detailed);
     eprintln!("分析结果：{}", path.display());
     Ok((path, report.conflicted()))
 }

@@ -1,27 +1,17 @@
 use super::*;
-use clap::{Args, Subcommand};
 use std::io::Write;
 
-#[derive(Args)]
-pub struct StashArgs {
-    #[command(subcommand)]
-    pub action: Action,
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(super) enum Action {
+    Apply,
+    Pop,
 }
 
-#[derive(Subcommand)]
-pub enum Action {
-    Apply(Options),
-    Pop(Options),
-}
-
-#[derive(Args)]
-pub struct Options {
-    #[arg(default_value = "stash@{0}")]
+pub(super) struct Options {
     pub stash: String,
-    #[arg(long)]
     pub index: bool,
-    #[arg(long)]
-    pub explain_reasons: bool,
+    pub detailed: bool,
+    pub action: Action,
 }
 
 fn tracked_worktree(head: &str) -> Result<String> {
@@ -79,27 +69,12 @@ fn stash_tree(stash: &str, untracked: Option<&str>, workspace: &Path) -> Result<
     Ok(String::from_utf8(result.stdout)?.trim().into())
 }
 
-pub fn run(args: StashArgs) -> Result<u8> {
-    let (options, pop) = match args.action {
-        Action::Apply(o) => (o, false),
-        Action::Pop(o) => (o, true),
-    };
-    let directory = git_dir()?;
-    idle(&directory)?;
-    let workspace = workspace(&directory)?;
-    let _lock = Lock::acquire(&workspace)?;
+pub(super) fn run(operation: &Operation, options: Options) -> Result<u8> {
+    idle(&operation.git_dir)?;
+    let workspace = &operation.workspace;
+    let pop = options.action == Action::Pop;
     if !read(&["ls-files", "--others", "--exclude-standard", "--", ":/"])?.is_empty() {
         bail!("stash 预分析暂不支持当前工作区有未跟踪文件；请先自行保存或纳入 index");
-    }
-    if pop
-        && !(options.stash.starts_with("stash@{")
-            && options.stash.len() > 8
-            && options.stash.ends_with('}')
-            && options.stash[7..options.stash.len() - 1]
-                .bytes()
-                .all(|b| b.is_ascii_digit()))
-    {
-        bail!("stash pop 请使用 stash@{{n}}，以便固定并校验将删除的条目");
     }
     let stash = commit(&options.stash)?;
     let parents = read(&["rev-list", "--parents", "-n", "1", &stash])?;
@@ -110,22 +85,19 @@ pub fn run(args: StashArgs) -> Result<u8> {
     let head = commit("HEAD")?;
     let index = read(&["write-tree"])?;
     let worktree = tracked_worktree(&head)?;
-    let theirs = stash_tree(&stash, parents.get(2).copied(), &workspace)?;
+    let theirs = stash_tree(&stash, parents.get(2).copied(), workspace)?;
     let (_, work_conflict) = prepare(
-        &workspace,
+        workspace,
         [parents[0], &worktree, &theirs],
-        options.explain_reasons,
+        options.detailed,
     )?;
-    let (report, index_conflict) = prepare(
-        &workspace,
-        [parents[0], &index, &theirs],
-        options.explain_reasons,
-    )?;
+    let (report, index_conflict) =
+        prepare(workspace, [parents[0], &index, &theirs], options.detailed)?;
     let restore_conflict = if options.index {
         prepare(
-            &workspace,
+            workspace,
             [parents[0], &index, parents[1]],
-            options.explain_reasons,
+            options.detailed,
         )?
         .1
     } else {

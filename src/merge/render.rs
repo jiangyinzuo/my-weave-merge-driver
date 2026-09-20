@@ -19,14 +19,17 @@ pub(super) fn render(
                 return regions
                     .iter()
                     .map(|region| match region {
-                        RegionMerge::Strict { texts, reason } => conflict_box(
-                            &texts[0],
-                            &texts[1],
-                            &texts[2],
-                            labels,
-                            width,
-                            &reason.summary(),
-                        ),
+                        RegionMerge::Strict { index, reason } => {
+                            let texts = analysis.region_texts(*index);
+                            conflict_box(
+                                texts[0],
+                                texts[1],
+                                texts[2],
+                                labels,
+                                width,
+                                &reason.summary(),
+                            )
+                        }
                         RegionMerge::Line(content) => content.clone(),
                     })
                     .collect();

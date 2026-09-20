@@ -66,7 +66,7 @@ pub fn validate_text(bytes: &[u8]) -> Result<&str> {
     std::str::from_utf8(bytes).context("初版仅支持 UTF-8 文本")
 }
 
-fn validate_inputs(texts: [&str; 3], width: usize) -> Result<()> {
+pub(crate) fn validate_inputs(texts: [&str; 3], width: usize) -> Result<()> {
     if !(7..=100).contains(&width) {
         bail!("marker size 必须在 7..=100 之间");
     }
@@ -114,7 +114,6 @@ pub fn merge_with_style(
     width: usize,
     style: ConflictStyle,
 ) -> Result<Outcome> {
-    validate_inputs([base, ours, theirs], width)?;
     let analysis = local::analyze(base, ours, theirs, path, labels, width, style)?;
     let content = render::render(&analysis, [base, ours, theirs], labels, width);
     Ok(Outcome {

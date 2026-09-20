@@ -14,7 +14,7 @@
 - [analysis/global.rs](../src/analysis/global.rs)：三份快照、报告读写和 driver 输入校验。
 - [merge/render.rs](../src/merge/render.rs)：只读分析结果，选择 Git 输出、分区块或整文件块；[merge/conflict.rs](../src/merge/conflict.rs) 负责共同文本裁剪。
 
-`merge::merge_with_style` 依次校验输入、执行分析、生成展示；`workflow` 在操作层确定三方后复用全局分析。
+`local::analyze` 共用输入校验及全部单文件规则；`merge::merge_with_style` 随后生成展示。全局分析直接消费同一分析结果及原文分区，不生成最终冲突块，也不为移动匹配重复分区。`workflow` 在操作层确定三方后复用全局分析。
 
 ## 单文件规则目录
 

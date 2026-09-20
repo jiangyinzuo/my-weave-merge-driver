@@ -100,24 +100,7 @@ fn run() -> Result<u8> {
     {
         let report = analysis::prepare([&base, &ours, &theirs])?;
         analysis::save(&output, &report)?;
-        for warning in &report.warnings {
-            eprintln!("strict-weave：{}", merge::safe_label(warning));
-        }
-        for (path, file) in &report.files {
-            if !file.reasons.is_empty() {
-                eprintln!("冲突 · {}", merge::safe_label(path));
-            }
-            for reason in &file.reasons {
-                for line in reason.lines(explain_reasons) {
-                    eprintln!("{line}");
-                }
-            }
-            for line in
-                repository::related_move_lines(&file.reasons, &file.related_moves, explain_reasons)
-            {
-                eprintln!("{line}");
-            }
-        }
+        repository::report_analysis(&report, "冲突", explain_reasons);
         eprintln!(
             "分析结果：{}；Git 未调用 driver 的文件不会自动成为 index conflict",
             output.display()

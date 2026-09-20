@@ -33,7 +33,7 @@ STRICT_WEAVE_ANALYSIS=/absolute/path/analysis.json git merge feature/example
 
 ## 报告格式
 
-当前 schema 为 **v5**，engine 为 **`strict-weave-global-v9`**。完整数据定义位于 [analysis/global.rs](../src/analysis/global.rs) 和 [reason.rs](../src/reason.rs)。
+当前 schema 为 **v5**，engine 为 **`strict-weave-global-v9`**。完整数据定义位于 [analysis/global.rs](../src/analysis/global.rs) 和 [reason/mod.rs](../src/reason/mod.rs)。
 
 | 字段 | 内容 |
 | --- | --- |

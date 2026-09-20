@@ -13,17 +13,35 @@ pub fn report(path: &str, outcome: &Outcome, labels: &Labels, detailed: bool) {
             merge::safe_label(&labels.base),
             merge::safe_label(&labels.theirs)
         );
-        for reason in &outcome.reasons {
-            for line in reason.lines(detailed) {
-                eprintln!("{line}");
-            }
-        }
     }
-    for line in related_move_lines(&outcome.reasons, &outcome.related_moves, detailed) {
-        eprintln!("{line}");
-    }
+    report_findings(&outcome.reasons, &outcome.related_moves, detailed);
     if outcome.conflicted() {
         eprintln!("需人工处理：选择一侧 / 编辑合并结果。\n");
+    }
+}
+
+/// Shared diagnostics for manual prepare and workflow preflight. Callers own
+/// their operation-specific heading/footer; evidence ordering is identical.
+pub fn report_analysis(report: &crate::analysis::Report, heading: &str, detailed: bool) {
+    for warning in &report.warnings {
+        eprintln!("strict-weave：{}", merge::safe_label(warning));
+    }
+    for (path, file) in &report.files {
+        if !file.reasons.is_empty() {
+            eprintln!("{heading} · {}", merge::safe_label(path));
+        }
+        report_findings(&file.reasons, &file.related_moves, detailed);
+    }
+}
+
+fn report_findings(reasons: &[Reason], candidates: &[MoveEvidence], detailed: bool) {
+    for reason in reasons {
+        for line in reason.lines(detailed) {
+            eprintln!("{line}");
+        }
+    }
+    for line in related_move_lines(reasons, candidates, detailed) {
+        eprintln!("{line}");
     }
 }
 
