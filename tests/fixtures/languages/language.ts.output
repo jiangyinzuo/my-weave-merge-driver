@@ -1,9 +1,9 @@
 function alpha(): number {
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function alpha：双方修改结果相同，但均不同于 base，按严格规则需人工审核
+<<<<<<< ⎇ feature/ours | ENTITY_CONFLICT：ƒ alpha：双方修改结果相同，但均不同于 base，按严格规则需人工审核
     return 2;
-||||||| base: base-commit
+||||||| base-commit
     return 1;
 =======
     return 2;
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs
 }

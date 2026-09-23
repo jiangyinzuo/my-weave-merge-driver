@@ -1,6 +1,6 @@
 class Counter:
     def first(self):
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：class Counter 需人工审核
+<<<<<<< ⎇ feature/ours | ENTITY_CONFLICT：◇ Counter 需人工审核
         return 10
 
     def unchanged(self):
@@ -8,7 +8,7 @@ class Counter:
 
     def second(self):
         return 2
-||||||| base: base-commit
+||||||| base-commit
         return 1
 
     def unchanged(self):
@@ -24,4 +24,4 @@ class Counter:
 
     def second(self):
         return 20
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs

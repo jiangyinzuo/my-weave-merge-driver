@@ -1,9 +1,9 @@
 {
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：binding alpha：双方修改结果相同，但均不同于 base，按严格规则需人工审核
+<<<<<<< ⎇ feature/ours | ENTITY_CONFLICT：◇ alpha：双方修改结果相同，但均不同于 base，按严格规则需人工审核
   alpha = 2;
-||||||| base: base-commit
+||||||| base-commit
   alpha = 1;
 =======
   alpha = 2;
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs
 }

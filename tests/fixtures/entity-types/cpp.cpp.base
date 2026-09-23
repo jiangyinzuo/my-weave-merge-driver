@@ -1,0 +1,18 @@
+#define LIMIT 10
+
+namespace demo {
+struct Point {
+    int x;
+};
+
+class Renderer {
+public:
+    int render(int value) const { return value + LIMIT; }
+};
+
+enum Color { Red, Blue };
+
+int calculate(int value) {
+    return value + LIMIT;
+}
+}

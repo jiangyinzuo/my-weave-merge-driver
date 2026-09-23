@@ -36,12 +36,13 @@ pub(super) fn entities(path: &str, text: &str, parts: Vec<Part>) -> Entities {
                 part.key.clone(),
                 Entity {
                     key: part.key,
-                    name: part.name,
-                    entity_type: part.entity_type,
+                    name: part.name.clone(),
+                    entity_type: part.entity_type.clone(),
                     grammar,
                     location: Location {
                         path: path.into(),
-                        entity: part.label,
+                        entity_type: part.entity_type,
+                        name: part.name,
                         line,
                     },
                     text: part.text,

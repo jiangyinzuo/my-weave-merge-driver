@@ -4,6 +4,7 @@
 //! NAME.stderr-details verifies --explain-reasons in every available style;
 //! output bytes and exit status must stay identical to that style's baseline.
 //! NAME.options optionally overrides marker_size and the three labels via JSON.
+//! NAME.entities checks base's upstream [type, name] pairs, including children.
 //! Directory-valued inputs/output form a multi-file case with NAME.analysis.
 use std::{
     collections::BTreeSet,
@@ -89,6 +90,24 @@ fn check_case(
             .unwrap()
             .to_owned()
     };
+    if file("entities").exists() && !zdiff3 && !detailed {
+        let base = fs::read_to_string(&inputs[0]).map_err(|e| e.to_string())?;
+        let registry = sem_core::parser::plugins::create_default_registry();
+        let plugin = registry
+            .get_explicit_plugin(&path)
+            .ok_or_else(|| format!("{name}: .entities 需要明确的上游 parser"))?;
+        let entities: Vec<_> = plugin
+            .extract_entities(&base, &path)
+            .into_iter()
+            .map(|e| (e.entity_type, e.name))
+            .collect();
+        let actual = serde_json::to_string_pretty(&entities).map_err(|e| e.to_string())? + "\n";
+        compare(
+            &file("entities"),
+            actual.as_bytes(),
+            &artifacts.join(format!("{name}.actual-entities")),
+        )?;
+    }
     let case = DriverCase {
         inputs: inputs.map(Some),
         path,
@@ -246,6 +265,7 @@ fn text_fixtures() {
                     | "stderr-details"
                     | "options"
                     | "analysis"
+                    | "entities"
             ),
             "未知 fixture 后缀：{filename}"
         );

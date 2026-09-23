@@ -1,0 +1,34 @@
+[
+  [
+    "type",
+    "Amount"
+  ],
+  [
+    "interface",
+    "Account"
+  ],
+  [
+    "property",
+    "balance"
+  ],
+  [
+    "enum",
+    "Status"
+  ],
+  [
+    "class",
+    "Ledger"
+  ],
+  [
+    "field",
+    "balance"
+  ],
+  [
+    "method",
+    "add"
+  ],
+  [
+    "function",
+    "total"
+  ]
+]

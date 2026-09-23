@@ -1,0 +1,9 @@
+interface Account {
+<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ Account 需人工审核
+    balance: string;
+||||||| base-commit
+    balance: number;
+=======
+    balance: boolean;
+>>>>>>> ⎇ feature/theirs
+}

@@ -136,6 +136,7 @@ strict-weave driver prepare BASE_TREE OURS_TREE THEIRS_TREE \
 | [冲突块渲染](docs/conflict-rendering.md) | 展示选择、共同文本裁剪与移动标签 |
 | [diff3 与 zdiff3](docs/diff3-vs-zdiff3.md) | 输出对比、Git 冲突下限的源码依据 |
 | [语言支持](docs/languages.md) | 上游 grammar 覆盖与解析边界 |
+| [Entity type](docs/entity-types.md) | 上游 entity type、归一化规则与跨语言 fixtures |
 | [测试说明](docs/testing.md) | 添加/运行 fixtures、端到端测试及人工检查索引 |
 | [修改与移动](docs/modify-vs-move.md) | Git 行为、跨文件审核需求与当前覆盖 |
 | [重命名匹配调研](docs/weave-rename-research.md) | 上游匹配依据及公共 API 的复用边界 |

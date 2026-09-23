@@ -1,0 +1,4 @@
+union Value {
+    int number;
+    char byte;
+};

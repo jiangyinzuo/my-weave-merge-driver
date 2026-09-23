@@ -1,11 +1,11 @@
 class Counter {
 public:
     int score(int value) const {
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：class Counter 需人工审核
+<<<<<<< ⎇ feature/ours | ENTITY_CONFLICT：◇ Counter 需人工审核
         int x = 10;
         int y = 2;
         int z = 3;
-||||||| base: base-commit
+||||||| base-commit
         int x = 1;
         int y = 2;
         int z = 3;
@@ -13,7 +13,7 @@ public:
         int x = 1;
         int y = 2;
         int z = 30;
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs
         return value + x + y + z;
     }
 

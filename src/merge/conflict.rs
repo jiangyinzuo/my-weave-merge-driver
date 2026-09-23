@@ -29,8 +29,8 @@ pub(crate) fn annotate_moves(content: &str, candidates: &[MoveEvidence], width: 
         }
     });
     let prefixes = [
-        format!("{} ours: ", "<".repeat(width)),
-        format!("{} theirs: ", ">".repeat(width)),
+        format!("{} ⎇ ", "<".repeat(width)),
+        format!("{} ⎇ ", ">".repeat(width)),
     ];
     let mut seen = [false; 2];
     let mut result = String::with_capacity(content.len());
@@ -82,18 +82,18 @@ pub fn conflict_box(
         }
     };
     format!(
-        "{prefix}{} ours: {} | {}\n{}{} base: {}\n{}{}\n{}{} theirs: {}\n{suffix}",
+        "{prefix}{} {} | {}\n{}{} {}\n{}{}\n{}{} {}\n{suffix}",
         "<".repeat(width),
-        safe_label(&labels.ours),
+        labels.ours_marker(),
         safe_label(reason),
         section(ours),
         "|".repeat(width),
-        safe_label(&labels.base),
+        labels.base_marker(),
         section(base),
         "=".repeat(width),
         section(theirs),
         ">".repeat(width),
-        safe_label(&labels.theirs),
+        labels.theirs_marker(),
     )
 }
 

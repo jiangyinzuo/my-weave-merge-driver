@@ -4,14 +4,14 @@ use strict_weave::reason::{
 };
 use weave_core::conflict::ConflictKind;
 
-const REASON_PROVENANCE_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：function f 需人工审核
+const REASON_PROVENANCE_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：ƒ f 需人工审核
   依据 [weave]：分类：ours=deleted, theirs=modified
   依据 [weave]：拒绝：modify_delete；modified in theirs
 "#;
 const REASON_UNAVAILABLE_TXT: &str = r#"原因 [analyze]：ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
   依据 [analyze]：weave 未返回实体分类
 "#;
-const REASON_DELETE_RENAME_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：function f 需人工审核
+const REASON_DELETE_RENAME_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：ƒ f 需人工审核
   依据 [weave]：分类：ours=deleted, theirs=rename + modified candidate
 "#;
 const REASON_UNKNOWN_EVIDENCE_JSON: &str = r#"{"kind":"line_conflict","subject":{"type":"file"},"evidence":[{"type":"unknown"}]}
@@ -21,10 +21,10 @@ const REASON_UNKNOWN_KIND_JSON: &str = r#"{"kind":"unknown","subject":{"type":"f
 const REASON_CONTROLS_JSON: &str = r#"{"kind":"entity_conflict","subject":{"type":"entity","entity_type":"function","name":"f\n\u001b[31m"},"evidence":[{"type":"weave_refusal","refusal":{"kind":"rename_modify","old_name":"a\nb","new_name":"c\rd","renamed_in":"ours"}}]}"#;
 const REASON_UNKNOWN_FIELD_JSON: &str = r#"{"kind":"line_conflict","subject":{"type":"file"},"evidence":[],"surprise":1}
 "#;
-const REASON_ACTIONS_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：function f 需人工审核
+const REASON_ACTIONS_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：ƒ f 需人工审核
   依据 [weave]：分类：ours=modified, theirs=modified
 "#;
-const REASON_ACTIONS_DETAILS_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：function f 需人工审核
+const REASON_ACTIONS_DETAILS_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：ƒ f 需人工审核
   依据 [weave]：分类：ours=modified, theirs=modified
 "#;
 
@@ -34,17 +34,57 @@ fn entity(name: &str) -> Subject {
         name: name.into(),
     }
 }
+
+#[test]
+fn function_glyph_uses_structured_entity_type_and_preserves_function_words_in_names() {
+    let reason = Reason::new(
+        Kind::EntityConflict,
+        entity("functionality"),
+        Evidence::RawBothChanged,
+    );
+    assert_eq!(
+        reason.summary(),
+        "ENTITY_CONFLICT：ƒ functionality 需人工审核"
+    );
+    assert!(!reason.summary().contains("function function"));
+}
+
+#[test]
+fn entity_type_glyphs_are_stable_and_unknown_types_remain_visible() {
+    let examples = [
+        ("class", "◇"),
+        ("interface", "◇"),
+        ("struct", "◇"),
+        ("enum", "◇"),
+        ("method", "◇"),
+        ("module", "◇"),
+        ("macro_definition", "◇"),
+        ("value_declaration", "◇"),
+        ("test", "◇"),
+        ("future_entity_type", "◇"),
+    ];
+    for (entity_type, display) in examples {
+        assert_eq!(
+            strict_weave::reason::human_entity_type(entity_type),
+            display,
+            "{entity_type}"
+        );
+    }
+}
+
 fn movement(opposite: Opposite) -> MoveEvidence {
     MoveEvidence {
         side: Side::Theirs,
         base: Location {
             path: "old.go".into(),
-            entity: "function f".into(),
+            entity_type: "function".into(),
+            name: "f".into(),
             line: 1,
         },
         target: Location {
             path: "new.go".into(),
-            entity: "function f".into(),
+            entity_type: "function".into(),
+            name: "f".into(),
             line: 4,
         },
         source_count: 1,
@@ -403,7 +443,7 @@ fn invalid_empty_unknown_and_nonblocking_evidence_is_rejected() {
 #[test]
 fn rename_move_evidence_validates_names_counts_and_locations() {
     let mut candidate = movement(Opposite::Modified);
-    candidate.target.entity = "function g".into();
+    candidate.target.name = "g".into();
     candidate.matched_by = MoveMatch::NameNormalized {
         grammar: "go".into(),
         entity_type: "function".into(),
@@ -440,7 +480,7 @@ fn rename_move_evidence_validates_names_counts_and_locations() {
             match mutation {
                 "same_name" => *new_name = "f".into(),
                 "empty_grammar" => grammar.clear(),
-                "wrong_label" => invalid.target.entity = "class g".into(),
+                "wrong_label" => invalid.target.entity_type = "class".into(),
                 "zero" => *old_occurrences = 0,
                 "different_count" => *new_occurrences = 1,
                 "zero_tokens" => {

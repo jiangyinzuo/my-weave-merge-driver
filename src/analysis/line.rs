@@ -1,5 +1,5 @@
 //! Git 行级基线：冲突是严格合并必须保留的下限。
-use crate::merge::{safe_label, ConflictStyle, Labels};
+use crate::merge::{ConflictStyle, Labels};
 use anyhow::{bail, Context, Result};
 use std::{io::Write, process::Command};
 
@@ -28,9 +28,9 @@ pub(super) fn line_merge(
             ConflictStyle::Zdiff3 => "--zdiff3",
         })
         .arg(format!("--marker-size={width}"))
-        .args(["-L", &format!("ours: {}", safe_label(&labels.ours))])
-        .args(["-L", &format!("base: {}", safe_label(&labels.base))])
-        .args(["-L", &format!("theirs: {}", safe_label(&labels.theirs))])
+        .args(["-L", &labels.ours_marker()])
+        .args(["-L", &labels.base_marker()])
+        .args(["-L", &labels.theirs_marker()])
         .args(files.iter().map(|f| f.path()))
         .output()
         .context("无法运行 git merge-file")?;

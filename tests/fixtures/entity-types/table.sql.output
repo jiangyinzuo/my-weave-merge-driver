@@ -1,0 +1,9 @@
+CREATE TABLE accounts (
+<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ accounts 需人工审核
+    balance TEXT
+||||||| base-commit
+    balance INTEGER
+=======
+    balance REAL
+>>>>>>> ⎇ feature/theirs
+);

@@ -1,0 +1,5 @@
+trait Render {
+    fn size(&self) -> i32 {
+        2
+    }
+}

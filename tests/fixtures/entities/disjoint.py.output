@@ -1,13 +1,13 @@
 def alpha():
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：function alpha 需人工审核
+<<<<<<< ⎇ feature/ours | ENTITY_CONFLICT：ƒ alpha 需人工审核
     x = 1
     y = 2
-||||||| base: base-commit
+||||||| base-commit
     x = 1
     y = 2
     z = 3
 =======
     y = 2
     z = 3
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs
     return y

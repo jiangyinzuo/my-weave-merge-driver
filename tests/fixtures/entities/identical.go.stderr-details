@@ -1,8 +1,8 @@
 冲突 · identical.go
-ours   : feature/ours
-base   : base-commit
-theirs : feature/theirs
-原因 [weave + analyze]：ENTITY_CONFLICT：function a：双方修改结果相同，但均不同于 base，按严格规则需人工审核
+⎇ feature/ours
+base-commit
+⎇ feature/theirs
+原因 [weave + analyze]：ENTITY_CONFLICT：ƒ a：双方修改结果相同，但均不同于 base，按严格规则需人工审核
   依据 [analyze]：原文：ours 与 theirs 逐 byte 相同，且均不同于 base
   依据 [weave]：分类：ours=modified, theirs=modified
 需人工处理：选择一侧 / 编辑合并结果。

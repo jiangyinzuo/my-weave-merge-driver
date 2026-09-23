@@ -2,6 +2,8 @@
 
 mod display;
 mod validate;
+pub(crate) use display::human_entity;
+pub use display::human_entity_type;
 pub use display::summaries;
 
 use serde::{Deserialize, Serialize};
@@ -79,7 +81,8 @@ pub enum Side {
 #[serde(deny_unknown_fields)]
 pub struct Location {
     pub path: String,
-    pub entity: String,
+    pub entity_type: String,
+    pub name: String,
     pub line: usize,
 }
 

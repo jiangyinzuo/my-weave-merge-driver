@@ -1,0 +1,7 @@
+<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ Amount 需人工审核
+type Amount = string;
+||||||| base-commit
+type Amount = number;
+=======
+type Amount = boolean;
+>>>>>>> ⎇ feature/theirs

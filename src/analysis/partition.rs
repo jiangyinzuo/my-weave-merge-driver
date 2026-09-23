@@ -1,6 +1,6 @@
 //! 原文分区与可靠身份：只接受可逐 byte 还原输入的顶层 entity 和间隙。
 //! 此模块提供分析前提，不自行产生冲突原因。
-use crate::reason::Subject;
+use crate::reason::{human_entity, Subject};
 use sem_core::parser::plugins::create_default_registry;
 use std::collections::BTreeSet;
 use weave_core::region::{extract_regions, FileRegion};
@@ -55,7 +55,7 @@ pub(crate) fn partition(path: &str, text: &str) -> Option<Vec<Part>> {
                 }
                 parts.push(Part {
                     key,
-                    label: format!("{} {}", e.entity_type, e.entity_name),
+                    label: human_entity(&e.entity_type, &e.entity_name),
                     name: e.entity_name,
                     entity_type: e.entity_type,
                     text: e.content,

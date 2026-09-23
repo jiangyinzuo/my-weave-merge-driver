@@ -1,12 +1,12 @@
 func a() int {
     x := 1
-<<<<<<< ours: feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：function a 需人工审核
+<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：ƒ a 需人工审核
     y := 5
-||||||| base: base-commit
+||||||| base-commit
     y := 2
 =======
     y := 9
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs
     z := 3
     return y
 }

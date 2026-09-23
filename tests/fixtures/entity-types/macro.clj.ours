@@ -1,0 +1,2 @@
+(defmacro value []
+  2)

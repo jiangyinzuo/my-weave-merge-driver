@@ -1,12 +1,12 @@
 func a() int {
     x := 1
-<<<<<<< ours: feature/ours | ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
+<<<<<<< ⎇ feature/ours | ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
     y := 5
-||||||| base: base-commit
+||||||| base-commit
     y := 2
 =======
     y := 5
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs
     z := 3
     return y
 }

@@ -1,0 +1,3 @@
+protocol Render {
+    var size: Float { get }
+}

@@ -21,12 +21,14 @@
             "side": "theirs",
             "base": {
               "path": "old.py",
-              "entity": "function calculate",
+              "entity_type": "function",
+              "name": "calculate",
               "line": 1
             },
             "target": {
               "path": "new.py",
-              "entity": "function calculates",
+              "entity_type": "function",
+              "name": "calculates",
               "line": 1
             }
           },
@@ -37,12 +39,14 @@
                 "side": "theirs",
                 "base": {
                   "path": "old.py",
-                  "entity": "function calculate",
+                  "entity_type": "function",
+                  "name": "calculate",
                   "line": 1
                 },
                 "target": {
                   "path": "new.py",
-                  "entity": "function calculates",
+                  "entity_type": "function",
+                  "name": "calculates",
                   "line": 1
                 },
                 "source_count": 1,
@@ -72,12 +76,14 @@
           "side": "theirs",
           "base": {
             "path": "old.py",
-            "entity": "function calculate",
+            "entity_type": "function",
+            "name": "calculate",
             "line": 1
           },
           "target": {
             "path": "new.py",
-            "entity": "function calculates",
+            "entity_type": "function",
+            "name": "calculates",
             "line": 1
           },
           "source_count": 1,
@@ -153,12 +159,14 @@
             "side": "theirs",
             "base": {
               "path": "old.py",
-              "entity": "function calculate",
+              "entity_type": "function",
+              "name": "calculate",
               "line": 1
             },
             "target": {
               "path": "new.py",
-              "entity": "function calculates",
+              "entity_type": "function",
+              "name": "calculates",
               "line": 1
             }
           },
@@ -169,12 +177,14 @@
                 "side": "theirs",
                 "base": {
                   "path": "old.py",
-                  "entity": "function calculate",
+                  "entity_type": "function",
+                  "name": "calculate",
                   "line": 1
                 },
                 "target": {
                   "path": "new.py",
-                  "entity": "function calculates",
+                  "entity_type": "function",
+                  "name": "calculates",
                   "line": 1
                 },
                 "source_count": 1,
@@ -204,12 +214,14 @@
           "side": "theirs",
           "base": {
             "path": "old.py",
-            "entity": "function calculate",
+            "entity_type": "function",
+            "name": "calculate",
             "line": 1
           },
           "target": {
             "path": "new.py",
-            "entity": "function calculates",
+            "entity_type": "function",
+            "name": "calculates",
             "line": 1
           },
           "source_count": 1,
@@ -238,12 +250,14 @@
       "side": "theirs",
       "base": {
         "path": "old.py",
-        "entity": "function calculate",
+        "entity_type": "function",
+        "name": "calculate",
         "line": 1
       },
       "target": {
         "path": "new.py",
-        "entity": "function calculates",
+        "entity_type": "function",
+        "name": "calculates",
         "line": 1
       },
       "source_count": 1,

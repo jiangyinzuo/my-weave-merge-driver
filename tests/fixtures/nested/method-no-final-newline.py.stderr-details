@@ -1,7 +1,7 @@
 冲突 · method-no-final-newline.py
-ours   : feature/ours
-base   : base-commit
-theirs : feature/theirs
+⎇ feature/ours
+base-commit
+⎇ feature/theirs
 原因 [analyze]：ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
   依据 [analyze]：原文分区不可用：语言、语法、实体边界或唯一性检查未通过
 需人工处理：选择一侧 / 编辑合并结果。

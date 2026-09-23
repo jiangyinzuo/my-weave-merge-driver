@@ -1,9 +1,9 @@
 def alpha
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：method alpha：双方修改结果相同，但均不同于 base，按严格规则需人工审核
+<<<<<<< ⎇ feature/ours | ENTITY_CONFLICT：◇ alpha：双方修改结果相同，但均不同于 base，按严格规则需人工审核
   2
-||||||| base: base-commit
+||||||| base-commit
   1
 =======
   2
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs
 end

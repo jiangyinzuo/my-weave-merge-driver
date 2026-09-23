@@ -1,8 +1,8 @@
 export function existing() { return 0; }
 
-<<<<<<< ours: feature/ours
+<<<<<<< ⎇ feature/ours
 export function alpha() { return 1; }
-||||||| base: base-commit
+||||||| base-commit
 =======
 export function beta() { return 2; }
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs

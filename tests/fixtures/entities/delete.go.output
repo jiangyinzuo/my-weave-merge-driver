@@ -1,5 +1,5 @@
-<<<<<<< ours: feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：function a 需人工审核; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化
-||||||| base: base-commit
+<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：ƒ a 需人工审核; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化
+||||||| base-commit
 func a() int {
     return 1
 }
@@ -7,4 +7,4 @@ func a() int {
 func a() int {
     return 2
 }
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs

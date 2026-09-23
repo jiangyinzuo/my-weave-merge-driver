@@ -19,12 +19,14 @@
           "side": "theirs",
           "base": {
             "path": "source.go",
-            "entity": "function calculate",
+            "entity_type": "function",
+            "name": "calculate",
             "line": 1
           },
           "target": {
             "path": "target.go",
-            "entity": "function renamed",
+            "entity_type": "function",
+            "name": "renamed",
             "line": 1
           },
           "source_count": 1,
@@ -58,12 +60,14 @@
           "side": "theirs",
           "base": {
             "path": "source.go",
-            "entity": "function calculate",
+            "entity_type": "function",
+            "name": "calculate",
             "line": 1
           },
           "target": {
             "path": "target.go",
-            "entity": "function renamed",
+            "entity_type": "function",
+            "name": "renamed",
             "line": 1
           },
           "source_count": 1,
@@ -91,12 +95,14 @@
       "side": "theirs",
       "base": {
         "path": "source.go",
-        "entity": "function calculate",
+        "entity_type": "function",
+        "name": "calculate",
         "line": 1
       },
       "target": {
         "path": "target.go",
-        "entity": "function renamed",
+        "entity_type": "function",
+        "name": "renamed",
         "line": 1
       },
       "source_count": 1,

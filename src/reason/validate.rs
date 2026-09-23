@@ -32,7 +32,10 @@ impl MoveEvidence {
             && self.target.line > 0
             && match &self.matched_by {
                 MoveMatch::Exact => {
-                    !self.base.entity.is_empty() && self.base.entity == self.target.entity
+                    !self.base.entity_type.is_empty()
+                        && !self.base.name.is_empty()
+                        && self.base.entity_type == self.target.entity_type
+                        && self.base.name == self.target.name
                 }
                 MoveMatch::NameNormalized {
                     grammar,
@@ -54,8 +57,10 @@ impl MoveEvidence {
                             RenameComparison::Text => true,
                             RenameComparison::Syntax { tokens } => *tokens > 0,
                         }
-                        && self.base.entity == format!("{entity_type} {old_name}")
-                        && self.target.entity == format!("{entity_type} {new_name}")
+                        && self.base.entity_type == *entity_type
+                        && self.target.entity_type == *entity_type
+                        && self.base.name == *old_name
+                        && self.target.name == *new_name
                 }
             }
     }

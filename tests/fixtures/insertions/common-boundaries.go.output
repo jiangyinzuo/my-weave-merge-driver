@@ -4,15 +4,15 @@ func score() int {
     x := 1
     y := 2
     z := 3
-<<<<<<< ours: feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：function score 需人工审核
+<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：ƒ score 需人工审核
     println("start")
     println("ours")
     println("end")
-||||||| base: base-commit
+||||||| base-commit
 =======
     println("start")
     println("theirs")
     println("end")
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs
     return x + y + z
 }

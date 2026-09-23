@@ -1,0 +1,26 @@
+[
+  [
+    "module",
+    "demo"
+  ],
+  [
+    "struct",
+    "Point"
+  ],
+  [
+    "class",
+    "Renderer"
+  ],
+  [
+    "function",
+    "render"
+  ],
+  [
+    "enum",
+    "Color"
+  ],
+  [
+    "function",
+    "calculate"
+  ]
+]

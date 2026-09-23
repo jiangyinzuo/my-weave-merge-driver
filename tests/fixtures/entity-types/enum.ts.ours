@@ -1,0 +1,4 @@
+enum Status {
+    Open = 2,
+    Closed = 4,
+}

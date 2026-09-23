@@ -1,0 +1,9 @@
+struct Point {
+<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ Point 需人工审核
+    x: i64,
+||||||| base-commit
+    x: i32,
+=======
+    x: u32,
+>>>>>>> ⎇ feature/theirs
+}

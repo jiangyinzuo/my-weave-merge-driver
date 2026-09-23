@@ -1,0 +1,24 @@
+#define LIMIT 10
+
+namespace demo {
+struct Point {
+    int x;
+};
+
+class Renderer {
+public:
+<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ demo 需人工审核
+    int render(int value) const { return value + LIMIT + 1; }
+||||||| base-commit
+    int render(int value) const { return value + LIMIT; }
+=======
+    int render(int value) const { return value + LIMIT + 2; }
+>>>>>>> ⎇ feature/theirs
+};
+
+enum Color { Red, Blue };
+
+int calculate(int value) {
+    return value + LIMIT;
+}
+}

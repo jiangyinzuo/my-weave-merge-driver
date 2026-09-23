@@ -8,10 +8,10 @@ pub fn report(path: &str, outcome: &Outcome, labels: &Labels, detailed: bool) {
     if outcome.conflicted() {
         eprintln!("冲突 · {}", merge::safe_label(path));
         eprintln!(
-            "ours   : {}\nbase   : {}\ntheirs : {}",
-            merge::safe_label(&labels.ours),
-            merge::safe_label(&labels.base),
-            merge::safe_label(&labels.theirs)
+            "{}\n{}\n{}",
+            labels.ours_marker(),
+            labels.base_marker(),
+            labels.theirs_marker()
         );
     }
     report_findings(&outcome.reasons, &outcome.related_moves, detailed);

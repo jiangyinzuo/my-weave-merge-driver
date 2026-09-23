@@ -1,10 +1,10 @@
-<<<<<<< ours: feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化
+<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化
 func a() { println(1) }
 func b() {}
-||||||| base: base-commit
+||||||| base-commit
 func a() {}
 func b() {}
 =======
 func b() {}
 func a() {}
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs

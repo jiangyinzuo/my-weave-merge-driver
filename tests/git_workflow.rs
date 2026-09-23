@@ -94,8 +94,8 @@ fn real_merge_driver_blocks_disjoint_function_edits() {
     assert!(String::from_utf8_lossy(&out.stderr).contains("ENTITY_CONFLICT"));
     assert!(!git(root, &["ls-files", "-u"]).is_empty());
     let content = std::fs::read_to_string(root.join("calc.go")).unwrap();
-    assert!(content.contains("<<<<<<< ours: HEAD"));
-    assert!(content.contains(">>>>>>> theirs: other"));
+    assert!(content.contains("<<<<<<< ⎇ HEAD"));
+    assert!(content.contains(">>>>>>> ⎇ other"));
     assert_eq!(content.matches("func a()").count(), 1);
     assert!(content.starts_with("func a() int {\n<<<<<<<"));
 }

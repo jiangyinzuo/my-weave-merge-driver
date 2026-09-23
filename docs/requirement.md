@@ -31,6 +31,8 @@ diff3 与 zdiff3 的区别、实际输出示例及选型建议见 [diff3-vs-zdif
 
 **表达风格：** 信息保持简洁，function、branch、ours、theirs、base 等基础术语直接保留英文。版本身份优先用操作命令、branch 和 commit 表达，避免重复翻译；只在 cherry-pick、rebase 等容易混淆的场景补充必要的角色说明。示例 A 作为格式参考。
 
+版本标签不重复打印 `ours:`、`base:`、`theirs:` 前缀：ours / theirs 使用 `⎇` 图形符号后接 Git 提供的标签，base 直接显示标签。人类可读的 entity 类型 `function` 显示为 `ƒ`；难以让人直接猜到含义的其它类型统一显示为 `◇`。源码和分析数据仍保留原始 `entity_type`、名称字段。展示映射依据结构化的 entity 类型，不搜索或替换名称、源码或标签文本。
+
 **生成边界：** 所有提示由确定性的解析、匹配、文本 diff、Git 上下文及固定模板生成。直接展示可核对的文本变化，不生成业务意图或正确结果的判断；重命名、移动等启发式匹配必须附依据，不确定时标注“疑似”或列出候选。人工处理提示按冲突类型选择固定模板，不代表程序发现了某个具体业务问题。需求背景中的丢失更新等例子用于说明规则动机，不作为程序能自动诊断的能力。
 
 说明不插入任意一方的源码正文，避免“接受当前更改”后留下诊断注释。对于删除，保留真正的空侧，不向源码里填入“已删除”这样的占位文字。
@@ -48,14 +50,14 @@ base 的 function a 包含 x、y、z 三条赋值；ours 删除 z，theirs 删�
 终端报告：
 
 ```text
-冲突 C001 · calc.go · function a()
+冲突 C001 · calc.go · ƒ a()
 原因：同一函数被双方修改 [ENTITY_CONFLICT]
 操作：git merge feature/drop-x
 
-current branch: feature/drop-z
-ours          : feature/drop-z @ a1b2c3d
-theirs        : feature/drop-x @ d4e5f6a
-base          : 1122334
+current branch: ⎇ feature/drop-z
+⎇ feature/drop-z @ a1b2c3d
+⎇ feature/drop-x @ d4e5f6a
+1122334
 
 相对 base：
   ours   删除了 `z := 3`
@@ -70,17 +72,17 @@ base          : 1122334
 
 ```text
 func a() int {
-<<<<<<< ours: feature/drop-z @ a1b2c3d | C001 function a()：双方修改
+<<<<<<< ⎇ feature/drop-z @ a1b2c3d | C001 ƒ a()：双方修改
     x := 1
     y := 2
-||||||| base: 1122334
+||||||| 1122334
     x := 1
     y := 2
     z := 3
 =======
     y := 2
     z := 3
->>>>>>> theirs: feature/drop-x @ d4e5f6a | C001
+>>>>>>> ⎇ feature/drop-x @ d4e5f6a | C001
     return y
 }
 ```
@@ -103,9 +105,9 @@ ours 在末尾新增 `alpha()`，theirs 在同一位置新增 `beta()`。Git 2.5
 冲突 C002 · helpers.ts · existing() 之后的插入位置
 原因：双方在同一位置插入内容 [LINE_CONFLICT]
 
-ours   : feature/add-alpha @ a1b2c3d | 新增 function alpha()
-theirs : feature/add-beta  @ d4e5f6a | 新增 function beta()
-base   : 1122334 | 此处为空
+⎇ feature/add-alpha @ a1b2c3d | 新增 ƒ alpha()
+⎇ feature/add-beta  @ d4e5f6a | 新增 ƒ beta()
+1122334 | 此处为空
 
 行级判定：冲突，必须保留
 实体判定：涉及两个不同函数，未发生同一函数的双方修改
@@ -116,14 +118,14 @@ base   : 1122334 | 此处为空
 
 ```text
 export function existing() { return 0; }
-<<<<<<< ours: feature/add-alpha @ a1b2c3d | C002 同一插入位置：alpha() / beta()
+<<<<<<< ⎇ feature/add-alpha @ a1b2c3d | C002 同一插入位置：alpha() / beta()
 
 export function alpha() { return 1; }
-||||||| base: 1122334 | 此处为空
+||||||| 1122334 | 此处为空
 =======
 
 export function beta() { return 2; }
->>>>>>> theirs: feature/add-beta @ d4e5f6a | C002
+>>>>>>> ⎇ feature/add-beta @ d4e5f6a | C002
 ```
 
 重点是解释“不同实体为什么仍然冲突”，不能将其误报为双方修改同一个函数，也不能因为实体不同就自动消掉冲突。
@@ -135,15 +137,15 @@ export function beta() { return 2; }
 提示只使用实体匹配、三方文本比较和可靠的 Git 操作上下文，不解释修改的业务含义。
 
 ```text
-冲突 C003 · validate.ts · function validateInput()
+冲突 C003 · validate.ts · ƒ validateInput()
 原因：ours 删除，theirs 修改 [ENTITY_CONFLICT]
 
 操作：git cherry-pick 9abc012
 
-current branch: release/1.2
-ours          : release/1.2 @ 7def890
-theirs        : 9abc012 | 待应用 commit
-base          : 3456789 | 所选 parent
+current branch: ⎇ release/1.2
+⎇ release/1.2 @ 7def890
+⎇ 9abc012 | 待应用 commit
+3456789 | 所选 parent
 
 相对 base：
   ours   : deleted
@@ -159,8 +161,8 @@ theirs 的文本变化（base → theirs）：
 文件中的空 ours 区域表达“已删除”：
 
 ```text
-<<<<<<< ours: release/1.2 @ 7def890 | C003 function validateInput() 已删除
-||||||| base: 3456789 | 所选 parent
+<<<<<<< ⎇ release/1.2 @ 7def890 | C003 ƒ validateInput() 已删除
+||||||| 3456789 | 所选 parent
 export function validateInput(data: unknown) {
   return data !== null;
 }
@@ -168,12 +170,12 @@ export function validateInput(data: unknown) {
 export function validateInput(data: unknown) {
   return data != null;
 }
->>>>>>> theirs: 9abc012 | C003 已修改
+>>>>>>> ⎇ 9abc012 | C003 已修改
 ```
 
 这些信息可以由确定性程序生成：
 
-- `function validateInput()` 来自解析和实体匹配；base 中存在、ours 未匹配到对应实体时，在本文件分析范围内记为 `deleted`；theirs 对应实体的文本与 base 不同时记为 `modified`。匹配不可靠时应报告不确定，不能直接断言删除；跨文件移动可由额外分析补充说明。
+- `ƒ validateInput()` 来自解析和实体匹配；base 中存在、ours 未匹配到对应实体时，在本文件分析范围内记为 `deleted`；theirs 对应实体的文本与 base 不同时记为 `modified`。匹配不可靠时应报告不确定，不能直接断言删除；跨文件移动可由额外分析补充说明。
 - 增删行直接来自实体文本的 diff，不生成“加强校验”“修复逻辑”等意图描述。上面的 `-` / `+` 是终端摘要；文件内保留三方差异及块外的共同前后文。
 - “删除 / 保留 / 编辑后保留”是该冲突类型的固定提示，不推荐某个业务结果。
 - branch、commit、操作和所选 parent 来自可靠的 Git 上下文；无法获取时省略或标记未知。若展示 commit subject，应原样读取并标为提交信息，不能当作程序对改动的判断。
@@ -236,8 +238,8 @@ Git 可能在双方文件内容相同时直接采用该内容，不调用自定�
 相同结果的报告示例：
 
 ```text
-冲突 C004 · count.ts · function getFileCount()
-原因：同一函数被双方修改，虽然结果相同，仍须人工审核 [ENTITY_CONFLICT]
+冲突 C004 · count.ts · ƒ getFileCount()
+原因：同一 ƒ 被双方修改，虽然结果相同，仍须人工审核 [ENTITY_CONFLICT]
 
 ours 相对 base 的文本变化（theirs 相同）：
 -  return 2;

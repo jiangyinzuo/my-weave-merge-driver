@@ -1,5 +1,5 @@
 class Counter:
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：class Counter 需人工审核
+<<<<<<< ⎇ feature/ours | ENTITY_CONFLICT：◇ Counter 需人工审核
     def unchanged(self):
         return 0
 
@@ -8,7 +8,7 @@ class Counter:
         y = 2
         z = 3
         return x + y + z
-||||||| base: base-commit
+||||||| base-commit
     def score(self):
         x = 1
         y = 2
@@ -26,4 +26,4 @@ class Counter:
 
     def unchanged(self):
         return 0
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs

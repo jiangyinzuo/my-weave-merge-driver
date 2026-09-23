@@ -60,12 +60,14 @@
             "side": "theirs",
             "base": {
               "path": "source.go",
-              "entity": "function calculate",
+              "entity_type": "function",
+              "name": "calculate",
               "line": 2
             },
             "target": {
               "path": "target.go",
-              "entity": "function renamed",
+              "entity_type": "function",
+              "name": "renamed",
               "line": 2
             }
           },
@@ -76,12 +78,14 @@
                 "side": "theirs",
                 "base": {
                   "path": "source.go",
-                  "entity": "function calculate",
+                  "entity_type": "function",
+                  "name": "calculate",
                   "line": 2
                 },
                 "target": {
                   "path": "target.go",
-                  "entity": "function renamed",
+                  "entity_type": "function",
+                  "name": "renamed",
                   "line": 2
                 },
                 "source_count": 1,
@@ -110,12 +114,14 @@
           "side": "theirs",
           "base": {
             "path": "source.go",
-            "entity": "function calculate",
+            "entity_type": "function",
+            "name": "calculate",
             "line": 2
           },
           "target": {
             "path": "target.go",
-            "entity": "function renamed",
+            "entity_type": "function",
+            "name": "renamed",
             "line": 2
           },
           "source_count": 1,
@@ -151,12 +157,14 @@
             "side": "theirs",
             "base": {
               "path": "source.go",
-              "entity": "function calculate",
+              "entity_type": "function",
+              "name": "calculate",
               "line": 2
             },
             "target": {
               "path": "target.go",
-              "entity": "function renamed",
+              "entity_type": "function",
+              "name": "renamed",
               "line": 2
             }
           },
@@ -167,12 +175,14 @@
                 "side": "theirs",
                 "base": {
                   "path": "source.go",
-                  "entity": "function calculate",
+                  "entity_type": "function",
+                  "name": "calculate",
                   "line": 2
                 },
                 "target": {
                   "path": "target.go",
-                  "entity": "function renamed",
+                  "entity_type": "function",
+                  "name": "renamed",
                   "line": 2
                 },
                 "source_count": 1,
@@ -201,12 +211,14 @@
           "side": "theirs",
           "base": {
             "path": "source.go",
-            "entity": "function calculate",
+            "entity_type": "function",
+            "name": "calculate",
             "line": 2
           },
           "target": {
             "path": "target.go",
-            "entity": "function renamed",
+            "entity_type": "function",
+            "name": "renamed",
             "line": 2
           },
           "source_count": 1,
@@ -234,12 +246,14 @@
       "side": "theirs",
       "base": {
         "path": "source.go",
-        "entity": "function calculate",
+        "entity_type": "function",
+        "name": "calculate",
         "line": 2
       },
       "target": {
         "path": "target.go",
-        "entity": "function renamed",
+        "entity_type": "function",
+        "name": "renamed",
         "line": 2
       },
       "source_count": 1,

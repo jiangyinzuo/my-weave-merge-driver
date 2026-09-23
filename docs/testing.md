@@ -57,6 +57,8 @@ a.output
 
 `.output-zdiff3` 是可选的额外断言。存在时，框架用原始三份输入在新的临时目录中再次运行 `driver --zdiff3`，比较该文件；原有 `.output` 的默认模式仍必测。不存在时只测试默认模式。两种模式共用由 `.output` 或 `.exit` 决定的预期退出码，防止展示选项改变冲突判定。
 
+单文件可选提供 `a.entities`，内容是上游 parser 对 `a.base` 提取的 JSON 数组：每项为 `[entity_type, name]`。框架直接调用上游 registry 比较该列表，不维护额外类型白名单；适合新增跨语言 entity 覆盖。代表性案例见 [`tests/fixtures/entity-types`](../tests/fixtures/entity-types)，类型说明见 [上游 entity type](entity-types.md)。
+
 源码路径默认不含分类目录；无扩展名的 `a` 按不支持的语言保守处理，也可用 `a.path` 指定 `src/calc.go` 等路径。
 
 默认版本标签如下，预期输出使用同样的标签：

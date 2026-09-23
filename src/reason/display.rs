@@ -2,6 +2,20 @@
 use super::*;
 use crate::merge::safe_label;
 
+/// Display only the parsed type; unknown upstream types and names stay intact.
+pub(crate) fn human_entity(entity_type: &str, name: &str) -> String {
+    let display_type = human_entity_type(entity_type);
+    format!("{display_type} {name}")
+}
+
+/// Use a distinct glyph only when its meaning is readily recognizable.
+pub fn human_entity_type(entity_type: &str) -> &str {
+    match entity_type {
+        "function" => "ƒ",
+        _ => "◇",
+    }
+}
+
 impl Source {
     pub fn label(self) -> &'static str {
         match self {
@@ -136,8 +150,8 @@ impl Evidence {
                         ),
                     };
                     return safe_label(&format!(
-                        "[analyze]：RENAME_MOVE_CANDIDATE：{} 疑似重命名并移动 {entity_type} {old_name} → {new_name} · {}:{} → {}:{}；源 deleted、目标 added；grammar={grammar}、类型相同；按词边界替换各自名称后，{matched}；替换次数={old_occurrences}/{new_occurrences}；sources={}，destinations={}；另一侧={opposite}；仅为文本候选，未证明语义等价",
-                        c.side.label(), c.base.path, c.base.line, c.target.path, c.target.line, c.source_count, c.destination_count
+                        "[analyze]：RENAME_MOVE_CANDIDATE：{} 疑似重命名并移动 {} → {} · {}:{} → {}:{}；源 deleted、目标 added；grammar={grammar}、类型相同；按词边界替换各自名称后，{matched}；替换次数={old_occurrences}/{new_occurrences}；sources={}，destinations={}；另一侧={opposite}；仅为文本候选，未证明语义等价",
+                        c.side.label(), human_entity(entity_type, old_name), human_entity(entity_type, new_name), c.base.path, c.base.line, c.target.path, c.target.line, c.source_count, c.destination_count
                     ));
                 }
                 format!(
@@ -145,7 +159,7 @@ impl Evidence {
                      源 deleted、目标 added；类型/名称/原始区域文本相同（含附着注释）；\
                      sources={}，destinations={}；另一侧={opposite}",
                     c.side.label(),
-                    c.base.entity,
+                    human_entity(&c.base.entity_type, &c.base.name),
                     c.base.path,
                     c.base.line,
                     c.target.path,
@@ -218,10 +232,10 @@ impl Reason {
     pub fn summary(&self) -> String {
         let target = match &self.subject {
             Subject::File => String::new(),
-            Subject::Entity { entity_type, name } => format!("{entity_type} {name}"),
+            Subject::Entity { entity_type, name } => human_entity(entity_type, name),
             Subject::Gap { label, .. } => label.clone(),
             Subject::Weave { name, .. } => format!("entity {name}（weave，身份未关联）"),
-            Subject::Move { base, .. } => base.entity.clone(),
+            Subject::Move { base, .. } => human_entity(&base.entity_type, &base.name),
         };
         safe_label(&format!(
             "{}：{}",
@@ -291,7 +305,12 @@ fn move_note(base: &Location, target: &Location, matched_by: &MoveMatch) -> Stri
     };
     safe_label(&format!(
         "{action} {} · {}:{} → {} · {}:{}",
-        base.entity, base.path, base.line, target.entity, target.path, target.line
+        human_entity(&base.entity_type, &base.name),
+        base.path,
+        base.line,
+        human_entity(&target.entity_type, &target.name),
+        target.path,
+        target.line
     ))
 }
 

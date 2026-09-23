@@ -1,11 +1,11 @@
 class Alpha {
     int value() {
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：class Alpha：双方修改结果相同，但均不同于 base，按严格规则需人工审核
+<<<<<<< ⎇ feature/ours | ENTITY_CONFLICT：◇ Alpha：双方修改结果相同，但均不同于 base，按严格规则需人工审核
         return 2;
-||||||| base: base-commit
+||||||| base-commit
         return 1;
 =======
         return 2;
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs
     }
 }

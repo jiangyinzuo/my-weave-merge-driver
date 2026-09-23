@@ -66,6 +66,9 @@ pub(super) fn check_case(
     detailed: bool,
 ) -> Result<(), String> {
     let file = |suffix: &str| directory.join(format!("{name}.{suffix}"));
+    if file("entities").exists() {
+        return Err(format!("{name}: .entities 仅支持单文件用例"));
+    }
     if file("path").exists() {
         return Err(format!(
             "{name}: 多文件用例直接使用快照内相对路径，不支持 .path"

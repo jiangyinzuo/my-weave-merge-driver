@@ -1,0 +1,38 @@
+const LIMIT: i32 = 10;
+static LABEL: &str = "point";
+type Number = i32;
+
+struct Point {
+    x: Number,
+}
+
+enum Color {
+    Red,
+    Blue,
+}
+
+trait Render {
+    fn render(&self) -> String;
+}
+
+impl Render for Point {
+    fn render(&self) -> String {
+        format!("{}:{}", self.x, LABEL)
+    }
+}
+
+macro_rules! announce {
+    ($value:expr) => {
+        println!("{}", $value);
+    };
+}
+
+fn calculate(value: Number) -> Number {
+<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：ƒ calculate 需人工审核
+    value + LIMIT + 1
+||||||| base-commit
+    value + LIMIT
+=======
+    value + LIMIT + 2
+>>>>>>> ⎇ feature/theirs
+}

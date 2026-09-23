@@ -1,0 +1,42 @@
+[
+  [
+    "constant",
+    "LIMIT"
+  ],
+  [
+    "static",
+    "LABEL"
+  ],
+  [
+    "type",
+    "Number"
+  ],
+  [
+    "struct",
+    "Point"
+  ],
+  [
+    "enum",
+    "Color"
+  ],
+  [
+    "trait",
+    "Render"
+  ],
+  [
+    "impl",
+    "Render for Point"
+  ],
+  [
+    "function",
+    "render"
+  ],
+  [
+    "macro_definition",
+    "announce"
+  ],
+  [
+    "function",
+    "calculate"
+  ]
+]

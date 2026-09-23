@@ -1,0 +1,3 @@
+def calculate(value)
+    value + 1
+end

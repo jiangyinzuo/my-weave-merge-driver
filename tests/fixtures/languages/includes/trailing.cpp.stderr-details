@@ -1,10 +1,10 @@
 冲突 · trailing.cpp
-ours   : feature/ours
-base   : base-commit
-theirs : feature/theirs
+⎇ feature/ours
+base-commit
+⎇ feature/theirs
 原因 [git]：LINE_CONFLICT：Git 行级冲突
   依据 [git]：Git 行级合并返回冲突
-原因 [analyze]：UNMODELED_BOTH_CHANGED：文件末尾、function answer 之后的非实体区域被双方修改
+原因 [analyze]：UNMODELED_BOTH_CHANGED：文件末尾、ƒ answer 之后的非实体区域被双方修改
   依据 [analyze]：原文：ours、theirs 均相对 base 改变
 需人工处理：选择一侧 / 编辑合并结果。
 

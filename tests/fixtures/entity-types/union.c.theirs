@@ -1,0 +1,4 @@
+union Value {
+    short number;
+    char byte;
+};

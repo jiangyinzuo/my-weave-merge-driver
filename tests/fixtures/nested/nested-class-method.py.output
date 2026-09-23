@@ -1,11 +1,11 @@
 class Outer:
     class Inner:
         def score(self):
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：class Outer 需人工审核
+<<<<<<< ⎇ feature/ours | ENTITY_CONFLICT：◇ Outer 需人工审核
             x = 10
             y = 2
             z = 3
-||||||| base: base-commit
+||||||| base-commit
             x = 1
             y = 2
             z = 3
@@ -13,7 +13,7 @@ class Outer:
             x = 1
             y = 2
             z = 30
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs
             return x + y + z
 
     def unchanged(self):

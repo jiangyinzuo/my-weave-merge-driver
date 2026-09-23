@@ -1,10 +1,10 @@
 namespace math {
 int score() {
-<<<<<<< ours: feature/ours | ENTITY_CONFLICT：module math 需人工审核
+<<<<<<< ⎇ feature/ours | ENTITY_CONFLICT：◇ math 需人工审核
     int x = 10;
     int y = 2;
     int z = 3;
-||||||| base: base-commit
+||||||| base-commit
     int x = 1;
     int y = 2;
     int z = 3;
@@ -12,7 +12,7 @@ int score() {
     int x = 1;
     int y = 2;
     int z = 30;
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs
     return x + y + z;
 }
 

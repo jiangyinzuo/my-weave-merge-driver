@@ -1,8 +1,8 @@
-<<<<<<< ours: feature/ours | ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
+<<<<<<< ⎇ feature/ours | ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
 ONE
 two
 three
-||||||| base: base-commit
+||||||| base-commit
 one
 two
 three
@@ -10,4 +10,4 @@ three
 one
 two
 THREE
->>>>>>> theirs: feature/theirs
+>>>>>>> ⎇ feature/theirs
