@@ -196,8 +196,8 @@ fn check_text(
             },
         )?;
         if let Some(report) = analysis {
-            let global = strict_weave::analysis::load_for_driver(report, &case.path, texts)?;
-            strict_weave::analysis::augment(
+            let global = strict_weave::analysis::load_file_analysis(report, &case.path, texts)?;
+            strict_weave::analysis::apply_file_analysis(
                 &mut outcome,
                 &global,
                 texts,

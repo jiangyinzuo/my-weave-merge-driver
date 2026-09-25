@@ -63,7 +63,7 @@ fn global_modify_move_is_deterministic_and_only_adds_conflicts() {
     let target = Case::load("moves/move-target.go");
     let mut outcome = target.run();
     assert!(!outcome.conflicted());
-    analysis::augment(
+    analysis::apply_file_analysis(
         &mut outcome,
         &report.files["target.go"],
         target.texts(),
@@ -75,7 +75,7 @@ fn global_modify_move_is_deterministic_and_only_adds_conflicts() {
     let conflict = Case::load("moves/calculate.go");
     let mut existing = conflict.run();
     let before = existing.content.clone();
-    analysis::augment(
+    analysis::apply_file_analysis(
         &mut existing,
         &report.files["source.go"],
         conflict.texts(),
@@ -135,12 +135,12 @@ fn both_sides_move_links_keep_all_targets_and_validate_cached_evidence() {
     let temp = tempfile::tempdir().unwrap();
     let path = temp.path().join("analysis.json");
     analysis::save(&path, &report).unwrap();
-    assert!(analysis::load_for_driver(&path, "ours.go", ["", &base, ""]).is_ok());
+    assert!(analysis::load_file_analysis(&path, "ours.go", ["", &base, ""]).is_ok());
     let mut json = serde_json::to_value(&report).unwrap();
     json["move_candidates"][0]["opposite_moves"][0]["matched_by"]["kind"] = "unknown".into();
     let bad = temp.path().join("bad.json");
     std::fs::write(&bad, serde_json::to_vec(&json).unwrap()).unwrap();
-    assert!(analysis::load_for_driver(&bad, "ours.go", ["", &base, ""]).is_err());
+    assert!(analysis::load_file_analysis(&bad, "ours.go", ["", &base, ""]).is_err());
 }
 
 #[test]
@@ -154,7 +154,7 @@ fn gap_descriptions_survive_global_report_roundtrip() {
     let temp = tempfile::tempdir().unwrap();
     let path = temp.path().join("report.json");
     analysis::save(&path, &report).unwrap();
-    let file = analysis::load_for_driver(&path, &c.path, c.texts()).unwrap();
+    let file = analysis::load_file_analysis(&path, &c.path, c.texts()).unwrap();
     assert_eq!(file.reasons, c.run().reasons);
     let gap = file
         .reasons
@@ -199,7 +199,7 @@ fn pure_move_and_rename_annotate_without_conflict_but_body_edits_do_not_match() 
     assert!(!report.conflicted());
     let deleted = Case::load("moves/move-delete.go");
     let mut local = deleted.run();
-    analysis::augment(
+    analysis::apply_file_analysis(
         &mut local,
         &report.files["source.go"],
         deleted.texts(),
@@ -254,24 +254,26 @@ fn immutable_result_rejects_stale_reversed_unknown_and_invalid_inputs() {
     assert!(std::fs::metadata(&path).unwrap().permissions().readonly());
     assert!(analysis::save(&path, &report).is_err());
     let texts = inputs.each_ref().map(|s| s["source.go"].as_str());
-    assert!(analysis::load_for_driver(&path, "source.go", texts).is_ok());
-    assert!(analysis::load_for_driver(&path, "missing.go", texts).is_err());
-    assert!(analysis::load_for_driver(&path, "source.go", [texts[0], texts[2], texts[1]]).is_err());
+    assert!(analysis::load_file_analysis(&path, "source.go", texts).is_ok());
+    assert!(analysis::load_file_analysis(&path, "missing.go", texts).is_err());
     assert!(
-        analysis::load_for_driver(&path, "source.go", [texts[0], STALE_TEXT, texts[2]]).is_err()
+        analysis::load_file_analysis(&path, "source.go", [texts[0], texts[2], texts[1]]).is_err()
+    );
+    assert!(
+        analysis::load_file_analysis(&path, "source.go", [texts[0], STALE_TEXT, texts[2]]).is_err()
     );
     assert_eq!(bytes, std::fs::read(&path).unwrap());
     let bad = dir.path().join("bad.json");
     std::fs::write(&bad, BROKEN_JSON).unwrap();
-    assert!(analysis::load_for_driver(&bad, "source.go", texts).is_err());
+    assert!(analysis::load_file_analysis(&bad, "source.go", texts).is_err());
     let mut json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
     json["engine"] = "strict-weave-global-v8".into();
     std::fs::write(&bad, serde_json::to_vec(&json).unwrap()).unwrap();
-    assert!(analysis::load_for_driver(&bad, "source.go", texts).is_err());
+    assert!(analysis::load_file_analysis(&bad, "source.go", texts).is_err());
     json = serde_json::from_slice(&bytes).unwrap();
     json["schema_version"] = 4.into();
     std::fs::write(&bad, serde_json::to_vec(&json).unwrap()).unwrap();
-    assert!(analysis::load_for_driver(&bad, "source.go", texts).is_err());
+    assert!(analysis::load_file_analysis(&bad, "source.go", texts).is_err());
 }
 
 #[test]
@@ -305,7 +307,7 @@ fn rename_move_preserves_all_candidates_and_rejects_invalid_cached_evidence() {
     let path = temp.path().join("report.json");
     let texts = ["", "", renamed.as_str()];
     analysis::save(&path, &report).unwrap();
-    assert!(analysis::load_for_driver(&path, "alpha.go", texts).is_ok());
+    assert!(analysis::load_file_analysis(&path, "alpha.go", texts).is_ok());
     let json = serde_json::to_value(&report).unwrap();
     let bad = temp.path().join("invalid.json");
     for mutation in ["unknown_match", "missing_match", "wrong_name", "zero_count"] {
@@ -321,7 +323,7 @@ fn rename_move_preserves_all_candidates_and_rejects_invalid_cached_evidence() {
         }
         std::fs::write(&bad, serde_json::to_vec(&invalid).unwrap()).unwrap();
         assert!(
-            analysis::load_for_driver(&bad, "alpha.go", texts).is_err(),
+            analysis::load_file_analysis(&bad, "alpha.go", texts).is_err(),
             "{mutation}"
         );
     }
@@ -350,7 +352,7 @@ fn global_default_report_does_not_override_zdiff3_display_explanation() {
     let content = outcome.content.clone();
     let related_moves = outcome.related_moves.clone();
     let reasons = outcome.reasons.clone();
-    analysis::augment(
+    analysis::apply_file_analysis(
         &mut outcome,
         &report.files["a.ts"],
         [base, ours, theirs],
@@ -387,16 +389,16 @@ fn cached_reason_tree_is_validated_and_repeated_augmentation_is_idempotent() {
         }
         std::fs::write(&path, serde_json::to_vec(&invalid).unwrap()).unwrap();
         assert!(
-            analysis::load_for_driver(&path, "source.go", texts).is_err(),
+            analysis::load_file_analysis(&path, "source.go", texts).is_err(),
             "{mutation}"
         );
     }
     let labels = Labels::default();
     let mut outcome = merge::merge(texts[0], texts[1], texts[2], "source.go", &labels, 7).unwrap();
-    analysis::augment(&mut outcome, &report.files["source.go"], texts, &labels, 7);
+    analysis::apply_file_analysis(&mut outcome, &report.files["source.go"], texts, &labels, 7);
     let reasons = outcome.reasons.clone();
     let content = outcome.content.clone();
-    analysis::augment(&mut outcome, &report.files["source.go"], texts, &labels, 7);
+    analysis::apply_file_analysis(&mut outcome, &report.files["source.go"], texts, &labels, 7);
     assert_eq!(outcome.reasons, reasons);
     assert_eq!(outcome.content, content);
 }

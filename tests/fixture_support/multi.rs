@@ -1,4 +1,4 @@
-//! Directory fixtures share one immutable global report across all file drivers.
+//! Directory fixtures share one immutable global report across all file analyses.
 use super::{check_text, common, compare, TextCase};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -167,7 +167,7 @@ pub(super) fn check_case(
         }
     }
     if fs::read(&report_path).map_err(|e| e.to_string())? != report_bytes {
-        errors.push(format!("{name}: driver 修改了共享分析结果"));
+        errors.push(format!("{name}: 分析修改了共享报告"));
     }
     if errors.is_empty() {
         Ok(())

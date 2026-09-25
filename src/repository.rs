@@ -1,4 +1,4 @@
-//! File output and human-readable driver diagnostics. No Git operation orchestration.
+//! File output and human-readable operation diagnostics.
 use crate::merge::{self, Labels, Outcome};
 use crate::reason::{Evidence, MoveEvidence, MoveMatch, Reason};
 use anyhow::{bail, Context, Result};
@@ -33,7 +33,7 @@ pub fn report(path: &str, outcome: &Outcome, labels: &Labels, detailed: bool) {
     eprint!("{}", diagnostics(path, outcome, labels, detailed));
 }
 
-/// Human-readable diagnostics for the read-only prepare command.
+/// Human-readable diagnostics for a complete three-tree report.
 pub fn report_analysis(report: &crate::analysis::Report, detailed: bool) {
     for warning in &report.warnings {
         eprintln!("strict-weave：{}", merge::safe_label(warning));

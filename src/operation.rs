@@ -1,18 +1,42 @@
 //! Restricted Git porcelain. Analysis and rendering precede repository writes;
-//! Git owns native merge state, and strict conflicts get real index stages.
+//! Git owns native operation state, and strict-weave installs standard stages.
 use crate::{analysis, merge, repository};
 use anyhow::{bail, Context, Result};
+use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::{
     collections::{BTreeMap, BTreeSet},
-    io::Write,
+    io::{Read, Write},
     path::{Path, PathBuf},
     process::{Command, Output, Stdio},
 };
+
+const ARTIFACT_VERSION: u32 = 1;
+const MAX_ARTIFACT: u64 = 64 * 1024 * 1024;
 
 #[derive(Clone, Copy, Default)]
 pub struct Options {
     pub zdiff3: bool,
     pub detailed: bool,
+}
+
+pub enum Mode {
+    Apply,
+    Plan(PathBuf),
+    ApplyPlan(PathBuf),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Artifact {
+    artifact_version: u32,
+    operation: String,
+    target: String,
+    repository: String,
+    revisions: [String; 3],
+    head: String,
+    index_sha256: String,
+    report: analysis::Report,
 }
 
 fn git(args: &[&str]) -> Result<Output> {
@@ -68,6 +92,17 @@ fn git_path(name: &str) -> Result<PathBuf> {
         name,
     ])?))
 }
+fn repository_root() -> Result<PathBuf> {
+    Ok(std::fs::canonicalize(string(&[
+        "rev-parse",
+        "--show-toplevel",
+    ])?)?)
+}
+fn index_sha256() -> Result<String> {
+    let path = git_path("index")?;
+    let bytes = std::fs::read(path).context("读取 Git index")?;
+    Ok(format!("{:x}", Sha256::digest(bytes)))
+}
 fn unique_base(ours: &str, theirs: &str) -> Result<String> {
     let bases = string(&["merge-base", "--all", ours, theirs])?;
     if bases.lines().count() != 1 {
@@ -82,9 +117,6 @@ fn clean() -> Result<()> {
     Ok(())
 }
 
-// Git paths must be resolved through rev-parse (linked worktrees have a .git
-// file). This lock excludes other strict-weave commands, not unrelated editors
-// or Git processes: concurrent repository writes are unsupported.
 struct Guard(PathBuf);
 impl Drop for Guard {
     fn drop(&mut self) {
@@ -95,7 +127,7 @@ fn enter() -> Result<Guard> {
     if std::env::var_os("GIT_INDEX_FILE").is_some() {
         bail!("不支持 GIT_INDEX_FILE");
     }
-    let root = string(&["rev-parse", "--show-toplevel"])?;
+    let root = repository_root()?;
     std::env::set_current_dir(root)?;
     for name in [
         "MERGE_HEAD",
@@ -106,7 +138,7 @@ fn enter() -> Result<Guard> {
         "sequencer",
     ] {
         if git_path(name)?.exists() {
-            bail!("已有 Git 操作：{name}；请先继续或中止该操作");
+            bail!("已有 Git 操作：{name}；请先由 Git 处理该操作");
         }
     }
     let dir = git_path("strict-weave")?;
@@ -116,15 +148,13 @@ fn enter() -> Result<Guard> {
         .write(true)
         .create_new(true)
         .open(&lock)
-        .context("已有 strict-weave 操作；异常退出后须确认无运行进程再移除 operation.lock")?;
+        .context("已有 strict-weave 操作；确认无运行进程后再移除 operation.lock")?;
     let guard = Guard(lock);
     clean()?;
     Ok(guard)
 }
 
 fn check_subset(revisions: [&str; 3], paths: &BTreeSet<String>) -> Result<()> {
-    // Initial scope is path-preserving text merges. Refuse whole-file renames
-    // rather than install original-path stages over Git's renamed-path stages.
     for side in &revisions[1..] {
         let status = read(&[
             "diff-tree",
@@ -136,7 +166,7 @@ fn check_subset(revisions: [&str; 3], paths: &BTreeSet<String>) -> Result<()> {
             revisions[0],
             side,
         ])?;
-        let mut fields = status.split(|b| *b == 0).filter(|s| !s.is_empty());
+        let mut fields = status.split(|byte| *byte == 0).filter(|s| !s.is_empty());
         while let Some(kind) = fields.next() {
             if kind.starts_with(b"R") {
                 bail!("暂不支持 Git 文件 rename；跨文件 function 移动仍会分析");
@@ -152,9 +182,6 @@ fn check_subset(revisions: [&str; 3], paths: &BTreeSet<String>) -> Result<()> {
         }
     }
     let names: Vec<u8> = paths.iter().flat_map(|p| p.bytes().chain([0])).collect();
-    // Custom drivers, filters and checkout transformations would invalidate the
-    // original-byte contract. Check each committed attributes snapshot AND the
-    // effective worktree attributes (including .git/info/attributes).
     for source in revisions.into_iter().map(Some).chain([None]) {
         let option = source.map(|s| format!("--source={s}"));
         let mut args = vec!["check-attr", "-z", "--stdin"];
@@ -171,8 +198,8 @@ fn check_subset(revisions: [&str; 3], paths: &BTreeSet<String>) -> Result<()> {
         ]);
         let output = input(&args, &names)?;
         let fields: Vec<_> = output
-            .split(|b| *b == 0)
-            .filter(|s| !s.is_empty())
+            .split(|byte| *byte == 0)
+            .filter(|field| !field.is_empty())
             .collect();
         for attr in fields.chunks(3) {
             if attr.len() != 3 {
@@ -206,28 +233,40 @@ fn check_subset(revisions: [&str; 3], paths: &BTreeSet<String>) -> Result<()> {
 }
 
 struct Plan {
-    revisions: [String; 3],
+    artifact: Artifact,
     labels: merge::Labels,
     outcomes: BTreeMap<String, merge::Outcome>,
     stages: Vec<u8>,
-    report_dir: PathBuf,
 }
 impl Plan {
-    fn new(revisions: [String; 3], label: &str, options: Options) -> Result<Self> {
-        let refs = revisions.each_ref().map(String::as_str);
-        let loaded = [
-            analysis::snapshot(refs[0])?,
-            analysis::snapshot(refs[1])?,
-            analysis::snapshot(refs[2])?,
-        ];
+    fn load_snapshots(revisions: [&str; 3]) -> Result<[(String, analysis::TreeSnapshot); 3]> {
+        Ok([
+            analysis::snapshot(revisions[0])?,
+            analysis::snapshot(revisions[1])?,
+            analysis::snapshot(revisions[2])?,
+        ])
+    }
+    fn from_loaded(
+        artifact: Artifact,
+        label: &str,
+        loaded: [(String, analysis::TreeSnapshot); 3],
+        options: Options,
+    ) -> Result<Self> {
+        let revisions = artifact.revisions.each_ref().map(String::as_str);
         let trees = loaded.each_ref().map(|(id, _)| id.clone());
-        let snapshots = loaded.map(|(_, snapshot)| snapshot);
-        let paths = snapshots.iter().flat_map(|s| s.keys().cloned()).collect();
-        check_subset(refs, &paths)?;
-        let report = analysis::analyze(&snapshots, trees)?;
+        if artifact.report.trees != trees {
+            bail!("分析报告的 tree ID 与当前 Git 对象不匹配");
+        }
+        let snapshots = loaded.each_ref().map(|(_, snapshot)| snapshot);
+        let paths = snapshots
+            .iter()
+            .flat_map(|snapshot| snapshot.keys().cloned())
+            .collect();
+        check_subset(revisions, &paths)?;
+        artifact.report.validate()?;
         let labels = merge::Labels {
-            base: revisions[0].clone(),
-            ours: revisions[1].clone(),
+            base: revisions[0].into(),
+            ours: revisions[1].into(),
             theirs: label.into(),
         };
         let style = if options.zdiff3 {
@@ -237,46 +276,108 @@ impl Plan {
         };
         let mut outcomes = BTreeMap::new();
         let mut stages = Vec::new();
-        for (path, global) in &report.files {
+        for (path, global) in &artifact.report.files {
             let texts = snapshots
                 .each_ref()
-                .map(|s| s.get(path).map(String::as_str).unwrap_or(""));
+                .map(|snapshot| snapshot.get(path).map(String::as_str).unwrap_or(""));
             let mut outcome =
                 merge::merge_with_style(texts[0], texts[1], texts[2], path, &labels, 7, style)?;
-            analysis::augment(&mut outcome, global, texts, &labels, 7);
+            analysis::apply_file_analysis(&mut outcome, global, texts, &labels, 7);
             if outcome.conflicted() {
-                // NUL framing permits tabs/newlines in Git paths. Remove stage
-                // zero first; None preserves absent-file vs empty-file identity.
                 stages.extend_from_slice(
                     format!("0 {}\t{path}\0", "0".repeat(revisions[1].len())).as_bytes(),
                 );
-                for (i, revision) in refs.iter().enumerate() {
+                for (stage, revision) in revisions.iter().enumerate() {
                     if let Some((mode, oid)) = analysis::blob_oid(revision, path)? {
                         stages.extend_from_slice(
-                            format!("{mode} {oid} {}\t{path}\0", i + 1).as_bytes(),
+                            format!("{mode} {oid} {}\t{path}\0", stage + 1).as_bytes(),
                         );
                     }
                 }
                 outcomes.insert(path.clone(), outcome);
             }
         }
-        let report_dir = tempfile::Builder::new()
-            .prefix("operation-")
-            .tempdir_in(git_path("strict-weave")?)?
-            .keep();
-        analysis::save(&report_dir.join("analysis.json"), &report)?;
-        eprintln!("分析结果：{}", report_dir.join("analysis.json").display());
         Ok(Self {
-            revisions,
+            artifact,
             labels,
             outcomes,
             stages,
-            report_dir,
         })
     }
+    fn build(
+        operation: &str,
+        target: &str,
+        revisions: [String; 3],
+        options: Options,
+    ) -> Result<Self> {
+        let refs = revisions.each_ref().map(String::as_str);
+        let loaded = Self::load_snapshots(refs)?;
+        let trees = loaded.each_ref().map(|(id, _)| id.clone());
+        let snapshots = loaded.each_ref().map(|(_, snapshot)| snapshot);
+        let paths = snapshots
+            .iter()
+            .flat_map(|snapshot| snapshot.keys().cloned())
+            .collect();
+        check_subset(refs, &paths)?;
+        let report = analysis::analyze(
+            &[
+                snapshots[0].clone(),
+                snapshots[1].clone(),
+                snapshots[2].clone(),
+            ],
+            trees,
+        )?;
+        let artifact = Artifact {
+            artifact_version: ARTIFACT_VERSION,
+            operation: operation.into(),
+            target: target.into(),
+            repository: repository_root()?.display().to_string(),
+            revisions,
+            head: commit_id("HEAD")?,
+            index_sha256: index_sha256()?,
+            report,
+        };
+        Self::from_loaded(artifact, target, loaded, options)
+    }
+    fn save_new(&self, path: &Path) -> Result<()> {
+        let bytes = serde_json::to_vec_pretty(&self.artifact)?;
+        if bytes.len() as u64 > MAX_ARTIFACT {
+            bail!("分析计划超过 64 MiB");
+        }
+        let parent = path
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or(Path::new("."));
+        std::fs::create_dir_all(parent)?;
+        let mut file = tempfile::NamedTempFile::new_in(parent)?;
+        file.write_all(&bytes)?;
+        file.write_all(b"\n")?;
+        file.as_file().sync_all()?;
+        file.persist_noclobber(path)
+            .map_err(|error| error.error)
+            .context("计划文件已存在；不会覆盖旧计划")?;
+        Ok(())
+    }
+    fn report(&self, detailed: bool) {
+        repository::report_analysis(&self.artifact.report, detailed);
+    }
+    fn recheck(&self) -> Result<()> {
+        clean()?;
+        if commit_id("HEAD")? != self.artifact.revisions[1] {
+            bail!("分析期间 HEAD 已变化，拒绝执行");
+        }
+        if index_sha256()? != self.artifact.index_sha256 {
+            bail!("分析期间 Git index 已变化，拒绝执行");
+        }
+        if repository_root()?.display().to_string() != self.artifact.repository {
+            bail!("分析计划属于另一个仓库");
+        }
+        if commit_id(&self.artifact.target)? != self.artifact.revisions[2] {
+            bail!("分析计划的 target 已变化，拒绝执行");
+        }
+        Ok(())
+    }
     fn install(&self, options: Options) -> Result<bool> {
-        // Mark index unresolved before writing markers: an interrupted write
-        // cannot leave a path marked resolved while strict conflict is known.
         input(&["update-index", "-z", "--index-info"], &self.stages)?;
         for (path, outcome) in &self.outcomes {
             if let Some(parent) = Path::new(path).parent() {
@@ -285,31 +386,64 @@ impl Plan {
             repository::atomic_write(Path::new(path), outcome.content.as_bytes())?;
             repository::report(path, outcome, &self.labels, options.detailed);
         }
-        let conflicts = !read(&["ls-files", "-u", "-z"])?.is_empty();
-        std::fs::write(
-            self.report_dir.join("applied"),
-            if conflicts { "conflict\n" } else { "clean\n" },
-        )?;
-        Ok(conflicts)
-    }
-    fn recheck(&self) -> Result<()> {
-        clean()?;
-        if commit_id("HEAD")? != self.revisions[1] {
-            bail!("分析期间 HEAD 已变化，拒绝执行");
-        }
-        // Check ignored collisions too: native merge's default can overwrite
-        // ignored files, which must not happen to a strict-weave output.
-        for path in self.outcomes.keys() {
-            if analysis::blob_oid(&self.revisions[1], path)?.is_none() && Path::new(path).exists() {
-                bail!("冲突输出会覆盖未跟踪文件：{path}");
-            }
-        }
-        Ok(())
+        Ok(!read(&["ls-files", "-u", "-z"])?.is_empty())
     }
 }
+
+fn load_artifact(
+    path: &Path,
+    operation: &str,
+    target: &str,
+    revisions: [String; 3],
+    options: Options,
+) -> Result<Plan> {
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)
+        .context("读取分析计划")?
+        .take(MAX_ARTIFACT + 1)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX_ARTIFACT {
+        bail!("分析计划超过 64 MiB");
+    }
+    let artifact: Artifact = serde_json::from_slice(&bytes).context("无效的分析计划")?;
+    if artifact.artifact_version != ARTIFACT_VERSION
+        || artifact.operation != operation
+        || artifact.target != target
+        || artifact.revisions != revisions
+    {
+        bail!("分析计划与当前操作不匹配；请重新执行 --plan");
+    }
+    if artifact.repository != repository_root()?.display().to_string()
+        || artifact.head != commit_id("HEAD")?
+        || artifact.index_sha256 != index_sha256()?
+    {
+        bail!("分析计划已过期；HEAD、index 或仓库路径发生变化");
+    }
+    let loaded = Plan::load_snapshots(revisions.each_ref().map(String::as_str))?;
+    let snapshots = loaded.each_ref().map(|(_, snapshot)| snapshot);
+    let computed = analysis::analyze(
+        &[
+            snapshots[0].clone(),
+            snapshots[1].clone(),
+            snapshots[2].clone(),
+        ],
+        loaded.each_ref().map(|(tree, _)| tree.clone()),
+    )?;
+    if serde_json::to_vec(&computed)? != serde_json::to_vec(&artifact.report)? {
+        bail!("分析计划内容与当前 Git 对象不匹配；请重新执行 --plan");
+    }
+    Plan::from_loaded(artifact, target, loaded, options)
+}
+fn new_internal_path() -> Result<PathBuf> {
+    let root = git_path("strict-weave")?;
+    std::fs::create_dir_all(&root)?;
+    Ok(tempfile::Builder::new()
+        .prefix("operation-")
+        .tempdir_in(root)?
+        .keep()
+        .join("plan.json"))
+}
 fn native(args: &[&str]) -> Result<Output> {
-    // No external hooks/drivers/rerere may resolve or commit between the native
-    // merge and strict stage installation. Commit hooks run at final commit.
     let mut prefix = vec![
         "-c",
         "core.hooksPath=/dev/null",
@@ -343,75 +477,105 @@ fn finish_commit(args: &[&str]) -> Result<u8> {
         bail!("提交未完成；保留当前 index 和工作区，请检查 Git 输出")
     }
 }
-
-pub fn merge(target: &str, options: Options) -> Result<u8> {
-    let _guard = enter()?;
-    let ours = commit_id("HEAD")?;
-    let theirs = commit_id(target)?;
-    let base = unique_base(&ours, &theirs)?;
-    if base == theirs {
-        eprintln!("已经是最新版本");
-        return Ok(0);
-    }
-    let plan = Plan::new([base.clone(), ours, theirs.clone()], target, options)?;
+fn execute_plan(plan: Plan, kind: &str, options: Options) -> Result<u8> {
     plan.recheck()?;
-    if base == plan.revisions[1] {
-        checked(native(&[
+    let revisions = plan.artifact.revisions.each_ref().map(String::as_str);
+    let result = match kind {
+        "merge" => native(&[
             "merge",
-            "--ff-only",
+            "--no-commit",
+            "--no-ff",
+            "--no-edit",
             "--no-autostash",
             "--no-overwrite-ignore",
-            &theirs,
-        ])?)?;
-        return Ok(0);
+            "-s",
+            "ort",
+            revisions[2],
+        ])?,
+        "cherry-pick" => native(&["cherry-pick", "--no-commit", "--strategy=ort", revisions[2]])?,
+        _ => bail!("未知操作：{kind}"),
+    };
+    if !matches!(result.status.code(), Some(0 | 1)) {
+        bail!("Git 未建立预期操作状态");
     }
-    let result = native(&[
-        "merge",
-        "--no-commit",
-        "--no-ff",
-        "--no-edit",
-        "--no-autostash",
-        "--no-overwrite-ignore",
-        "-s",
-        "ort",
-        &theirs,
-    ])?;
-    if !matches!(result.status.code(), Some(0 | 1)) || !git_path("MERGE_HEAD")?.exists() {
-        bail!("Git 未建立预期 merge 状态，未安装严格冲突；请检查 git status");
+    if kind == "merge" && !git_path("MERGE_HEAD")?.exists() {
+        bail!("Git 未建立 MERGE_HEAD");
+    }
+    if kind == "cherry-pick" {
+        repository::atomic_write(
+            &git_path("CHERRY_PICK_HEAD")?,
+            format!("{}\n", revisions[2]).as_bytes(),
+        )?;
+        let message = read(&["show", "-s", "--format=%B", revisions[2]])?;
+        repository::atomic_write(&git_path("MERGE_MSG")?, &message)?;
     }
     if plan.install(options)? {
         return Ok(1);
     }
-    finish_commit(&["commit", "--no-edit"])
+    match kind {
+        "merge" => finish_commit(&["commit", "--no-edit"]),
+        "cherry-pick" => finish_commit(&["commit", "--allow-empty", "-C", revisions[2]]),
+        _ => unreachable!(),
+    }
 }
-
-pub fn cherry_pick(target: &str, options: Options) -> Result<u8> {
+fn run(operation: &str, target: &str, options: Options, mode: Mode) -> Result<u8> {
     let _guard = enter()?;
     let ours = commit_id("HEAD")?;
     let theirs = commit_id(target)?;
-    let parents = string(&["rev-list", "--parents", "-n", "1", &theirs])?;
-    let words: Vec<_> = parents.split_whitespace().collect();
-    if words.len() != 2 {
-        bail!("cherry-pick 仅支持恰好一个 parent 的 commit");
+    let base = if operation == "merge" {
+        unique_base(&ours, &theirs)?
+    } else {
+        let parents = string(&["rev-list", "--parents", "-n", "1", &theirs])?;
+        let words: Vec<_> = parents.split_whitespace().collect();
+        if words.len() != 2 {
+            bail!("cherry-pick 仅支持恰好一个 parent 的 commit");
+        }
+        words[1].into()
+    };
+    let revisions = [base, ours, theirs];
+    let plan = match &mode {
+        Mode::ApplyPlan(path) => {
+            load_artifact(path, operation, target, revisions.clone(), options)?
+        }
+        Mode::Apply | Mode::Plan(_) => Plan::build(operation, target, revisions.clone(), options)?,
+    };
+    match mode {
+        Mode::Plan(path) => {
+            plan.save_new(&path)?;
+            plan.report(options.detailed);
+            eprintln!("分析计划：{}", path.display());
+            Ok(u8::from(!plan.outcomes.is_empty()))
+        }
+        Mode::ApplyPlan(_) | Mode::Apply => {
+            let path = if matches!(mode, Mode::Apply) {
+                Some(new_internal_path()?)
+            } else {
+                None
+            };
+            if let Some(path) = path {
+                plan.save_new(&path)?;
+                eprintln!("分析计划：{}", path.display());
+            }
+            if operation == "merge" && revisions[0] == revisions[2] {
+                return Ok(0);
+            }
+            if operation == "merge" && revisions[0] == revisions[1] {
+                checked(native(&[
+                    "merge",
+                    "--ff-only",
+                    "--no-autostash",
+                    "--no-overwrite-ignore",
+                    &revisions[2],
+                ])?)?;
+                return Ok(0);
+            }
+            execute_plan(plan, operation, options)
+        }
     }
-    let plan = Plan::new([words[1].into(), ours, theirs.clone()], target, options)?;
-    plan.recheck()?;
-    let result = native(&["cherry-pick", "--no-commit", "--strategy=ort", &theirs])?;
-    if !matches!(result.status.code(), Some(0 | 1))
-        || (!result.status.success() && read(&["ls-files", "-u", "-z"])?.is_empty())
-    {
-        bail!("Git cherry-pick 未完成预期合并；请检查 git status");
-    }
-    // -n does not always create CHERRY_PICK_HEAD. Install the documented
-    // single-pick marker so git cherry-pick --continue/--abort work as usual.
-    repository::atomic_write(
-        &git_path("CHERRY_PICK_HEAD")?,
-        format!("{theirs}\n").as_bytes(),
-    )?;
-    let message = read(&["show", "-s", "--format=%B", &theirs])?;
-    repository::atomic_write(&git_path("MERGE_MSG")?, &message)?;
-    if plan.install(options)? {
-        return Ok(1);
-    }
-    finish_commit(&["commit", "--allow-empty", "-C", &theirs])
+}
+pub fn merge(target: &str, options: Options, mode: Mode) -> Result<u8> {
+    run("merge", target, options, mode)
+}
+pub fn cherry_pick(target: &str, options: Options, mode: Mode) -> Result<u8> {
+    run("cherry-pick", target, options, mode)
 }

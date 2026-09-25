@@ -1,5 +1,5 @@
-//! Explicit three-tree analysis. This module never runs or controls a Git merge.
-//! Cached findings can only add conflicts; every driver call still checks its inputs.
+//! Explicit three-tree analysis. Operation commands read Git objects first and
+//! then apply the resulting findings to the standard Git index/worktree state.
 use super::moves::{conflict_reason, entities, find_candidates, ParsedSnapshots};
 use crate::merge::{self, ConflictStyle, Labels, Outcome};
 pub use crate::reason::Location;
@@ -35,6 +35,26 @@ pub struct Report {
 impl Report {
     pub fn conflicted(&self) -> bool {
         self.files.values().any(|f| !f.reasons.is_empty())
+    }
+
+    pub fn validate(&self) -> Result<()> {
+        if self.schema_version != 5 || self.engine != ENGINE {
+            bail!("分析报告版本不兼容");
+        }
+        if self.files.values().any(|file| {
+            file.reasons.iter().any(|reason| !reason.valid())
+                || file
+                    .related_moves
+                    .iter()
+                    .any(|candidate| !candidate.valid())
+        }) || self
+            .move_candidates
+            .iter()
+            .any(|candidate| !candidate.valid())
+        {
+            bail!("无效的分析原因结构");
+        }
+        Ok(())
     }
 }
 
@@ -85,7 +105,7 @@ pub fn analyze(snapshots: &[Snapshot; 3], trees: [String; 3]) -> Result<Report> 
             continue;
         }
         let contents = texts.map(|t| t.map(String::as_str).unwrap_or(""));
-        // Same original-byte baseline and entity rules as the actual driver.
+        // Same original-byte baseline and entity rules as operation rendering.
         let local = super::local::analyze(
             contents[0],
             contents[1],
@@ -225,67 +245,6 @@ pub fn blob_oid(revision: &str, path: &str) -> Result<Option<(String, String)>> 
         .map(|entry| (entry.mode.clone(), entry.oid.clone())))
 }
 
-/// Only reads trees/blobs. Does not infer operation context from HEAD/state files,
-/// and does not invoke external diff, filters, hooks, merge or index writes.
-pub fn prepare(revisions: [&str; 3]) -> Result<Report> {
-    let trees = [
-        tree(revisions[0])?,
-        tree(revisions[1])?,
-        tree(revisions[2])?,
-    ];
-    let mut snapshots: [Snapshot; 3] = Default::default();
-    let paths: BTreeSet<_> = trees
-        .iter()
-        .flat_map(|(_, entries)| entries.keys())
-        .collect();
-    let mut total = 0usize;
-    let mut metadata_only = Vec::new();
-    for path in paths {
-        let entries = trees.each_ref().map(|(_, e)| e.get(path));
-        if entries[0] == entries[1] && entries[0] == entries[2] {
-            continue;
-        }
-        for side in 0..3 {
-            if let Some(entry) = entries[side] {
-                if !matches!(entry.mode.as_str(), "100644" | "100755") {
-                    bail!("初版分析不支持变化的 symlink/submodule：{path}");
-                }
-                let size = String::from_utf8(git(&["cat-file", "-s", &entry.oid])?)?
-                    .trim()
-                    .parse::<usize>()?;
-                total = total.checked_add(size).context("分析输入大小溢出")?;
-                if size > merge::MAX_BYTES || total > MAX_TOTAL {
-                    bail!("分析文本超过大小限制：{path}");
-                }
-                let bytes = git(&["cat-file", "blob", &entry.oid])?;
-                snapshots[side].insert(
-                    path.clone(),
-                    merge::validate_text(&bytes)
-                        .with_context(|| format!("读取 {path}"))?
-                        .to_owned(),
-                );
-            }
-        }
-        metadata_only.push(path.clone());
-    }
-    let mut report = analyze(&snapshots, trees.each_ref().map(|(id, _)| id.clone()))?;
-    // Include fingerprints even for mode-only changes: the driver can still be
-    // called there. Git, not this content driver, owns mode conflict handling.
-    for path in metadata_only {
-        report
-            .files
-            .entry(path.clone())
-            .or_insert_with(|| FileAnalysis {
-                fingerprints: snapshots
-                    .each_ref()
-                    .map(|s| s.get(&path).map(|t| fingerprint(t))),
-                reasons: Vec::new(),
-                related_moves: Vec::new(),
-            });
-    }
-    Ok(report)
-}
-
 /// Atomically creates a new read-only result; no replacement of existing files.
 pub fn save(path: &Path, report: &Report) -> Result<()> {
     let bytes = serde_json::to_vec_pretty(report)?;
@@ -309,30 +268,23 @@ pub fn save(path: &Path, report: &Report) -> Result<()> {
     Ok(())
 }
 
-pub fn load_for_driver(path: &Path, source: &str, texts: [&str; 3]) -> Result<FileAnalysis> {
+/// Read one path from a serialized report and verify its three raw inputs.
+/// Operation code uses this same invariant when it reconstructs a plan.
+pub fn load_file_analysis(path: &Path, source: &str, texts: [&str; 3]) -> Result<FileAnalysis> {
     let mut bytes = Vec::new();
     std::fs::File::open(path)
-        .context("读取全局分析文件")?
+        .context("读取分析报告")?
         .take((MAX_TOTAL + 1) as u64)
         .read_to_end(&mut bytes)?;
     if bytes.len() > MAX_TOTAL {
-        bail!("全局分析文件超过 64 MiB");
+        bail!("分析报告超过 64 MiB");
     }
-    let mut report: Report = serde_json::from_slice(&bytes).context("无效的全局分析文件")?;
-    if report.schema_version != 5 || report.engine != ENGINE {
-        bail!("全局分析版本不兼容");
-    }
-    if report.files.values().any(|file| {
-        file.reasons.iter().any(|reason| !reason.valid())
-            || file.related_moves.iter().any(|c| !c.valid())
-    }) || report.move_candidates.iter().any(|c| !c.valid())
-    {
-        bail!("无效的全局分析原因结构");
-    }
+    let mut report: Report = serde_json::from_slice(&bytes).context("无效的分析报告")?;
+    report.validate()?;
     let file = report
         .files
         .remove(source)
-        .context("全局分析未包含此路径；不能确认上下文，拒绝使用")?;
+        .context("分析报告未包含此路径")?;
     for side in 0..3 {
         let matches = match &file.fingerprints[side] {
             Some(expected) => *expected == fingerprint(texts[side]),
@@ -340,7 +292,7 @@ pub fn load_for_driver(path: &Path, source: &str, texts: [&str; 3]) -> Result<Fi
         };
         if !matches {
             bail!(
-                "全局分析输入不匹配：{}；可能过期、路径变化、虚拟 base 或输入转换；保持 ours 不变",
+                "分析输入不匹配：{}；报告可能已过期",
                 ["base", "ours", "theirs"][side]
             );
         }
@@ -348,7 +300,7 @@ pub fn load_for_driver(path: &Path, source: &str, texts: [&str; 3]) -> Result<Fi
     Ok(file)
 }
 
-pub fn augment(
+pub fn apply_file_analysis(
     outcome: &mut Outcome,
     global: &FileAnalysis,
     texts: [&str; 3],

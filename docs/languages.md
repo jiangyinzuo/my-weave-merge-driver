@@ -12,4 +12,4 @@
 
 JSON、YAML、TOML、CSV、Markdown、LaTeX 等专用数据/文档插件不是当前可靠 code grammar 分析的范围。它们当前未提供可用于本项目语法校验的完整语法树，双方修改时仍可能回退整文件冲突，不把“能提取实体”等同于“已验证解析可靠”。
 
-Git 只会为配置了 `merge=strict-weave` 的路径调用 driver；需在使用它的仓库中为目标语言配置 `.gitattributes`，例如 `*.py merge=strict-weave` 和 `*.rs merge=strict-weave`。prepare 可检查全部变化路径；实际文件 driver 的调用仍由 attributes 决定。
+strict-weave 操作命令直接读取完整 Git tree，不依赖 `.gitattributes` 选择路径；所有变化路径都会进入全局分析。属性转换、filter 和 sparse checkout 当前会被拒绝，以免分析文本与 Git 实际输入不一致。

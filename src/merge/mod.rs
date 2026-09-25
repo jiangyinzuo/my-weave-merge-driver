@@ -1,4 +1,4 @@
-//! 单文件 driver 入口：校验输入，完成分析，再只读渲染。
+//! 单文件三方合并核心：校验输入，完成分析，再只读渲染。
 use crate::analysis::local;
 use crate::reason::{MoveEvidence, Reason};
 use anyhow::{bail, Context, Result};

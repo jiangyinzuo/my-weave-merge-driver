@@ -44,7 +44,7 @@
 - Svelte：`svelte_module`、`svelte_instance_script`、`svelte_module_script`、`svelte_style`、`svelte_fragment`、`svelte_element`、`svelte_snippet`、`svelte_if_block`、`svelte_each_block`、`svelte_key_block`、`svelte_await_block`、`svelte_component`、`svelte_slot_element`、`svelte_head`、`svelte_body`、`svelte_window`、`svelte_document`、`svelte_component_dynamic`、`svelte_element_dynamic`、`svelte_self`、`svelte_fragment_element`、`svelte_boundary`、`svelte_options`、`svelte_title_element`
 - 无专用 parser 或无法解析的文件：`chunk`
 
-插件回退不代表本项目能够安全分析该文件；driver 仍执行自己的可靠性检查与保守回退。
+插件回退不代表本项目能够安全分析该文件；操作命令仍执行自己的可靠性检查与保守回退。
 
 ## Weave 内部分析类型
 

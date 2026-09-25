@@ -5,9 +5,18 @@ strict-weave 不实现 Git merge driver，也不通过 `.gitattributes` 注入 G
 当前支持：
 
 ```sh
+# 预分析，不修改 Git
+strict-weave merge feature/payment --plan -o /tmp/payment-plan.json
+
+# 预分析并立即 apply
 strict-weave merge feature/payment
 strict-weave cherry-pick <commit>
+
+# 消费已经校验过的预分析计划
+strict-weave merge feature/payment --apply /tmp/payment-plan.json
 ```
+
+`--apply` 会重新确认 repository、target、base / ours / theirs、HEAD、index 和完整报告内容；任一项变化都会拒绝执行。计划文件不能被当前操作之外的旧缓存替代。
 
 命令会先检查工作区和 index，解析实际 commits，读取完整三棵 tree，完成全局分析，然后再调用 Git plumbing 建立标准操作状态。发现冲突时：
 

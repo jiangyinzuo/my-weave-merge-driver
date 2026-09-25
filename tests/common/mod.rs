@@ -68,7 +68,7 @@ impl Case {
             text(name, "path").trim_end_matches(['\r', '\n']).to_owned()
         } else {
             // Fixture directories organize tests, not the source path passed
-            // to the driver. Keep diagnostics stable when moving a case.
+            // to the operation. Keep diagnostics stable when moving a case.
             std::path::Path::new(name)
                 .file_name()
                 .unwrap()

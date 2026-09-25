@@ -12,22 +12,41 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     /// 分析并执行单目标 merge；冲突后保留标准 Git 状态
-    Merge(MergeArgs),
+    Merge(OperationArgs),
     /// 重放一个非 merge commit
-    CherryPick(MergeArgs),
+    CherryPick(OperationArgs),
 }
 
 #[derive(Args)]
-struct MergeArgs {
+struct OperationArgs {
     /// 唯一的 merge target；当前阶段不接受额外 Git 选项
     target: String,
+    #[arg(long, conflicts_with = "apply")]
+    plan: bool,
+    #[arg(short = 'o', long, requires = "plan")]
+    output: Option<std::path::PathBuf>,
+    #[arg(long, conflicts_with_all = ["plan", "output"])]
+    apply: Option<std::path::PathBuf>,
     #[arg(long)]
     zdiff3: bool,
     #[arg(long)]
     explain_reasons: bool,
 }
 
-impl MergeArgs {
+impl OperationArgs {
+    fn mode(&self) -> anyhow::Result<operation::Mode> {
+        if let Some(path) = &self.apply {
+            return Ok(operation::Mode::ApplyPlan(path.clone()));
+        }
+        if self.plan {
+            return Ok(operation::Mode::Plan(
+                self.output
+                    .clone()
+                    .ok_or_else(|| anyhow::anyhow!("--plan 需要 --output"))?,
+            ));
+        }
+        Ok(operation::Mode::Apply)
+    }
     fn options(&self) -> operation::Options {
         operation::Options {
             zdiff3: self.zdiff3,
@@ -38,8 +57,10 @@ impl MergeArgs {
 
 fn run() -> Result<u8> {
     match Cli::parse().command {
-        Commands::Merge(args) => operation::merge(&args.target, args.options()),
-        Commands::CherryPick(args) => operation::cherry_pick(&args.target, args.options()),
+        Commands::Merge(args) => operation::merge(&args.target, args.options(), args.mode()?),
+        Commands::CherryPick(args) => {
+            operation::cherry_pick(&args.target, args.options(), args.mode()?)
+        }
     }
 }
 
