@@ -67,21 +67,21 @@ end
 
 ## 当前展示策略
 
-默认使用 Git diff3；`strict-weave driver ... --zdiff3` 显式选择 Git zdiff3，不自动跟随 `merge.conflictStyle`。本项目没有自行实现 zdiff3，严格判定与展示分离：
+默认使用 Git diff3；`strict-weave merge ... --zdiff3`（以及其它支持的操作命令）显式选择 Git zdiff3，不自动跟随 `merge.conflictStyle`。本项目没有自行实现 zdiff3，严格判定与展示分离：
 
 - **自生成 entity/整文件冲突：** 使用 diff3 结构，只裁剪三方共同前后文，双方相同但不同于 base 的修改仍在块内。详见 [conflict-rendering.md](conflict-rendering.md)。
 - **仅有行级原因：** 可以采用 Git zdiff3 输出。
 - **entity 追加特例：** 原本因布局变化需要整文件回退，但确认 base 原文未变、双方只在末尾新增不同 entity 及空白且无其它严格原因时，zdiff3 可采用 Git 紧凑输出；[adjacent.ts](../tests/fixtures/layout/adjacent.ts.output-zdiff3) 属于此类。
 
-**展示范围仍由 driver 控制。** diff3 不识别 function 边界，也不会让完全相同的双方修改自动成为冲突。Git 的文本相同判断不能替代严格 entity 规则；Git 跳过 driver 的检查约束见 [需求第 8 节](requirement.md#8-整个文件内容相同时的需求约束)。
+**展示范围仍由 strict-weave 控制。** diff3 不识别 function 边界，也不会让完全相同的双方修改自动成为冲突。Git 的文本相同判断不能替代严格 entity 规则；Git 跳过 strict-weave 的检查约束见 [需求第 8 节](requirement.md#8-整个文件内容相同时的需求约束)。
 
 fixture 中可选的 `.output-zdiff3` 单独验证该模式，不能替代默认输出断言；两种展示共用预期退出码，见 [testing.md](testing.md)。
 
 ## 双方新增行的用例
 
-以下用例均在同一个 `function score` 中只新增行；`.output` 和 `.output-zdiff3` 分别断言两种 driver 展示，`.stderr-details` 断言两种风格的原因。表中 Git 结果来自对相同三份文本直接运行 `git merge-file --diff3/--zdiff3` 的对照，两种风格判定相同。
+以下用例均在同一个 `function score` 中只新增行；`.output` 和 `.output-zdiff3` 分别断言两种 strict-weave 展示，`.stderr-details` 断言两种风格的原因。表中 Git 结果来自对相同三份文本直接运行 `git merge-file --diff3/--zdiff3` 的对照，两种风格判定相同。
 
-| 用例（链接为 driver 的 zdiff3 输出） | 双方新增方式 | 原生 Git | driver |
+| 用例（链接为 strict-weave 的 zdiff3 输出） | 双方新增方式 | 原生 Git | strict-weave |
 | --- | --- | --- | --- |
 | [different-lines.go](../tests/fixtures/insertions/different-lines.go.output-zdiff3) | 同一位置分别新增 ours / theirs | conflict，base 区域为空 | conflict，base 区域为空 |
 | [identical-lines.go](../tests/fixtures/insertions/identical-lines.go.output-zdiff3) | 同一位置都新增 shared | clean | conflict，保留双方相同新增行 |
@@ -101,7 +101,7 @@ fixture 中可选的 `.output-zdiff3` 单独验证该模式，不能替代默认
     println("end")
 ```
 
-driver 的对应部分为（省略 marker 后的标签及原因，完整文本见 fixture）：
+strict-weave 的对应部分为（省略 marker 后的标签及原因，完整文本见 fixture）：
 
 ```text
 <<<<<<< ours
@@ -116,7 +116,7 @@ driver 的对应部分为（省略 marker 后的标签及原因，完整文本�
 >>>>>>> theirs
 ```
 
-这四组 driver 的默认与 zdiff3 输出相同：它们都触发严格 entity 原因，使用自生成块及三方共同文本裁剪。`--zdiff3` 不会令这一路径采用 Git 的两侧共同边界裁剪；它仍可影响直接使用 Git 输出的场景，例如已有的 [adjacent.ts](../tests/fixtures/layout/adjacent.ts.output-zdiff3)。
+这四组 strict-weave 的默认与 zdiff3 输出相同：它们都触发严格 entity 原因，使用自生成块及三方共同文本裁剪。`--zdiff3` 不会令这一路径采用 Git 的两侧共同边界裁剪；它仍可影响直接使用 Git 输出的场景，例如已有的 [adjacent.ts](../tests/fixtures/layout/adjacent.ts.output-zdiff3)。
 
 ## 为什么可以只调用一次 Git
 
@@ -134,6 +134,6 @@ driver 的对应部分为（省略 marker 后的标签及原因，完整文本�
 
 [v2.35.0 的实现](https://github.com/git/git/blob/v2.35.0/xdiff/xmerge.c) 在上述判定和模式处理上相同。这是对已审计实现及当前命令参数的结论，不宣称 Git 未来版本、不同 diff 算法或额外自动解决选项也必然相同。整个仓库的 rename、文件类型和 merge-base 行为不属于 `merge-file` 的保证范围。
 
-固定 fixture 的 8×8 对照运行普通、diff3、zdiff3 三种 Git 命令，验证单向包含关系和 diff3/zdiff3 判定一致，再检查 driver 保留 `LINE_CONFLICT`。测试入口见 [testing.md](testing.md#其它测试)。
+固定 fixture 的 8×8 对照运行普通、diff3、zdiff3 三种 Git 命令，验证单向包含关系和 diff3/zdiff3 判定一致，再检查 strict-weave 保留 `LINE_CONFLICT`。测试入口见 [testing.md](testing.md#其它测试)。
 
-每次 `line_merge` 只启动一个 Git 子进程；完整 driver 还可能为分区调用行级合并，weave 内部也可能执行自己的处理。执行错误返回错误，不能作为 clean。
+每次 `line_merge` 只启动一个 Git 子进程；完整 strict-weave 还可能为分区调用行级合并，weave 内部也可能执行自己的处理。执行错误返回错误，不能作为 clean。

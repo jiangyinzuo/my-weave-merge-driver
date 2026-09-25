@@ -8,6 +8,8 @@
 strict-weave merge feature/payment
 strict-weave cherry-pick <commit>
 strict-weave rebase <upstream>
+strict-weave stash apply [stash]
+strict-weave stash pop [stash]
 ```
 
 第一阶段要求工作区和 index 干净、只有一个 merge-base，并拒绝未实现的 Git 选项、rename、filters、sparse checkout 和复杂布局变化。分析完成后才修改 Git 状态。冲突时保留标准 index stages，工作区写入 strict-weave 冲突块；可以继续使用原生 Git：
@@ -18,7 +20,9 @@ git merge --continue
 git cherry-pick --continue
 ```
 
-`strict-weave` 不会把不支持的命令或选项静默转交给 Git。直接执行 `git merge`、`git rebase` 等命令不会经过 strict-weave。
+`strict-weave` 不会把不支持的命令或选项静默转交给 Git。直接执行 `git merge`、`git rebase` 等命令不会经过 strict-weave。stash 当前只支持没有独立 index 修改、没有未跟踪文件的普通 stash。
+
+每个操作还支持两种模式：`--plan -o FILE` 只分析并写出计划，默认模式分析后立即执行，`--apply FILE` 校验并消费已有计划。计划绑定当前仓库、HEAD、index、target 和三方 tree；内容或 Git 状态变化后不能继续使用旧计划。
 
 全局分析报告保存在当前仓库的 `.git/strict-weave/operation-*/analysis.json`，同时绑定本次三方 tree。报告只用于审计和诊断，Git 的 index、工作区和 refs 仍由操作层按标准方式维护。
 

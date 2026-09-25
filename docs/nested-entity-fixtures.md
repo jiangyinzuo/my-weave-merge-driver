@@ -6,7 +6,7 @@
 
 ## 用例索引
 
-| 用例（点击查看 output） | ours / theirs 的修改 | 普通 Git | 当前 driver 展示范围 |
+| 用例（点击查看 output） | ours / theirs 的修改 | 普通 Git | 当前 strict-weave 展示范围 |
 | --- | --- | --- | --- |
 | [namespace-function.cpp](../tests/fixtures/nested/namespace-function.cpp.output) | namespace 内同一 function，分别修改 x / z | clean | x 到 z，原因仍为 `module math` |
 | [namespace-class-method.cpp](../tests/fixtures/nested/namespace-class-method.cpp.output) | namespace → class → 同一方法，分别修改 x / z | clean | x 到 z，原因仍为 `module app` |
@@ -17,7 +17,7 @@
 | [nested-class-method.py](../tests/fixtures/nested/nested-class-method.py.output) | Outer → Inner → 同一方法，分别修改 x / z | clean | x 到 z，原因仍为 class Outer |
 | [nested-function.py](../tests/fixtures/nested/nested-function.py.output) | outer 内的 score function，分别修改 x / z | clean | x 到 z，原因仍为 function outer |
 
-表中普通 Git 结果来自对相同输入运行 `git -c merge.conflictStyle=merge merge-file -p OURS BASE THEIRS`。这 8 组 driver 均返回 `1`。除宏用例外，修改行之间留有未改动文本，便于观察严格 entity 规则新增的冲突，而非相邻行造成的 Git 冲突。
+表中普通 Git 结果来自对相同输入运行 `git -c merge.conflictStyle=merge merge-file -p OURS BASE THEIRS`。这 8 组严格合并均返回 `1`。除宏用例外，修改行之间留有未改动文本，便于观察严格 entity 规则新增的冲突，而非相邻行造成的 Git 冲突。
 
 C++ 的 namespace 在上游 entity 分类中显示为 `module`。宏用例的 `#define` 在源码位置上位于 namespace 花括号内，但预处理宏没有 C++ namespace 作用域；这个用例观察的是原文所在区域的冲突，不验证宏展开或语义依赖。Python 没有对应的 namespace 声明或 C++ 预处理宏，使用 class、嵌套 class 和嵌套 function 展示层级。
 

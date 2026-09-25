@@ -3,7 +3,7 @@ name = "strict-weave"
 version = "0.1.0"
 edition = "2021"
 publish = false
-description = "Conservative entity and line based Git merge driver"
+description = "Conservative entity and line based Git operation subset"
 
 [dependencies]
 anyhow = "1"

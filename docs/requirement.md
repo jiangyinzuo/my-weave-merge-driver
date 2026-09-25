@@ -1,4 +1,4 @@
-# 严格 merge driver：需求与展示示例
+# strict-weave Git 子集：需求与展示示例
 
 本文定义严格策略和目标体验。示例中的 branch、commit、编号及逐行摘要用于说明需求，不保证当前 CLI 已逐项输出；实际诊断以 [fixtures](../tests/fixtures/) 为准，实现概况见 [WIP](../WIP.md)。
 
@@ -17,7 +17,7 @@
 - 双方修改不同实体、Git 行级合并没有冲突，且 weave-core 没有明确拒绝合并时，允许合并。
 - “双方修改成完全相同的结果”也判定为冲突。因为假设一种情况：双方都在更新一个`fileCount=2`变量：A和B都增加了3个文件，merge后，实际应该改为`fileCount=8`，但双方都改为了`fileCount=5`，存在“丢失更新”现象。
 
-这里的“双方修改”是比较本次操作的 base / ours / theirs 三份快照，不是查询双方历史中是否曾经修改过该函数。改过又还原的实体，在快照比较中视为未修改。Git 跳过 driver 时的全局检查及剩余体验目标见第 8 节。
+这里的“双方修改”是比较本次操作的 base / ours / theirs 三份快照，不是查询双方历史中是否曾经修改过该函数。改过又还原的实体，在快照比较中视为未修改。strict-weave 操作命令会在真正调用 Git 前完成全局检查；只读 plan 与 apply 的边界见第 8 节。
 
 ## 2. 展示约束
 
@@ -39,7 +39,7 @@ diff3 与 zdiff3 的区别、实际输出示例及选型建议见 [diff3-vs-zdif
 
 判定范围和展示范围必须分开：保留三方真实文本与顺序，不能嵌套标记、复制或遗漏代码。当前按可靠顶层分区或整文件生成块，再裁剪三方共同前后文；不独立定位内部方法。具体选择顺序见 [conflict-rendering.md](conflict-rendering.md)。
 
-**展示范围由 driver 控制。** diff3 不识别函数边界，也不会自动把双方相同修改变成冲突。driver 必须保留严格判定，全局分析新增冲突也复用同一渲染规则。
+**展示范围由 strict-weave 操作控制。** diff3 不识别函数边界，也不会自动把双方相同修改变成冲突。strict-weave 必须保留严格判定，全局分析新增冲突也复用同一渲染规则。
 
 编辑器对自定义标签和 diff3 的兼容性需要单独验证。
 
@@ -206,7 +206,7 @@ export function validateInput(data: unknown) {
 | 导入区、实体之间的空白或顶层文本 | `行级冲突：未关联到 function；相邻实体为 …` | 按三方文本处理；只有解析器识别出 import 等结构时才显示“导入区”，省略不可确定的相邻实体 |
 | 解析失败／实体身份不确定 | `实体分析不可用或不确定，无法提供可靠的实体级解释` | 按明确的降级策略处理，不能声称已通过实体检查 |
 
-重命名匹配依赖分析证据。若只能推测，应显示“可能由 parse() 重命名为 decode()”，不能把猜测写成事实。不同文件中的实体移动、跨文件引用正确性，不应承诺仅靠单文件 merge driver 就能可靠判定。
+重命名匹配依赖分析证据。若只能推测，应显示“可能由 parse() 重命名为 decode()”，不能把猜测写成事实。不同文件中的实体移动、跨文件引用正确性，不应承诺仅靠单文件合并就能可靠判定。
 
 上表描述待处理事项，使用固定模板，不动态生成“两个职责”“应调整哪些调用方”等业务结论。重命名报告应附实际名称、位置及文本比较依据，不能仅输出猜测结果。
 
@@ -218,39 +218,23 @@ export function validateInput(data: unknown) {
 
 公开分析以顶层 entity 为主，内部 arena、三方引用和匹配依据不完全公开，不能只凭同名串联成员身份。成员粒度的取舍见 [member-conflicts-research.md](member-conflicts-research.md)，跨文件重命名的公共 API 复用见 [weave-rename-research.md](weave-rename-research.md)。
 
-版本来源不是实体解析结果。优先使用 Git 提供的标签；无法确认 branch/操作时保留未知，不能假设 driver 执行时已有 MERGE_HEAD/CHERRY_PICK_HEAD，或把 commit hash、虚拟 base 冒充已确认的 branch/commit。
+版本来源不是实体解析结果。优先使用 Git 提供的标签；无法确认 branch/操作时保留未知，不能把 commit hash、虚拟 base 冒充已确认的 branch/commit。
 
-## 8. 整个文件内容相同时的需求约束
+## 8. plan 与 apply 的约束
 
-Git 可能在双方文件内容相同时直接采用该内容，不调用自定义 merge driver。因此，仅在 `.gitattributes` 中配置 driver，不能保证所有“双方修改同一实体”的情况都会被检查。
+strict-weave 不注册 Git merge driver，也不依赖 `.gitattributes`。用户显式调用受支持的 strict-weave 子命令；其它 Git 命令继续由 Git 自己执行。每个操作都可以先使用 `--plan -o FILE` 只读分析，再使用 `--apply FILE` 校验并应用计划；省略两者时，strict-weave 在同一调用中完成分析和 apply。
 
-公开接口应只要求配置 Git merge driver 和 `.gitattributes`，之后直接使用原生 `git merge`、`git rebase`、`git cherry-pick`、`git pull`、`git stash`。Git 负责 index stages、sequencer 及 `--continue`、`--abort`、`--quit` 等状态流程。独立 `prepare` 只读且可选，由调用方检查退出码，不自动安装 index stages，详见 [workflows.md](workflows.md) 和 [global-analysis.md](global-analysis.md)。
+计划必须绑定实际仓库、HEAD、index、target、base / ours / theirs tree 及完整分析报告。apply 前重新读取这些对象并逐项比较；任何变化、计划损坏或分析结果不一致都必须拒绝执行，不能读取上一次操作的缓存。
 
 约束如下：
 
-1. 在对应步骤被视为成功或生成最终 commit 前，检查全部变化路径，不能只扫描 Git 已有冲突文件，也不能跳过 `ours == theirs`。
-2. 使用该步骤实际的三方基准。对 base 中已有且双方保留的 entity，`ours != base && theirs != base` 必须审核；三方相同或仅一侧变化不因本规则冲突。
-3. 保留 ours、base、theirs 的展示，不能根据计数器等示例推导业务结果。
-4. 测试必须包含真实 Git 流程，覆盖 Git 跳过 driver 的相同文件修改，而不只直接调用 driver。
+1. 在调用 Git 修改 index 或工作区前，检查三方快照的全部路径，不能只扫描 Git 已有冲突文件，也不能跳过 `ours == theirs`。
+2. 使用该操作实际的三方基准。对 base 中已有且双方保留的 entity，`ours != base && theirs != base` 必须审核；三方相同或仅一侧变化不因本规则冲突。
+3. Git 原生行级冲突是强制下限；即使 entity 分析能够合并，也必须保留冲突。
+4. 只读 plan 不修改 Git。apply 失败时不得留下半完成的 strict-weave 写入；成功建立冲突时安装标准 index stages，后续 `--continue`、`--abort` 等状态命令完全由原生 Git 处理。
+5. 测试必须覆盖真实 merge、cherry-pick、rebase 和 stash 流程，以及 Git 行级结果与严格 entity 结果不同的场景。
 
-**尚未完成的体验目标：** 将预分析命中项呈现为 Git 可识别的未解决冲突，供人编辑后正常继续；保存已审核事实，避免对已确认的同一结果无限重复报错。当前包装只在执行前停止，`rebase --continue` 会重新检查，不能声称已实现这个审核闭环。
-
-相同结果的报告示例：
-
-```text
-冲突 C004 · count.ts · ƒ getFileCount()
-原因：同一 ƒ 被双方修改，虽然结果相同，仍须人工审核 [ENTITY_CONFLICT]
-
-ours 相对 base 的文本变化（theirs 相同）：
--  return 2;
-+  return 5;
-
-行级判定：无冲突；Git 可能直接采用相同文件，跳过 driver
-实体判定：双方均修改该函数，按严格规则暂停
-需人工处理：确认保留当前结果 / 编辑合并结果。
-```
-
-以上目标不等于已提供完整操作级语义保证：仅配置 driver、忽略 prepare 返回值、或超出已实现的移动规则，仍有边界。
+当前操作子集和明确限制见 [workflows.md](workflows.md)。
 
 ## 9. 当前策略与未完成目标
 
