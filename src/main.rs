@@ -15,6 +15,8 @@ enum Commands {
     Merge(OperationArgs),
     /// 重放一个非 merge commit
     CherryPick(OperationArgs),
+    /// 重放当前 branch 的一个 commit 到 upstream
+    Rebase(OperationArgs),
 }
 
 #[derive(Args)]
@@ -61,6 +63,7 @@ fn run() -> Result<u8> {
         Commands::CherryPick(args) => {
             operation::cherry_pick(&args.target, args.options(), args.mode()?)
         }
+        Commands::Rebase(args) => operation::rebase(&args.target, args.options(), args.mode()?),
     }
 }
 

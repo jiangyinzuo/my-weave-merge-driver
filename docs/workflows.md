@@ -11,6 +11,7 @@ strict-weave merge feature/payment --plan -o /tmp/payment-plan.json
 # 预分析并立即 apply
 strict-weave merge feature/payment
 strict-weave cherry-pick <commit>
+strict-weave rebase <upstream>
 
 # 消费已经校验过的预分析计划
 strict-weave merge feature/payment --apply /tmp/payment-plan.json
@@ -25,7 +26,7 @@ strict-weave merge feature/payment --apply /tmp/payment-plan.json
 - Git 仍负责 `add`、继续、跳过和中止；
 - 分析报告写入 `.git/strict-weave/operation-*/analysis.json`。
 
-当前明确拒绝：多个 merge-base、文件 rename、filters/renormalize、sparse checkout、脏工作区、复杂 Git 选项和不支持的 commit 类型。拒绝发生在修改仓库之前。
+当前明确拒绝：多个 merge-base、文件 rename、filters/renormalize、sparse checkout、脏工作区、多个待重放 commit、interactive rebase、`--rebase-merges`、复杂 Git 选项和不支持的 commit 类型。拒绝发生在修改仓库之前。
 
 成功且没有冲突时，strict-weave 完成对应 commit。发生冲突时命令返回 `1` 并保留 Git 状态；分析或状态错误返回 `129`。
 

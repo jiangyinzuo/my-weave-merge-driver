@@ -7,6 +7,7 @@
 ```sh
 strict-weave merge feature/payment
 strict-weave cherry-pick <commit>
+strict-weave rebase <upstream>
 ```
 
 第一阶段要求工作区和 index 干净、只有一个 merge-base，并拒绝未实现的 Git 选项、rename、filters、sparse checkout 和复杂布局变化。分析完成后才修改 Git 状态。冲突时保留标准 index stages，工作区写入 strict-weave 冲突块；可以继续使用原生 Git：

@@ -307,6 +307,7 @@ impl Plan {
     fn build(
         operation: &str,
         target: &str,
+        label: &str,
         revisions: [String; 3],
         options: Options,
     ) -> Result<Self> {
@@ -337,7 +338,7 @@ impl Plan {
             index_sha256: index_sha256()?,
             report,
         };
-        Self::from_loaded(artifact, target, loaded, options)
+        Self::from_loaded(artifact, label, loaded, options)
     }
     fn save_new(&self, path: &Path) -> Result<()> {
         let bytes = serde_json::to_vec_pretty(&self.artifact)?;
@@ -363,7 +364,7 @@ impl Plan {
     }
     fn recheck(&self) -> Result<()> {
         clean()?;
-        if commit_id("HEAD")? != self.artifact.revisions[1] {
+        if commit_id("HEAD")? != self.artifact.head {
             bail!("分析期间 HEAD 已变化，拒绝执行");
         }
         if index_sha256()? != self.artifact.index_sha256 {
@@ -372,7 +373,12 @@ impl Plan {
         if repository_root()?.display().to_string() != self.artifact.repository {
             bail!("分析计划属于另一个仓库");
         }
-        if commit_id(&self.artifact.target)? != self.artifact.revisions[2] {
+        let expected_target = if self.artifact.operation == "rebase" {
+            &self.artifact.revisions[1]
+        } else {
+            &self.artifact.revisions[2]
+        };
+        if commit_id(&self.artifact.target)? != *expected_target {
             bail!("分析计划的 target 已变化，拒绝执行");
         }
         Ok(())
@@ -432,7 +438,12 @@ fn load_artifact(
     if serde_json::to_vec(&computed)? != serde_json::to_vec(&artifact.report)? {
         bail!("分析计划内容与当前 Git 对象不匹配；请重新执行 --plan");
     }
-    Plan::from_loaded(artifact, target, loaded, options)
+    let label = if operation == "rebase" {
+        artifact.revisions[2].clone()
+    } else {
+        target.to_owned()
+    };
+    Plan::from_loaded(artifact, &label, loaded, options)
 }
 fn new_internal_path() -> Result<PathBuf> {
     let root = git_path("strict-weave")?;
@@ -476,6 +487,68 @@ fn finish_commit(args: &[&str]) -> Result<u8> {
     } else {
         bail!("提交未完成；保留当前 index 和工作区，请检查 Git 输出")
     }
+}
+
+fn write_rebase_state(branch: &str, original: &str, upstream: &str, commit: &str) -> Result<()> {
+    let dir = git_path("rebase-merge")?;
+    std::fs::create_dir_all(&dir)?;
+    let subject = string(&["show", "-s", "--format=%s", commit])?;
+    let message = read(&["show", "-s", "--format=%B", commit])?;
+    let author_name = string(&["show", "-s", "--format=%an", commit])?;
+    let author_email = string(&["show", "-s", "--format=%ae", commit])?;
+    let author_timestamp = string(&["show", "-s", "--format=%at", commit])?;
+    let author_offset = string(&["show", "-s", "--format=%ai", commit])?
+        .split_whitespace()
+        .last()
+        .unwrap_or("+0000")
+        .to_owned();
+    let shell_quote = |value: &str| format!("'{}'", value.replace('\'', "'\\''"));
+    let author_script = format!(
+        "GIT_AUTHOR_NAME={}\nGIT_AUTHOR_EMAIL={}\nGIT_AUTHOR_DATE='@{} {}'\n",
+        shell_quote(&author_name),
+        shell_quote(&author_email),
+        author_timestamp,
+        author_offset
+    );
+    for (name, contents) in [
+        ("head-name", format!("{branch}\n").into_bytes()),
+        ("onto", format!("{upstream}\n").into_bytes()),
+        ("orig-head", format!("{original}\n").into_bytes()),
+        ("stopped-sha", format!("{commit}\n").into_bytes()),
+        ("msgnum", b"1\n".to_vec()),
+        ("end", b"1\n".to_vec()),
+        ("done", format!("pick {commit} # {subject}\n").into_bytes()),
+        ("git-rebase-todo", Vec::new()),
+        ("message", message),
+        ("author-script", author_script.into_bytes()),
+        ("interactive", Vec::new()),
+        ("no-reschedule-failed-exec", Vec::new()),
+        ("drop_redundant_commits", Vec::new()),
+    ] {
+        repository::atomic_write(&dir.join(name), &contents)?;
+    }
+    let cherry_head = git_path("CHERRY_PICK_HEAD")?;
+    if cherry_head.exists() {
+        std::fs::remove_file(cherry_head)?;
+    }
+    let merge_msg = git_path("MERGE_MSG")?;
+    if merge_msg.exists() {
+        std::fs::remove_file(merge_msg)?;
+    }
+    Ok(())
+}
+
+fn rebase_replay(upstream: &str) -> Result<(String, String, String)> {
+    let commits = string(&["rev-list", "--reverse", &format!("{upstream}..HEAD")])?;
+    let commits: Vec<_> = commits.lines().filter(|line| !line.is_empty()).collect();
+    let [commit] = commits.as_slice() else {
+        if commits.is_empty() {
+            bail!("当前 branch 没有需要 rebase 的 commit");
+        }
+        bail!("普通 rebase 当前只支持一个待重放的 commit");
+    };
+    let parent = commit_id(&format!("{commit}^"))?;
+    Ok((parent, (*commit).into(), upstream.into()))
 }
 fn execute_plan(plan: Plan, kind: &str, options: Options) -> Result<u8> {
     plan.recheck()?;
@@ -537,7 +610,9 @@ fn run(operation: &str, target: &str, options: Options, mode: Mode) -> Result<u8
         Mode::ApplyPlan(path) => {
             load_artifact(path, operation, target, revisions.clone(), options)?
         }
-        Mode::Apply | Mode::Plan(_) => Plan::build(operation, target, revisions.clone(), options)?,
+        Mode::Apply | Mode::Plan(_) => {
+            Plan::build(operation, target, target, revisions.clone(), options)?
+        }
     };
     match mode {
         Mode::Plan(path) => {
@@ -578,4 +653,61 @@ pub fn merge(target: &str, options: Options, mode: Mode) -> Result<u8> {
 }
 pub fn cherry_pick(target: &str, options: Options, mode: Mode) -> Result<u8> {
     run("cherry-pick", target, options, mode)
+}
+
+pub fn rebase(target: &str, options: Options, mode: Mode) -> Result<u8> {
+    let _guard = enter()?;
+    let original = commit_id("HEAD")?;
+    let upstream = commit_id(target)?;
+    let (parent, commit, _) = rebase_replay(&upstream)?;
+    let revisions = [parent, upstream.clone(), commit.clone()];
+    let plan = match &mode {
+        Mode::ApplyPlan(path) => load_artifact(path, "rebase", target, revisions.clone(), options)?,
+        Mode::Apply | Mode::Plan(_) => {
+            Plan::build("rebase", target, &commit, revisions.clone(), options)?
+        }
+    };
+    if plan.artifact.head != original {
+        bail!("分析计划的原始 HEAD 与当前 HEAD 不匹配");
+    }
+    match mode {
+        Mode::Plan(path) => {
+            plan.save_new(&path)?;
+            plan.report(options.detailed);
+            eprintln!("分析计划：{}", path.display());
+            Ok(u8::from(!plan.outcomes.is_empty()))
+        }
+        Mode::ApplyPlan(_) | Mode::Apply => {
+            let path = if matches!(mode, Mode::Apply) {
+                Some(new_internal_path()?)
+            } else {
+                None
+            };
+            if let Some(path) = path {
+                plan.save_new(&path)?;
+                eprintln!("分析计划：{}", path.display());
+            }
+            plan.recheck()?;
+            let branch = string(&["symbolic-ref", "-q", "HEAD"])?;
+            let checkout = native(&["checkout", "--detach", &upstream])?;
+            if !checkout.status.success() {
+                bail!("无法将 rebase 基底切换到 upstream");
+            }
+            let _ = read(&["update-ref", "ORIG_HEAD", &original])?;
+            let result = native(&["cherry-pick", "--no-commit", "--strategy=ort", &commit])?;
+            if !matches!(result.status.code(), Some(0 | 1)) {
+                let _ = native(&["checkout", "--detach", &original]);
+                let _ = read(&["symbolic-ref", "HEAD", &branch]);
+                bail!("Git 无法应用 rebase commit；已尝试恢复原始 HEAD");
+            }
+            if plan.install(options)? {
+                write_rebase_state(&branch, &original, &upstream, &commit)?;
+                return Ok(1);
+            }
+            finish_commit(&["commit", "--allow-empty", "-C", &commit])?;
+            let _ = read(&["update-ref", &branch, "HEAD", &original])?;
+            let _ = read(&["symbolic-ref", "HEAD", &branch])?;
+            Ok(0)
+        }
+    }
 }

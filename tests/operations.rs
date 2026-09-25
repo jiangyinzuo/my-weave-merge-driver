@@ -194,3 +194,55 @@ fn stale_plan_is_rejected_before_git_state_changes() {
     assert_eq!(repo.git(&["rev-parse", "HEAD"]), before);
     assert!(repo.git(&["ls-files", "-u"]).is_empty());
 }
+
+#[test]
+fn rebase_single_commit_leaves_native_rebase_state_for_continue() {
+    let repo = Repo::new(BASE);
+    repo.git(&["checkout", "-qb", "feature"]);
+    repo.write("calc.go", THEIRS);
+    repo.commit("feature");
+    repo.git(&["checkout", "-q", "main"]);
+    repo.write("calc.go", OURS);
+    repo.commit("ours");
+    let out = repo.tool(&["rebase", "feature"]);
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(repo.path().join(".git/rebase-merge").exists());
+    assert!(!repo.git(&["ls-files", "-u"]).is_empty());
+    repo.write("calc.go", "resolved by rebase\n");
+    repo.git(&["add", "calc.go"]);
+    let continued = repo.command("git", &["rebase", "--continue"]);
+    assert!(
+        continued.status.success(),
+        "{}",
+        String::from_utf8_lossy(&continued.stderr)
+    );
+    assert_eq!(repo.git(&["status", "--porcelain"]), "");
+    assert!(!repo.path().join(".git/rebase-merge").exists());
+}
+
+#[test]
+fn clean_single_commit_rebase_updates_branch_without_rebase_state() {
+    let repo = Repo::new(BASE);
+    repo.git(&["checkout", "-qb", "feature"]);
+    repo.write("feature.go", "package p\n");
+    repo.commit("feature");
+    repo.git(&["checkout", "-q", "main"]);
+    repo.write("main.go", "package p\n");
+    repo.commit("main");
+    let out = repo.tool(&["rebase", "feature"]);
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(repo.git(&["status", "--porcelain"]), "");
+    assert!(!repo.path().join(".git/rebase-merge").exists());
+    assert_eq!(repo.git(&["rev-list", "--count", "feature..HEAD"]), "1");
+    assert!(repo.path().join("main.go").exists());
+}
