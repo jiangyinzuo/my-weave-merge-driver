@@ -26,6 +26,25 @@ pub enum Mode {
     ApplyPlan(PathBuf),
 }
 
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum OperationKind {
+    Merge,
+    CherryPick,
+    Rebase,
+    Stash,
+}
+
+impl OperationKind {
+    fn name(self) -> &'static str {
+        match self {
+            Self::Merge => "merge",
+            Self::CherryPick => "cherry-pick",
+            Self::Rebase => "rebase",
+            Self::Stash => "stash",
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Artifact {
@@ -305,7 +324,7 @@ impl Plan {
         })
     }
     fn build(
-        operation: &str,
+        operation: OperationKind,
         target: &str,
         label: &str,
         revisions: [String; 3],
@@ -330,7 +349,7 @@ impl Plan {
         )?;
         let artifact = Artifact {
             artifact_version: ARTIFACT_VERSION,
-            operation: operation.into(),
+            operation: operation.name().into(),
             target: target.into(),
             repository: repository_root()?.display().to_string(),
             revisions,
@@ -396,9 +415,43 @@ impl Plan {
     }
 }
 
+fn make_plan(
+    mode: &Mode,
+    operation: OperationKind,
+    target: &str,
+    label: &str,
+    revisions: [String; 3],
+    options: Options,
+) -> Result<Plan> {
+    match mode {
+        Mode::ApplyPlan(path) => load_artifact(path, operation, target, revisions, options),
+        Mode::Apply | Mode::Plan(_) => Plan::build(operation, target, label, revisions, options),
+    }
+}
+
+fn report_plan(plan: &Plan, mode: &Mode, options: Options) -> Result<Option<u8>> {
+    let Mode::Plan(path) = mode else {
+        return Ok(None);
+    };
+    plan.save_new(path)?;
+    plan.report(options.detailed);
+    eprintln!("分析计划：{}", path.display());
+    Ok(Some(u8::from(!plan.outcomes.is_empty())))
+}
+
+fn save_internal_plan(plan: &Plan, mode: &Mode) -> Result<()> {
+    if !matches!(mode, Mode::Apply) {
+        return Ok(());
+    }
+    let path = new_internal_path()?;
+    plan.save_new(&path)?;
+    eprintln!("分析计划：{}", path.display());
+    Ok(())
+}
+
 fn load_artifact(
     path: &Path,
-    operation: &str,
+    operation: OperationKind,
     target: &str,
     revisions: [String; 3],
     options: Options,
@@ -413,7 +466,7 @@ fn load_artifact(
     }
     let artifact: Artifact = serde_json::from_slice(&bytes).context("无效的分析计划")?;
     if artifact.artifact_version != ARTIFACT_VERSION
-        || artifact.operation != operation
+        || artifact.operation != operation.name()
         || artifact.target != target
         || artifact.revisions != revisions
     {
@@ -438,7 +491,7 @@ fn load_artifact(
     if serde_json::to_vec(&computed)? != serde_json::to_vec(&artifact.report)? {
         bail!("分析计划内容与当前 Git 对象不匹配；请重新执行 --plan");
     }
-    let label = if operation == "rebase" {
+    let label = if operation == OperationKind::Rebase {
         artifact.revisions[2].clone()
     } else {
         target.to_owned()
@@ -550,11 +603,11 @@ fn rebase_replay(upstream: &str) -> Result<(String, String, String)> {
     let parent = commit_id(&format!("{commit}^"))?;
     Ok((parent, (*commit).into(), upstream.into()))
 }
-fn execute_plan(plan: Plan, kind: &str, options: Options) -> Result<u8> {
+fn execute_plan(plan: Plan, kind: OperationKind, options: Options) -> Result<u8> {
     plan.recheck()?;
     let revisions = plan.artifact.revisions.each_ref().map(String::as_str);
     let result = match kind {
-        "merge" => native(&[
+        OperationKind::Merge => native(&[
             "merge",
             "--no-commit",
             "--no-ff",
@@ -565,16 +618,18 @@ fn execute_plan(plan: Plan, kind: &str, options: Options) -> Result<u8> {
             "ort",
             revisions[2],
         ])?,
-        "cherry-pick" => native(&["cherry-pick", "--no-commit", "--strategy=ort", revisions[2]])?,
-        _ => bail!("未知操作：{kind}"),
+        OperationKind::CherryPick => {
+            native(&["cherry-pick", "--no-commit", "--strategy=ort", revisions[2]])?
+        }
+        _ => bail!("该操作不能使用通用 apply 流程：{}", kind.name()),
     };
     if !matches!(result.status.code(), Some(0 | 1)) {
         bail!("Git 未建立预期操作状态");
     }
-    if kind == "merge" && !git_path("MERGE_HEAD")?.exists() {
+    if kind == OperationKind::Merge && !git_path("MERGE_HEAD")?.exists() {
         bail!("Git 未建立 MERGE_HEAD");
     }
-    if kind == "cherry-pick" {
+    if kind == OperationKind::CherryPick {
         repository::atomic_write(
             &git_path("CHERRY_PICK_HEAD")?,
             format!("{}\n", revisions[2]).as_bytes(),
@@ -586,16 +641,18 @@ fn execute_plan(plan: Plan, kind: &str, options: Options) -> Result<u8> {
         return Ok(1);
     }
     match kind {
-        "merge" => finish_commit(&["commit", "--no-edit"]),
-        "cherry-pick" => finish_commit(&["commit", "--allow-empty", "-C", revisions[2]]),
+        OperationKind::Merge => finish_commit(&["commit", "--no-edit"]),
+        OperationKind::CherryPick => {
+            finish_commit(&["commit", "--allow-empty", "-C", revisions[2]])
+        }
         _ => unreachable!(),
     }
 }
-fn run(operation: &str, target: &str, options: Options, mode: Mode) -> Result<u8> {
+fn run(operation: OperationKind, target: &str, options: Options, mode: Mode) -> Result<u8> {
     let _guard = enter()?;
     let ours = commit_id("HEAD")?;
     let theirs = commit_id(target)?;
-    let base = if operation == "merge" {
+    let base = if operation == OperationKind::Merge {
         unique_base(&ours, &theirs)?
     } else {
         let parents = string(&["rev-list", "--parents", "-n", "1", &theirs])?;
@@ -606,53 +663,31 @@ fn run(operation: &str, target: &str, options: Options, mode: Mode) -> Result<u8
         words[1].into()
     };
     let revisions = [base, ours, theirs];
-    let plan = match &mode {
-        Mode::ApplyPlan(path) => {
-            load_artifact(path, operation, target, revisions.clone(), options)?
-        }
-        Mode::Apply | Mode::Plan(_) => {
-            Plan::build(operation, target, target, revisions.clone(), options)?
-        }
-    };
-    match mode {
-        Mode::Plan(path) => {
-            plan.save_new(&path)?;
-            plan.report(options.detailed);
-            eprintln!("分析计划：{}", path.display());
-            Ok(u8::from(!plan.outcomes.is_empty()))
-        }
-        Mode::ApplyPlan(_) | Mode::Apply => {
-            let path = if matches!(mode, Mode::Apply) {
-                Some(new_internal_path()?)
-            } else {
-                None
-            };
-            if let Some(path) = path {
-                plan.save_new(&path)?;
-                eprintln!("分析计划：{}", path.display());
-            }
-            if operation == "merge" && revisions[0] == revisions[2] {
-                return Ok(0);
-            }
-            if operation == "merge" && revisions[0] == revisions[1] {
-                checked(native(&[
-                    "merge",
-                    "--ff-only",
-                    "--no-autostash",
-                    "--no-overwrite-ignore",
-                    &revisions[2],
-                ])?)?;
-                return Ok(0);
-            }
-            execute_plan(plan, operation, options)
-        }
+    let plan = make_plan(&mode, operation, target, target, revisions.clone(), options)?;
+    if let Some(code) = report_plan(&plan, &mode, options)? {
+        return Ok(code);
     }
+    save_internal_plan(&plan, &mode)?;
+    if operation == OperationKind::Merge && revisions[0] == revisions[2] {
+        return Ok(0);
+    }
+    if operation == OperationKind::Merge && revisions[0] == revisions[1] {
+        checked(native(&[
+            "merge",
+            "--ff-only",
+            "--no-autostash",
+            "--no-overwrite-ignore",
+            &revisions[2],
+        ])?)?;
+        return Ok(0);
+    }
+    execute_plan(plan, operation, options)
 }
 pub fn merge(target: &str, options: Options, mode: Mode) -> Result<u8> {
-    run("merge", target, options, mode)
+    run(OperationKind::Merge, target, options, mode)
 }
 pub fn cherry_pick(target: &str, options: Options, mode: Mode) -> Result<u8> {
-    run("cherry-pick", target, options, mode)
+    run(OperationKind::CherryPick, target, options, mode)
 }
 
 pub fn rebase(target: &str, options: Options, mode: Mode) -> Result<u8> {
@@ -661,55 +696,42 @@ pub fn rebase(target: &str, options: Options, mode: Mode) -> Result<u8> {
     let upstream = commit_id(target)?;
     let (parent, commit, _) = rebase_replay(&upstream)?;
     let revisions = [parent, upstream.clone(), commit.clone()];
-    let plan = match &mode {
-        Mode::ApplyPlan(path) => load_artifact(path, "rebase", target, revisions.clone(), options)?,
-        Mode::Apply | Mode::Plan(_) => {
-            Plan::build("rebase", target, &commit, revisions.clone(), options)?
-        }
-    };
+    let plan = make_plan(
+        &mode,
+        OperationKind::Rebase,
+        target,
+        &commit,
+        revisions.clone(),
+        options,
+    )?;
     if plan.artifact.head != original {
         bail!("分析计划的原始 HEAD 与当前 HEAD 不匹配");
     }
-    match mode {
-        Mode::Plan(path) => {
-            plan.save_new(&path)?;
-            plan.report(options.detailed);
-            eprintln!("分析计划：{}", path.display());
-            Ok(u8::from(!plan.outcomes.is_empty()))
-        }
-        Mode::ApplyPlan(_) | Mode::Apply => {
-            let path = if matches!(mode, Mode::Apply) {
-                Some(new_internal_path()?)
-            } else {
-                None
-            };
-            if let Some(path) = path {
-                plan.save_new(&path)?;
-                eprintln!("分析计划：{}", path.display());
-            }
-            plan.recheck()?;
-            let branch = string(&["symbolic-ref", "-q", "HEAD"])?;
-            let checkout = native(&["checkout", "--detach", &upstream])?;
-            if !checkout.status.success() {
-                bail!("无法将 rebase 基底切换到 upstream");
-            }
-            let _ = read(&["update-ref", "ORIG_HEAD", &original])?;
-            let result = native(&["cherry-pick", "--no-commit", "--strategy=ort", &commit])?;
-            if !matches!(result.status.code(), Some(0 | 1)) {
-                let _ = native(&["checkout", "--detach", &original]);
-                let _ = read(&["symbolic-ref", "HEAD", &branch]);
-                bail!("Git 无法应用 rebase commit；已尝试恢复原始 HEAD");
-            }
-            if plan.install(options)? {
-                write_rebase_state(&branch, &original, &upstream, &commit)?;
-                return Ok(1);
-            }
-            finish_commit(&["commit", "--allow-empty", "-C", &commit])?;
-            let _ = read(&["update-ref", &branch, "HEAD", &original])?;
-            let _ = read(&["symbolic-ref", "HEAD", &branch])?;
-            Ok(0)
-        }
+    if let Some(code) = report_plan(&plan, &mode, options)? {
+        return Ok(code);
     }
+    save_internal_plan(&plan, &mode)?;
+    plan.recheck()?;
+    let branch = string(&["symbolic-ref", "-q", "HEAD"])?;
+    let checkout = native(&["checkout", "--detach", &upstream])?;
+    if !checkout.status.success() {
+        bail!("无法将 rebase 基底切换到 upstream");
+    }
+    let _ = read(&["update-ref", "ORIG_HEAD", &original])?;
+    let result = native(&["cherry-pick", "--no-commit", "--strategy=ort", &commit])?;
+    if !matches!(result.status.code(), Some(0 | 1)) {
+        let _ = native(&["checkout", "--detach", &original]);
+        let _ = read(&["symbolic-ref", "HEAD", &branch]);
+        bail!("Git 无法应用 rebase commit；已尝试恢复原始 HEAD");
+    }
+    if plan.install(options)? {
+        write_rebase_state(&branch, &original, &upstream, &commit)?;
+        return Ok(1);
+    }
+    finish_commit(&["commit", "--allow-empty", "-C", &commit])?;
+    let _ = read(&["update-ref", &branch, "HEAD", &original])?;
+    let _ = read(&["symbolic-ref", "HEAD", &branch])?;
+    Ok(0)
 }
 
 pub fn stash(target: &str, pop: bool, options: Options, mode: Mode) -> Result<u8> {
@@ -724,12 +746,14 @@ pub fn stash(target: &str, pop: bool, options: Options, mode: Mode) -> Result<u8
     let base = words[1].to_owned();
     let index_parent = words[2];
     let revisions = [base, ours, stash.clone()];
-    let plan = match &mode {
-        Mode::ApplyPlan(path) => load_artifact(path, "stash", target, revisions.clone(), options)?,
-        Mode::Apply | Mode::Plan(_) => {
-            Plan::build("stash", target, target, revisions.clone(), options)?
-        }
-    };
+    let plan = make_plan(
+        &mode,
+        OperationKind::Stash,
+        target,
+        target,
+        revisions.clone(),
+        options,
+    )?;
     // Applying a stash without --index has no reliable representation for a
     // separately changed index in this restricted command. Reject it before
     // touching the worktree; users can use native Git for that case.
@@ -738,38 +762,23 @@ pub fn stash(target: &str, pop: bool, options: Options, mode: Mode) -> Result<u8
     {
         bail!("当前阶段不支持 stash 的独立 index 修改；请使用原生 Git");
     }
-    match mode {
-        Mode::Plan(path) => {
-            plan.save_new(&path)?;
-            plan.report(options.detailed);
-            eprintln!("分析计划：{}", path.display());
-            Ok(u8::from(!plan.outcomes.is_empty()))
-        }
-        Mode::ApplyPlan(_) | Mode::Apply => {
-            let path = if matches!(mode, Mode::Apply) {
-                Some(new_internal_path()?)
-            } else {
-                None
-            };
-            if let Some(path) = path {
-                plan.save_new(&path)?;
-                eprintln!("分析计划：{}", path.display());
-            }
-            plan.recheck()?;
-            let result = native(&["stash", "apply", "--quiet", target])?;
-            if !matches!(result.status.code(), Some(0 | 1)) {
-                bail!("Git stash apply 未完成；未安装严格结果");
-            }
-            if plan.install(options)? {
-                return Ok(1);
-            }
-            if pop {
-                let dropped = native(&["stash", "drop", "--quiet", target])?;
-                if !dropped.status.success() {
-                    bail!("stash 已应用，但 drop 失败；请检查 stash list");
-                }
-            }
-            Ok(0)
+    if let Some(code) = report_plan(&plan, &mode, options)? {
+        return Ok(code);
+    }
+    save_internal_plan(&plan, &mode)?;
+    plan.recheck()?;
+    let result = native(&["stash", "apply", "--quiet", target])?;
+    if !matches!(result.status.code(), Some(0 | 1)) {
+        bail!("Git stash apply 未完成；未安装严格结果");
+    }
+    if plan.install(options)? {
+        return Ok(1);
+    }
+    if pop {
+        let dropped = native(&["stash", "drop", "--quiet", target])?;
+        if !dropped.status.success() {
+            bail!("stash 已应用，但 drop 失败；请检查 stash list");
         }
     }
+    Ok(0)
 }
