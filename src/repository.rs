@@ -28,7 +28,7 @@ pub fn report_analysis(report: &crate::analysis::Report, heading: &str, detailed
     }
     for (path, file) in &report.files {
         if !file.reasons.is_empty() {
-            eprintln!("{heading} · {}", merge::safe_label(path));
+            eprintln!("{heading} 📄 {}", merge::safe_label(path));
         }
         report_findings(&file.reasons, &file.related_moves, detailed);
     }
