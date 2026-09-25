@@ -1,7 +1,7 @@
 冲突 · between.cpp
-⎇ feature/ours
+feature/ours
 base-commit
-⎇ feature/theirs
+feature/theirs
 原因 [git]：LINE_CONFLICT：Git 行级冲突
 原因 [analyze]：UNMODELED_BOTH_CHANGED：ƒ first 与 ƒ second 之间的非实体区域被双方修改
 需人工处理：选择一侧 / 编辑合并结果。

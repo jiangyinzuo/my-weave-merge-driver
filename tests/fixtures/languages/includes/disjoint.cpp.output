@@ -1,4 +1,4 @@
-<<<<<<< ⎇ feature/ours | UNMODELED_BOTH_CHANGED：文件开头、ƒ answer 之前的非实体区域被双方修改
+<<<<<<< feature/ours | UNMODELED_BOTH_CHANGED：文件开头、ƒ answer 之前的非实体区域被双方修改
 #include "first_v2.h"
 #include <array>
 #include <cstddef>
@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 #include "last_v2.h"
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs
 
 int answer() {
     return 42;

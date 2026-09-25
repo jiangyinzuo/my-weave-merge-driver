@@ -1,5 +1,5 @@
 class Counter:
-<<<<<<< ⎇ feature/ours | ENTITY_CONFLICT：◇ Counter 需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：◇ Counter 需人工审核
     def unchanged(self):
         return 0
 
@@ -26,4 +26,4 @@ class Counter:
 
     def unchanged(self):
         return 0
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs

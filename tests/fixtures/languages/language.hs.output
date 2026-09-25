@@ -1,8 +1,8 @@
 alpha :: Int
-<<<<<<< ⎇ feature/ours | UNMODELED_BOTH_CHANGED：文件末尾、◇ alpha 之后的非实体区域被双方修改
+<<<<<<< feature/ours | UNMODELED_BOTH_CHANGED：文件末尾、◇ alpha 之后的非实体区域被双方修改
 alpha = 2
 ||||||| base-commit
 alpha = 1
 =======
 alpha = 2
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs

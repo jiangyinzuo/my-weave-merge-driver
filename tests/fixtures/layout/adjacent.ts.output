@@ -1,9 +1,9 @@
 export function existing() { return 0; }
-<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化
 
 export function alpha() { return 1; }
 ||||||| base-commit
 =======
 
 export function beta() { return 2; }
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs

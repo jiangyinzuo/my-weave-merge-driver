@@ -1,10 +1,10 @@
 union Value {
-<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ Value 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ Value 需人工审核
     long number;
 ||||||| base-commit
     int number;
 =======
     short number;
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs
     char byte;
 };

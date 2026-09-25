@@ -1,7 +1,7 @@
 冲突 · delete.go
-⎇ feature/ours
+feature/ours
 base-commit
-⎇ feature/theirs
+feature/theirs
 原因 [git]：LINE_CONFLICT：Git 行级冲突
 原因 [weave]：ENTITY_CONFLICT：ƒ a 需人工审核
   依据 [weave]：拒绝：modify_delete；modified in theirs

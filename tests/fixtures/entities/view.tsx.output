@@ -1,9 +1,9 @@
 export function View() {
-<<<<<<< ⎇ feature/ours | ENTITY_CONFLICT：ƒ View：双方修改结果相同，但均不同于 base，按严格规则需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ View：双方修改结果相同，但均不同于 base，按严格规则需人工审核
   return <div>new</div>;
 ||||||| base-commit
   return <div>old</div>;
 =======
   return <div>new</div>;
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs
 }

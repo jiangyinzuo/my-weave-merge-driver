@@ -28,11 +28,11 @@ macro_rules! announce {
 }
 
 fn calculate(value: Number) -> Number {
-<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：ƒ calculate 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：ƒ calculate 需人工审核
     value + LIMIT + 1
 ||||||| base-commit
     value + LIMIT
 =======
     value + LIMIT + 2
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs
 }

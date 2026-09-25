@@ -1,7 +1,7 @@
-<<<<<<< ⎇ feature/ours | GLOBAL_MODIFY_VS_MOVE：ƒ calculate 疑似移动与另一侧变化需共同审核
+<<<<<<< feature/ours | GLOBAL_MODIFY_VS_MOVE：ƒ calculate 疑似移动与另一侧变化需共同审核
 ||||||| base-commit
 =======
 func calculate() int {
     return 1
 }
->>>>>>> ⎇ feature/theirs | 文件关联 [analyze]：疑似移动 ƒ calculate · src/source.go:1 → ƒ calculate · lib/target.go:1
+>>>>>>> feature/theirs | 文件关联 [analyze]：疑似移动 ƒ calculate · src/source.go:1 → ƒ calculate · lib/target.go:1

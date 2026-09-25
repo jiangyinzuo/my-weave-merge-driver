@@ -1,7 +1,7 @@
-<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ count 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ count 需人工审核
 int get count => 2;
 ||||||| base-commit
 int get count => 1;
 =======
 int get count => 3;
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs

@@ -1,7 +1,7 @@
 冲突 · source.go
-⎇ feature/ours
+feature/ours
 base-commit
-⎇ feature/theirs
+feature/theirs
 原因 [weave]：ENTITY_CONFLICT：ƒ calculate 需人工审核
   依据 [weave]：分类：ours=deleted, theirs=deleted
 原因 [analyze]：ENTITY_LAYOUT_CHANGED：实体增删或顺序变化

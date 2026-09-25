@@ -1,4 +1,4 @@
-<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
 func a() int { return 3 }
 func a() int { return 2 }
 ||||||| base-commit
@@ -7,4 +7,4 @@ func a() int { return 2 }
 =======
 func a() int { return 1 }
 func a() int { return 4 }
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs

@@ -1,7 +1,7 @@
 冲突 · same-name-methods.py
-⎇ feature/ours
+feature/ours
 base-commit
-⎇ feature/theirs
+feature/theirs
 原因 [weave]：ENTITY_CONFLICT：◇ Counter 需人工审核
   依据 [weave]：分类：ours=modified, theirs=modified
 原因 [weave]：ENTITY_CONFLICT：◇ Gauge 需人工审核

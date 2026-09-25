@@ -1,7 +1,7 @@
 class Counter {
 public:
     int score(int value) const {
-<<<<<<< ⎇ feature/ours | ENTITY_CONFLICT：◇ Counter 需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：◇ Counter 需人工审核
         int x = 10;
         int y = 2;
         int z = 3;
@@ -13,7 +13,7 @@ public:
         int x = 1;
         int y = 2;
         int z = 30;
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs
         return value + x + y + z;
     }
 

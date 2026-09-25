@@ -1,9 +1,9 @@
 fn alpha() -> i32 {
-<<<<<<< ⎇ feature/ours | ENTITY_CONFLICT：ƒ alpha：双方修改结果相同，但均不同于 base，按严格规则需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ alpha：双方修改结果相同，但均不同于 base，按严格规则需人工审核
     2
 ||||||| base-commit
     1
 =======
     2
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs
 }

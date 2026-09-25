@@ -1,10 +1,10 @@
 enum Status {
-<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ Status 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ Status 需人工审核
     Open = 2,
 ||||||| base-commit
     Open = 1,
 =======
     Open = 3,
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs
     Closed = 4,
 }

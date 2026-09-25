@@ -1,4 +1,4 @@
-<<<<<<< ⎇ feature/ours | ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
+<<<<<<< feature/ours | ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
 def alpha(:
     return 2
 ||||||| base-commit
@@ -7,4 +7,4 @@ def alpha():
 =======
 def alpha(:
     return 2
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs

@@ -1,7 +1,7 @@
 冲突 · source.go
-⎇ feature/ours
+feature/ours
 base-commit
-⎇ feature/theirs
+feature/theirs
 原因 [git]：LINE_CONFLICT：Git 行级冲突
   依据 [git]：Git 行级合并返回冲突
 原因 [analyze]：ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突

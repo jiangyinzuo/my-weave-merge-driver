@@ -1,7 +1,7 @@
-<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ LIMIT 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ LIMIT 需人工审核
 const LIMIT: i32 = 2;
 ||||||| base-commit
 const LIMIT: i32 = 1;
 =======
 const LIMIT: i32 = 3;
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs

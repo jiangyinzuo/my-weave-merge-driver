@@ -1,7 +1,7 @@
 冲突 · test.ts
-⎇ feature/ours
+feature/ours
 base-commit
-⎇ feature/theirs
+feature/theirs
 原因 [git]：LINE_CONFLICT：Git 行级冲突
   依据 [git]：Git 行级合并返回冲突
 原因 [weave]：ENTITY_CONFLICT：◇ result 需人工审核

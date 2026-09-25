@@ -36,10 +36,8 @@ impl Default for Labels {
 
 impl Labels {
     /// Human-facing labels used by both Git's markers and our own blocks.
-    /// `ours` and `theirs` usually identify branches; the branch glyph keeps
-    /// the marker compact without repeating role names such as `ours:`.
     pub(crate) fn ours_marker(&self) -> String {
-        format!("⎇ {}", safe_label(&self.ours))
+        safe_label(&self.ours)
     }
 
     pub(crate) fn base_marker(&self) -> String {
@@ -47,7 +45,7 @@ impl Labels {
     }
 
     pub(crate) fn theirs_marker(&self) -> String {
-        format!("⎇ {}", safe_label(&self.theirs))
+        safe_label(&self.theirs)
     }
 }
 

@@ -9,13 +9,13 @@ enum Status {
 class Ledger {
     balance: Amount = 0;
     add(value: Amount): Amount {
-<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ Ledger 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ Ledger 需人工审核
         return this.balance + value + 1;
 ||||||| base-commit
         return this.balance + value;
 =======
         return this.balance + value + 2;
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs
     }
 }
 function total(value: Amount): Amount {

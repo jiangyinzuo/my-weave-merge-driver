@@ -1,12 +1,12 @@
 func a() int {
     x := 1
-<<<<<<<<<<< ⎇ feature/ours INJECT | ENTITY_CONFLICT：ƒ a：双方修改结果相同，但均不同于 base，按严格规则需人工审核
+<<<<<<<<<<< feature/ours INJECT | ENTITY_CONFLICT：ƒ a：双方修改结果相同，但均不同于 base，按严格规则需人工审核
     y := 5
 ||||||||||| 123
     y := 2
 ===========
     y := 5
->>>>>>>>>>> ⎇ abc cherry-pick
+>>>>>>>>>>> abc cherry-pick
     z := 3
     return y
 }

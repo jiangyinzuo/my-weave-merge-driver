@@ -1,7 +1,7 @@
-<<<<<<< ⎇ feature/ours | ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
+<<<<<<< feature/ours | ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
 class Counter { int score() { return 2; } };
 ||||||| base-commit
 class Counter { int score() { return 1; } };
 =======
 class Counter { int score() { return 2; } };
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs

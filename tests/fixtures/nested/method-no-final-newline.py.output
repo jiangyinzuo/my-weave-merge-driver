@@ -1,6 +1,6 @@
 class Counter:
     def score(self):
-<<<<<<< ⎇ feature/ours | ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
+<<<<<<< feature/ours | ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
         x = 10
         y = 2
         z = 3
@@ -12,7 +12,7 @@ class Counter:
         x = 1
         y = 2
         z = 30
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs
         return x + y + z
 
     def unchanged(self):

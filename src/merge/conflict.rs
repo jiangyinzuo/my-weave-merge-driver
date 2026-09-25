@@ -29,8 +29,8 @@ pub(crate) fn annotate_moves(content: &str, candidates: &[MoveEvidence], width: 
         }
     });
     let prefixes = [
-        format!("{} ⎇ ", "<".repeat(width)),
-        format!("{} ⎇ ", ">".repeat(width)),
+        format!("{} ", "<".repeat(width)),
+        format!("{} ", ">".repeat(width)),
     ];
     let mut seen = [false; 2];
     let mut result = String::with_capacity(content.len());

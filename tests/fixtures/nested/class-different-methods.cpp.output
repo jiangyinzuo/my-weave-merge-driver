@@ -1,7 +1,7 @@
 class Counter {
 public:
     int first() const {
-<<<<<<< ⎇ feature/ours | ENTITY_CONFLICT：◇ Counter 需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：◇ Counter 需人工审核
         return 10;
     }
 
@@ -31,6 +31,6 @@ public:
 
     int second() const {
         return 20;
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs
     }
 };

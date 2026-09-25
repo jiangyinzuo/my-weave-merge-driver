@@ -31,7 +31,7 @@ diff3 与 zdiff3 的区别、实际输出示例及选型建议见 [diff3-vs-zdif
 
 **表达风格：** 信息保持简洁，function、branch、ours、theirs、base 等基础术语直接保留英文。版本身份优先用操作命令、branch 和 commit 表达，避免重复翻译；只在 cherry-pick、rebase 等容易混淆的场景补充必要的角色说明。示例 A 作为格式参考。
 
-版本标签不重复打印 `ours:`、`base:`、`theirs:` 前缀：ours / theirs 使用 `⎇` 图形符号后接 Git 提供的标签，base 直接显示标签。人类可读的 entity 类型 `function` 显示为 `ƒ`；难以让人直接猜到含义的其它类型统一显示为 `◇`。源码和分析数据仍保留原始 `entity_type`、名称字段。展示映射依据结构化的 entity 类型，不搜索或替换名称、源码或标签文本。
+版本标签不重复打印 `ours:`、`base:`、`theirs:` 前缀：直接显示 Git 提供的标签。人类可读的 entity 类型 `function` 显示为 `ƒ`；难以让人直接猜到含义的其它类型统一显示为 `◇`。源码和分析数据仍保留原始 `entity_type`、名称字段。展示映射依据结构化的 entity 类型，不搜索或替换名称、源码或标签文本。
 
 **生成边界：** 所有提示由确定性的解析、匹配、文本 diff、Git 上下文及固定模板生成。直接展示可核对的文本变化，不生成业务意图或正确结果的判断；重命名、移动等启发式匹配必须附依据，不确定时标注“疑似”或列出候选。人工处理提示按冲突类型选择固定模板，不代表程序发现了某个具体业务问题。需求背景中的丢失更新等例子用于说明规则动机，不作为程序能自动诊断的能力。
 
@@ -54,9 +54,9 @@ base 的 function a 包含 x、y、z 三条赋值；ours 删除 z，theirs 删�
 原因：同一函数被双方修改 [ENTITY_CONFLICT]
 操作：git merge feature/drop-x
 
-current branch: ⎇ feature/drop-z
-⎇ feature/drop-z @ a1b2c3d
-⎇ feature/drop-x @ d4e5f6a
+current branch: feature/drop-z
+feature/drop-z @ a1b2c3d
+feature/drop-x @ d4e5f6a
 1122334
 
 相对 base：
@@ -72,7 +72,7 @@ current branch: ⎇ feature/drop-z
 
 ```text
 func a() int {
-<<<<<<< ⎇ feature/drop-z @ a1b2c3d | C001 ƒ a()：双方修改
+<<<<<<< feature/drop-z @ a1b2c3d | C001 ƒ a()：双方修改
     x := 1
     y := 2
 ||||||| 1122334
@@ -82,7 +82,7 @@ func a() int {
 =======
     y := 2
     z := 3
->>>>>>> ⎇ feature/drop-x @ d4e5f6a | C001
+>>>>>>> feature/drop-x @ d4e5f6a | C001
     return y
 }
 ```
@@ -105,8 +105,8 @@ ours 在末尾新增 `alpha()`，theirs 在同一位置新增 `beta()`。Git 2.5
 冲突 C002 · helpers.ts · existing() 之后的插入位置
 原因：双方在同一位置插入内容 [LINE_CONFLICT]
 
-⎇ feature/add-alpha @ a1b2c3d | 新增 ƒ alpha()
-⎇ feature/add-beta  @ d4e5f6a | 新增 ƒ beta()
+feature/add-alpha @ a1b2c3d | 新增 ƒ alpha()
+feature/add-beta  @ d4e5f6a | 新增 ƒ beta()
 1122334 | 此处为空
 
 行级判定：冲突，必须保留
@@ -118,14 +118,14 @@ ours 在末尾新增 `alpha()`，theirs 在同一位置新增 `beta()`。Git 2.5
 
 ```text
 export function existing() { return 0; }
-<<<<<<< ⎇ feature/add-alpha @ a1b2c3d | C002 同一插入位置：alpha() / beta()
+<<<<<<< feature/add-alpha @ a1b2c3d | C002 同一插入位置：alpha() / beta()
 
 export function alpha() { return 1; }
 ||||||| 1122334 | 此处为空
 =======
 
 export function beta() { return 2; }
->>>>>>> ⎇ feature/add-beta @ d4e5f6a | C002
+>>>>>>> feature/add-beta @ d4e5f6a | C002
 ```
 
 重点是解释“不同实体为什么仍然冲突”，不能将其误报为双方修改同一个函数，也不能因为实体不同就自动消掉冲突。
@@ -142,9 +142,9 @@ export function beta() { return 2; }
 
 操作：git cherry-pick 9abc012
 
-current branch: ⎇ release/1.2
-⎇ release/1.2 @ 7def890
-⎇ 9abc012 | 待应用 commit
+current branch: release/1.2
+release/1.2 @ 7def890
+9abc012 | 待应用 commit
 3456789 | 所选 parent
 
 相对 base：
@@ -161,7 +161,7 @@ theirs 的文本变化（base → theirs）：
 文件中的空 ours 区域表达“已删除”：
 
 ```text
-<<<<<<< ⎇ release/1.2 @ 7def890 | C003 ƒ validateInput() 已删除
+<<<<<<< release/1.2 @ 7def890 | C003 ƒ validateInput() 已删除
 ||||||| 3456789 | 所选 parent
 export function validateInput(data: unknown) {
   return data !== null;
@@ -170,7 +170,7 @@ export function validateInput(data: unknown) {
 export function validateInput(data: unknown) {
   return data != null;
 }
->>>>>>> ⎇ 9abc012 | C003 已修改
+>>>>>>> 9abc012 | C003 已修改
 ```
 
 这些信息可以由确定性程序生成：

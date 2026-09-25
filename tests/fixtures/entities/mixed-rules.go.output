@@ -1,4 +1,4 @@
-<<<<<<< ⎇ feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：ƒ a 需人工审核; ENTITY_CONFLICT：ƒ b 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：ƒ a 需人工审核; ENTITY_CONFLICT：ƒ b 需人工审核
 func a() int { return 2 }
 
 func b() int {
@@ -17,6 +17,6 @@ func a() int { return 3 }
 func b() int {
     x := 1
     y := 2
->>>>>>> ⎇ feature/theirs
+>>>>>>> feature/theirs
     return y
 }
