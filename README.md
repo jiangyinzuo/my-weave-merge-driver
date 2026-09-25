@@ -12,6 +12,13 @@ strict-weave stash apply [stash]
 strict-weave stash pop [stash]
 ```
 
+只读计划和应用已有计划的形式分别是：
+
+```sh
+strict-weave merge feature/payment --plan -o /tmp/payment-plan.json
+strict-weave merge feature/payment --apply /tmp/payment-plan.json
+```
+
 第一阶段要求工作区和 index 干净、只有一个 merge-base，并拒绝未实现的 Git 选项、rename、filters、sparse checkout 和复杂布局变化。分析完成后才修改 Git 状态。冲突时保留标准 index stages，工作区写入 strict-weave 冲突块；可以继续使用原生 Git：
 
 ```sh
@@ -34,7 +41,7 @@ cargo clippy --offline --locked --all-targets -- -D warnings
 cargo fmt --check
 ```
 
-测试包含 entity、原因模型、语言 registry、文本 fixture，以及真实临时 Git 仓库中的 merge/cherry-pick 流程。
+测试包含 entity、原因模型、语言 registry、文本 fixture，以及真实临时 Git 仓库中的 merge、cherry-pick、rebase 和 stash 流程。
 
 ## 文档索引
 
