@@ -96,11 +96,11 @@ strict-weave prepare BASE_TREE OURS_TREE THEIRS_TREE \
   --output /absolute/path/analysis.json --explain-reasons
 ```
 
-报告路径必须尚不存在；prepare 只读取 Git 对象，返回 `0` 才适合继续对应步骤。driver 可通过 `STRICT_WEAVE_ANALYSIS` 或 `--analysis` 读取报告，并校验路径与三方指纹。报告不能跨操作或 rebase 步骤随意复用。旧版 `strict-weave driver prepare ...` 仍可兼容使用。输入含义、调用示例及限制见 [全局分析协议](docs/global-analysis.md)。
+报告路径必须尚不存在；prepare 只读取 Git 对象，返回 `0` 才适合继续对应步骤。driver 可通过 `STRICT_WEAVE_ANALYSIS` 或 `--analysis` 读取报告，并校验路径与三方指纹。报告不能跨操作或 rebase 步骤随意复用。输入含义、调用示例及限制见 [全局分析协议](docs/global-analysis.md)。
 
 ## 退出码与使用边界
 
-| 退出码 | driver | driver prepare |
+| 退出码 | driver | prepare |
 | --- | --- | --- |
 | `0` | 合并完成，无冲突 | 报告已生成，未发现审核项 |
 | `1` | 写回带冲突的结果，需人工处理 | 报告已生成，存在审核项 |

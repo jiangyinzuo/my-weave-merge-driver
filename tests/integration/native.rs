@@ -1,4 +1,4 @@
-//! Driver-only workflows remain usable without wrapper state or reports.
+//! Native Git workflows use the configured merge driver directly.
 use crate::support::*;
 use std::fs;
 

@@ -62,6 +62,5 @@ STRICT_WEAVE_ANALYSIS=/tmp/analysis.json git merge feature/payment
 - 仅配置 driver 时，Git 可能因 fast-forward、相同 blob、删除或 rename 而不调用它；这是 Git 的正常优化。
 - `prepare` 不能强迫 Git 调用 driver，也不能替代 Git 的冲突状态管理。
 - driver 永远保留 Git 行级冲突；weave 拒绝和 strict-weave 的额外 entity 规则只能增加冲突，不能把 Git 的 conflict 变成成功。
-- 旧版 `strict-weave merge/rebase/pull/stash` 包装入口暂时作为隐藏兼容命令保留，不再出现在公开帮助或文档示例中；它们不代表推荐 API。
 
 具体报告字段和校验规则见 [全局分析协议](global-analysis.md)，分析顺序见 [分析规则](analysis.md)。

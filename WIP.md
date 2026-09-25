@@ -13,7 +13,7 @@
 | 操作接口 | Git 原生 merge/rebase/cherry-pick/pull/stash 使用已配置 driver；可选只读 prepare | [操作说明](docs/workflows.md) |
 | 验证 | 单/多文件文本 fixtures、Git 冲突包含关系、原文还原、语言与原因模型，以及真实临时仓库 CLI 测试 | [测试说明](docs/testing.md) |
 
-分析集中在 `src/analysis/`，单文件与全局分析共用校验、规则和原文分区；冲突块展示在 `src/merge/`，原因的数据模型、校验与人类可读输出分置于 `src/reason/`。操作适配在 `src/workflow/`：CLI 参数先转换为内部请求，操作统一持锁（包括 pull fetch），rebase 分为调度、todo、状态和回调。依赖原版 weave-core `a3f501d19601126fefcc40a3ebb764b8d07d39fc` 和 sem-core `0.25.0`，无本地 patch。
+分析集中在 `src/analysis/`，单文件与全局分析共用校验、规则和原文分区；冲突块展示在 `src/merge/`，原因的数据模型、校验与人类可读输出分置于 `src/reason/`。命令行只负责 driver 与只读 prepare，Git 负责所有操作状态。依赖原版 weave-core `a3f501d19601126fefcc40a3ebb764b8d07d39fc` 和 sem-core `0.25.0`，无本地 patch。
 
 ## 尚未覆盖
 

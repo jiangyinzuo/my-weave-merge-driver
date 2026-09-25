@@ -14,7 +14,7 @@
 - [analysis/global.rs](../src/analysis/global.rs)：三份快照、报告读写和 driver 输入校验。
 - [merge/render.rs](../src/merge/render.rs)：只读分析结果，选择 Git 输出、分区块或整文件块；[merge/conflict.rs](../src/merge/conflict.rs) 负责共同文本裁剪。
 
-`local::analyze` 共用输入校验及全部单文件规则；`merge::merge_with_style` 随后生成展示。全局分析直接消费同一分析结果及原文分区，不生成最终冲突块，也不为移动匹配重复分区。`workflow` 在操作层确定三方后复用全局分析。
+`local::analyze` 共用输入校验及全部单文件规则；`merge::merge_with_style` 随后生成展示。全局分析直接消费同一分析结果及原文分区，不生成最终冲突块，也不为移动匹配重复分区。
 
 ## 单文件规则目录
 
@@ -50,7 +50,7 @@ weave 的匹配、变化分类和五类拒绝直接复用上游；本项目的�
 | 移动与另一侧变化 | 移动候选的另一侧不是 unchanged | 源路径、目标路径均增加 `GLOBAL_MODIFY_VS_MOVE` | `moves::conflict_reason` |
 | 移动分析不完整 | 某份变化文件不能可靠分区 | 非阻断 warning；继续保留单文件严格检查 | `global::analyze` |
 
-复制且保留源 entity 不算移动。名称归一化可能替换自引用、注释和字符串，不证明只改了定义名或语义等价；原文含 `__ENTITY__` 时跳过归一化匹配。名称归一化后先比较原文，再比较格式无关语法表示。保留注释/字面量内部空白、token 顺序及结构；Python 缩进改变嵌套不算格式差异。额外 token 内容编辑、同文件作用域/位置移动尚未识别。候选超过 10000 时明确失败，不截断为可能漏报的报告。Git 跳过 driver 的路径由 prepare 提前报告；操作包装命令发现审核项即停止，手动调用者仍需检查返回值和报告；协议与限制见 [global-analysis.md](global-analysis.md)。
+复制且保留源 entity 不算移动。名称归一化可能替换自引用、注释和字符串，不证明只改了定义名或语义等价；原文含 `__ENTITY__` 时跳过归一化匹配。名称归一化后先比较原文，再比较格式无关语法表示。保留注释/字面量内部空白、token 顺序及结构；Python 缩进改变嵌套不算格式差异。额外 token 内容编辑、同文件作用域/位置移动尚未识别。候选超过 10000 时明确失败，不截断为可能漏报的报告。Git 跳过 driver 的路径由 prepare 提前报告；调用者仍需检查返回值和报告；协议与限制见 [global-analysis.md](global-analysis.md)。
 
 weave 重命名匹配的依据、公开接口限制及复用取舍见 [重命名匹配调研](weave-rename-research.md)。本规则复用公开文本操作和语言 registry，属于 analyze；未复用上游私有相似度、调用佐证和一对一选择。
 

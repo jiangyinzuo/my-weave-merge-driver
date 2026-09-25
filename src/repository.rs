@@ -17,8 +17,7 @@ pub fn report(path: &str, outcome: &Outcome, labels: &Labels, detailed: bool) {
     report_findings(&outcome.reasons, &outcome.related_moves, detailed);
 }
 
-/// Shared diagnostics for manual prepare and workflow preflight. Callers own
-/// their operation-specific heading/footer; evidence ordering is identical.
+/// Human-readable diagnostics for the read-only prepare command.
 pub fn report_analysis(report: &crate::analysis::Report, detailed: bool) {
     for warning in &report.warnings {
         eprintln!("strict-weave：{}", merge::safe_label(warning));

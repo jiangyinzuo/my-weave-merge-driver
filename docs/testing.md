@@ -163,7 +163,7 @@ multi-file/
 | [analysis.rs](../tests/analysis.rs) | 全局候选、歧义、格式/重命名边界、报告只读及过期输入拒绝 |
 | [reasons.rs](../tests/reasons.rs) | 全部父子原因、双方动作、weave 拒绝、来源、归并、结构校验与序列化 |
 | [languages.rs](../tests/languages.rs) | 从上游 registry 派生 grammar/扩展名覆盖，逐语言验证 entity 与跨文件候选 |
-| [git_workflow.rs](../tests/git_workflow.rs) | 原生 driver 标签/index stages、prepare 只读采集、报告消费、Git 跳过 driver 的边界及错误不改写输入 |
+| [git_workflow.rs](../tests/git_workflow.rs) | 原生 Git driver、prepare 只读采集、报告消费、Git 跳过 driver 的边界及错误不改写输入 |
 
 Git 的 8×8 对照只组合 `git-baseline/` 中固定源码，不生成随机源码。fixture 和结构化性质测试互补，不能只因输出快照通过就取消包含关系检查。
 

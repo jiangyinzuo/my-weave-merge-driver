@@ -154,7 +154,6 @@ fn prepare_reads_explicit_trees_without_changing_dirty_repository() {
     let destination = tempfile::tempdir().unwrap();
     let file = destination.path().join("analysis.json");
     let args = [
-        "driver",
         "prepare",
         &base,
         "HEAD",
@@ -219,7 +218,6 @@ fn real_driver_reads_move_context_and_git_owns_continue_abort() {
     let output = tool(
         root,
         &[
-            "driver",
             "prepare",
             &base,
             "HEAD",
@@ -270,7 +268,6 @@ fn preparation_detects_identical_edits_even_when_native_git_skips_driver() {
         tool(
             root,
             &[
-                "driver",
                 "prepare",
                 &base,
                 "HEAD",
@@ -311,7 +308,6 @@ fn stale_analysis_fails_before_driver_writes_and_unsupported_commands_are_reject
         tool(
             root,
             &[
-                "driver",
                 "prepare",
                 "HEAD~1",
                 "HEAD",
@@ -363,7 +359,6 @@ fn analysis_environment_and_explicit_override_work_and_input_errors_write_no_rep
         tool(
             root,
             &[
-                "driver",
                 "prepare",
                 "HEAD~1",
                 "HEAD",
@@ -408,7 +403,6 @@ fn analysis_environment_and_explicit_override_work_and_input_errors_write_no_rep
         tool(
             root,
             &[
-                "driver",
                 "prepare",
                 "no-such-revision",
                 "HEAD",
@@ -433,7 +427,6 @@ fn analysis_environment_and_explicit_override_work_and_input_errors_write_no_rep
         tool(
             root,
             &[
-                "driver",
                 "prepare",
                 "HEAD~1",
                 "HEAD",

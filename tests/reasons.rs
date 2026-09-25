@@ -42,10 +42,7 @@ fn function_glyph_uses_structured_entity_type_and_preserves_function_words_in_na
         entity("functionality"),
         Evidence::RawBothChanged,
     );
-    assert_eq!(
-        reason.summary(),
-        "ENTITY_CONFLICT：ƒ functionality"
-    );
+    assert_eq!(reason.summary(), "ENTITY_CONFLICT：ƒ functionality");
     assert!(!reason.summary().contains("function function"));
 }
 

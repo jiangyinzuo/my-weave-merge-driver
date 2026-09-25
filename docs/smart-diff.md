@@ -1,6 +1,6 @@
 # 智能 diff：暂缓实现的需求
 
-当前没有独立 diff 命令。此处仅保留未来人工检视功能的需求；已实现的移动/重命名匹配见 [analysis.md](analysis.md#跨文件规则目录)，合并操作入口见 [workflows.md](workflows.md)。
+当前没有独立 diff 命令。此处仅保留未来人工检视功能的需求；已实现的移动/重命名匹配见 [analysis.md](analysis.md#跨文件规则目录)，原生 Git 操作和可选 prepare 见 [workflows.md](workflows.md)。
 
 ## Git 已有能力
 

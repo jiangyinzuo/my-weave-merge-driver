@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use strict_weave::{
     analysis,
     merge::{self, Labels},
-    repository, workflow,
+    repository,
 };
 
 #[derive(Parser)]
@@ -20,19 +20,6 @@ enum Commands {
     Driver(Box<Driver>),
     /// 只读生成一次操作所需的全局三方分析报告
     Prepare(PrepareArgs),
-    /// 兼容旧版包装入口；优先直接使用原生 Git
-    #[command(hide = true)]
-    Merge(workflow::MergeArgs),
-    #[command(hide = true)]
-    Rebase(workflow::RebaseArgs),
-    #[command(hide = true)]
-    Pull(workflow::PullArgs),
-    #[command(hide = true)]
-    Stash(workflow::StashArgs),
-    #[command(hide = true)]
-    RebaseTodo { path: PathBuf },
-    #[command(hide = true)]
-    RebaseCheck { commit: String },
 }
 
 #[derive(Args)]
@@ -54,8 +41,6 @@ struct PrepareArgs {
 #[derive(Args)]
 #[command(subcommand_negates_reqs = true, args_conflicts_with_subcommands = true)]
 struct Driver {
-    #[command(subcommand)]
-    action: Option<DriverAction>,
     #[arg(required = true)]
     base: Option<PathBuf>,
     #[arg(required = true)]
@@ -83,22 +68,6 @@ struct Driver {
     explain_reasons: bool,
 }
 
-#[derive(Subcommand)]
-enum DriverAction {
-    /// 只读取三个明确的 Git revision/tree，写出分析文件；不执行 Git 操作
-    Prepare {
-        base: String,
-        ours: String,
-        theirs: String,
-        /// 新建结果文件，不覆盖已有文件
-        #[arg(long)]
-        output: PathBuf,
-        /// 展开全部子依据；默认保留动作差异、拒绝和移动关联等必要信息
-        #[arg(long)]
-        explain_reasons: bool,
-    },
-}
-
 fn run() -> Result<u8> {
     let driver = match Cli::parse().command {
         Commands::Driver(driver) => *driver,
@@ -109,30 +78,7 @@ fn run() -> Result<u8> {
             eprintln!("分析结果：{}", args.output.display());
             return Ok(u8::from(report.conflicted()));
         }
-        Commands::Merge(args) => return workflow::merge(args),
-        Commands::Rebase(args) => return workflow::rebase(args),
-        Commands::Pull(args) => return workflow::pull(args),
-        Commands::Stash(args) => return workflow::stash(args),
-        Commands::RebaseTodo { path } => return workflow::rebase_todo(&path),
-        Commands::RebaseCheck { commit } => return workflow::rebase_check(&commit),
     };
-    if let Some(DriverAction::Prepare {
-        base,
-        ours,
-        theirs,
-        output,
-        explain_reasons,
-    }) = driver.action
-    {
-        let report = analysis::prepare([&base, &ours, &theirs])?;
-        analysis::save(&output, &report)?;
-        repository::report_analysis(&report, explain_reasons);
-        eprintln!(
-            "分析结果：{}；Git 未调用 driver 的文件不会自动成为 index conflict",
-            output.display()
-        );
-        return Ok(u8::from(report.conflicted()));
-    }
     let ours = driver.ours.context("缺少 ours")?;
     let path = driver.path.context("缺少 path")?;
     let inputs = [

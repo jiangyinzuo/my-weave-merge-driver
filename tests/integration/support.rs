@@ -8,7 +8,6 @@ use tempfile::TempDir;
 
 pub const TOOL: &str = env!("CARGO_BIN_EXE_strict-weave");
 pub const SIMPLE: &str = "entities/disjoint.go";
-pub const INDEPENDENT: &str = "entities/independent.rs";
 
 pub struct Repo(pub TempDir);
 impl Repo {
@@ -66,12 +65,6 @@ impl Repo {
             .trim_end_matches('\n')
             .into()
     }
-    pub fn tool(&self, args: &[&str]) -> Output {
-        self.command(TOOL, args).output().unwrap()
-    }
-    pub fn ok(&self, args: &[&str]) {
-        assert_code(&self.tool(args), 0);
-    }
     pub fn copy(&self, case: &str, side: &str, path: &str) {
         let dest = self.path().join(path);
         fs::create_dir_all(dest.parent().unwrap()).unwrap();
@@ -100,25 +93,6 @@ impl Repo {
     }
     pub fn assert_clean(&self) {
         assert_eq!(self.git(&["status", "--porcelain"]), "");
-    }
-    pub fn index(&self) -> Vec<u8> {
-        fs::read(self.path().join(".git/index")).unwrap()
-    }
-    pub fn report_count(&self) -> usize {
-        fn count(p: &Path) -> usize {
-            fs::read_dir(p)
-                .unwrap()
-                .map(|e| {
-                    let p = e.unwrap().path();
-                    if p.is_dir() {
-                        count(&p)
-                    } else {
-                        usize::from(p.file_name().unwrap() == "analysis.json")
-                    }
-                })
-                .sum()
-        }
-        count(&self.path().join(".git/strict-weave"))
     }
 }
 pub fn assert_code(out: &Output, expected: i32) {
