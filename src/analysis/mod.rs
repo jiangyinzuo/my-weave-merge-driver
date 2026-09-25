@@ -11,5 +11,6 @@ mod upstream;
 
 // Existing library API for explicit three-tree reports.
 pub use global::{
-    analyze, augment, load_for_driver, prepare, save, FileAnalysis, Location, MoveCandidate, Report,
+    analyze, augment, blob_oid, load_for_driver, prepare, save, snapshot, FileAnalysis, Location,
+    MoveCandidate, Report,
 };

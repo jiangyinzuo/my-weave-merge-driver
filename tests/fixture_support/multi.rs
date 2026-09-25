@@ -1,5 +1,5 @@
 //! Directory fixtures share one immutable global report across all file drivers.
-use super::{check_driver, common, compare, DriverCase};
+use super::{check_text, common, compare, TextCase};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
@@ -140,7 +140,7 @@ pub(super) fn check_case(
         "stderr"
     };
     for path in paths {
-        let case = DriverCase {
+        let case = TextCase {
             inputs: inputs
                 .each_ref()
                 .map(|snapshot| snapshot.get(&path).cloned()),
@@ -155,7 +155,7 @@ pub(super) fn check_case(
         let changed = snapshots[0].get(&path) != snapshots[1].get(&path)
             || snapshots[0].get(&path) != snapshots[2].get(&path);
         let analysis = changed.then_some(report_path.as_path());
-        if let Err(e) = check_driver(
+        if let Err(e) = check_text(
             &case,
             &options,
             &artifacts.join(format!("{name}{mode}")).join(&path),

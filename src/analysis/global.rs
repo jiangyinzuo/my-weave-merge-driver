@@ -18,6 +18,8 @@ const MAX_TOTAL: usize = 64 * 1024 * 1024;
 const ENGINE: &str = "strict-weave-global-v9";
 type Snapshot = BTreeMap<String, String>;
 
+pub type TreeSnapshot = BTreeMap<String, String>;
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Report {
@@ -155,13 +157,13 @@ fn git(args: &[&str]) -> Result<Vec<u8>> {
     Ok(output.stdout)
 }
 
-#[derive(PartialEq, Eq)]
-struct Entry {
-    mode: String,
-    oid: String,
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) struct Entry {
+    pub mode: String,
+    pub oid: String,
 }
 
-fn tree(revision: &str) -> Result<(String, BTreeMap<String, Entry>)> {
+pub(crate) fn tree(revision: &str) -> Result<(String, BTreeMap<String, Entry>)> {
     let id = String::from_utf8(git(&[
         "rev-parse",
         "--verify",
@@ -190,6 +192,37 @@ fn tree(revision: &str) -> Result<(String, BTreeMap<String, Entry>)> {
         );
     }
     Ok((id, entries))
+}
+
+/// Read a complete UTF-8 text snapshot from a revision without touching the
+/// index or worktree. The operation layer uses this before invoking Git so
+/// global analysis sees paths that Git may later skip.
+pub fn snapshot(revision: &str) -> Result<(String, TreeSnapshot)> {
+    let (tree_id, entries) = tree(revision)?;
+    let mut result = BTreeMap::new();
+    let mut total = 0usize;
+    for (path, entry) in entries {
+        if !matches!(entry.mode.as_str(), "100644" | "100755") {
+            bail!("初版分析不支持变化的 symlink/submodule：{path}");
+        }
+        let size = String::from_utf8(git(&["cat-file", "-s", &entry.oid])?)?
+            .trim()
+            .parse::<usize>()?;
+        total = total.checked_add(size).context("分析输入大小溢出")?;
+        if size > merge::MAX_BYTES || total > MAX_TOTAL {
+            bail!("分析文本超过大小限制：{path}");
+        }
+        let bytes = git(&["cat-file", "blob", &entry.oid])?;
+        result.insert(path, merge::validate_text(&bytes)?.to_owned());
+    }
+    Ok((tree_id, result))
+}
+
+pub fn blob_oid(revision: &str, path: &str) -> Result<Option<(String, String)>> {
+    let (_, entries) = tree(revision)?;
+    Ok(entries
+        .get(path)
+        .map(|entry| (entry.mode.clone(), entry.oid.clone())))
 }
 
 /// Only reads trees/blobs. Does not infer operation context from HEAD/state files,

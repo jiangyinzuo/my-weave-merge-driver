@@ -4,17 +4,33 @@ use crate::reason::{Evidence, MoveEvidence, MoveMatch, Reason};
 use anyhow::{bail, Context, Result};
 use std::{io::Write, path::Path};
 
-pub fn report(path: &str, outcome: &Outcome, labels: &Labels, detailed: bool) {
+pub fn diagnostics(path: &str, outcome: &Outcome, labels: &Labels, detailed: bool) -> String {
+    let mut lines = Vec::new();
     if outcome.conflicted() {
-        eprintln!("冲突 · {}", merge::safe_label(path));
-        eprintln!(
-            "{}\n{}\n{}",
+        lines.push(format!("冲突 · {}", merge::safe_label(path)));
+        lines.extend([
             labels.ours_marker(),
             labels.base_marker(),
-            labels.theirs_marker()
-        );
+            labels.theirs_marker(),
+        ]);
     }
-    report_findings(&outcome.reasons, &outcome.related_moves, detailed);
+    for reason in &outcome.reasons {
+        lines.extend(reason.lines(detailed));
+    }
+    lines.extend(related_move_lines(
+        &outcome.reasons,
+        &outcome.related_moves,
+        detailed,
+    ));
+    if lines.is_empty() {
+        String::new()
+    } else {
+        lines.join("\n") + "\n"
+    }
+}
+
+pub fn report(path: &str, outcome: &Outcome, labels: &Labels, detailed: bool) {
+    eprint!("{}", diagnostics(path, outcome, labels, detailed));
 }
 
 /// Human-readable diagnostics for the read-only prepare command.

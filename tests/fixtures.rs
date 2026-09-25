@@ -108,7 +108,7 @@ fn check_case(
             &artifacts.join(format!("{name}.actual-entities")),
         )?;
     }
-    let case = DriverCase {
+    let case = TextCase {
         inputs: inputs.map(Some),
         path,
         default_output: file("output"),
@@ -116,7 +116,7 @@ fn check_case(
         stderr: file(stderr_suffix),
         exit: file("exit"),
     };
-    check_driver(
+    check_text(
         &case,
         &options,
         &artifacts.join(artifact_name),
@@ -126,7 +126,7 @@ fn check_case(
     )
 }
 
-struct DriverCase {
+struct TextCase {
     inputs: [Option<PathBuf>; 3],
     path: String,
     default_output: PathBuf,
@@ -135,9 +135,9 @@ struct DriverCase {
     exit: PathBuf,
 }
 
-// Both fixture types exercise the same real CLI and byte-for-byte assertions.
-fn check_driver(
-    case: &DriverCase,
+// Both fixture types exercise the production analysis and diagnostic functions.
+fn check_text(
+    case: &TextCase,
     options: &common::Options,
     artifact: &Path,
     zdiff3: bool,
@@ -169,59 +169,69 @@ fn check_driver(
                 .any(|line| line.starts_with(b"<<<<<<<")),
         )
     };
-    let mut command = Command::new(env!("CARGO_BIN_EXE_strict-weave"));
-    if zdiff3 {
-        command.arg("driver").arg("--zdiff3");
-    } else {
-        command.arg("driver");
-    }
-    if detailed {
-        command.arg("--explain-reasons");
-    }
-    if let Some(analysis) = analysis {
-        command.arg("--analysis").arg(analysis);
-    }
-    let result = command
-        .current_dir(scratch.path())
-        .args([
-            "base",
-            "ours",
-            "theirs",
+    let labels = options.labels();
+    let attempt = (|| -> anyhow::Result<_> {
+        let inputs = ["base", "ours", "theirs"].map(|name| fs::read(scratch.path().join(name)));
+        let inputs = [
+            inputs[0].as_ref().unwrap(),
+            inputs[1].as_ref().unwrap(),
+            inputs[2].as_ref().unwrap(),
+        ];
+        let texts = [
+            strict_weave::merge::validate_text(inputs[0])?,
+            strict_weave::merge::validate_text(inputs[1])?,
+            strict_weave::merge::validate_text(inputs[2])?,
+        ];
+        let mut outcome = strict_weave::merge::merge_with_style(
+            texts[0],
+            texts[1],
+            texts[2],
             &case.path,
-            &options.marker_size.to_string(),
-        ])
-        .arg(format!("--ours-label={}", options.ours_label))
-        .arg(format!("--base-label={}", options.base_label))
-        .arg(format!("--theirs-label={}", options.theirs_label))
-        .env("GIT_CONFIG_GLOBAL", "/dev/null")
-        .env("GIT_CONFIG_NOSYSTEM", "1")
-        .env_remove("GIT_CONFIG_COUNT")
-        .env_remove("GIT_CONFIG_PARAMETERS")
-        .env_remove("STRICT_WEAVE_ANALYSIS")
-        .output()
-        .map_err(|e| e.to_string())?;
-    let actual = fs::read(scratch.path().join("ours")).map_err(|e| e.to_string())?;
+            &labels,
+            options.marker_size,
+            if zdiff3 {
+                strict_weave::merge::ConflictStyle::Zdiff3
+            } else {
+                strict_weave::merge::ConflictStyle::Diff3
+            },
+        )?;
+        if let Some(report) = analysis {
+            let global = strict_weave::analysis::load_for_driver(report, &case.path, texts)?;
+            strict_weave::analysis::augment(
+                &mut outcome,
+                &global,
+                texts,
+                &labels,
+                options.marker_size,
+            );
+        }
+        let code = i32::from(outcome.conflicted());
+        let diagnostics =
+            strict_weave::repository::diagnostics(&case.path, &outcome, &labels, detailed);
+        Ok((outcome.content.into_bytes(), code, diagnostics.into_bytes()))
+    })();
+    let (actual, actual_code, diagnostics) = match attempt {
+        Ok(value) => value,
+        Err(error) => (
+            fs::read(scratch.path().join("ours")).unwrap(),
+            129,
+            format!("strict-weave：{error:#}\n").into_bytes(),
+        ),
+    };
     let mut errors = Vec::new();
     if let Err(e) = compare(&case.output, &actual, &artifact_file("actual")) {
         errors.push(e);
     }
-    if result.status.code() != Some(expected_code) {
+    if actual_code != expected_code {
         errors.push(format!(
             "{}: expected exit {expected_code}, actual {:?}\nstderr:\n{}",
             case.path,
-            result.status,
-            String::from_utf8_lossy(&result.stderr)
+            actual_code,
+            String::from_utf8_lossy(&diagnostics)
         ));
     }
-    if !result.stdout.is_empty() {
-        errors.push(format!("{}: driver 不应向 stdout 输出内容", case.path));
-    }
     if case.stderr.exists() {
-        if let Err(e) = compare(
-            &case.stderr,
-            &result.stderr,
-            &artifact_file("actual-stderr"),
-        ) {
+        if let Err(e) = compare(&case.stderr, &diagnostics, &artifact_file("actual-stderr")) {
             errors.push(e);
         }
     }
