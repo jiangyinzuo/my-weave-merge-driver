@@ -39,57 +39,54 @@ enum StashAction {
 struct StashArgs {
     #[arg(default_value = "stash@{0}")]
     target: String,
-    #[arg(long, conflicts_with = "apply")]
-    plan: bool,
-    #[arg(short = 'o', long, requires = "plan")]
-    output: Option<std::path::PathBuf>,
-    #[arg(long, conflicts_with_all = ["plan", "output"])]
-    apply: Option<std::path::PathBuf>,
-    #[arg(long)]
-    zdiff3: bool,
-    #[arg(long)]
-    explain_reasons: bool,
+    #[command(flatten)]
+    options: OperationOptions,
 }
 
 #[derive(Args)]
 struct OperationArgs {
-    /// 唯一的 merge target；当前阶段不接受额外 Git 选项
+    /// 要合并、重放或作为 rebase upstream 的 Git revision
     target: String,
+    #[command(flatten)]
+    options: OperationOptions,
+}
+
+#[derive(Args)]
+struct OperationOptions {
     #[arg(long, conflicts_with = "apply")]
+    /// 只分析并写出计划，不修改 Git
     plan: bool,
-    #[arg(short = 'o', long, requires = "plan")]
+    #[arg(short = 'o', long, requires = "plan", value_name = "FILE")]
+    /// `--plan` 的输出文件
     output: Option<std::path::PathBuf>,
-    #[arg(long, conflicts_with_all = ["plan", "output"])]
+    #[arg(long, conflicts_with_all = ["plan", "output"], value_name = "FILE")]
+    /// 校验并应用已有计划
     apply: Option<std::path::PathBuf>,
-    #[arg(long)]
+    #[arg(long, help = "使用 Git zdiff3 展示冲突块")]
     zdiff3: bool,
-    #[arg(long)]
+    #[arg(long, help = "输出完整的分析依据")]
     explain_reasons: bool,
 }
 
 impl OperationArgs {
     fn mode(&self) -> anyhow::Result<operation::Mode> {
-        if let Some(path) = &self.apply {
-            return Ok(operation::Mode::ApplyPlan(path.clone()));
-        }
-        if self.plan {
-            return Ok(operation::Mode::Plan(
-                self.output
-                    .clone()
-                    .ok_or_else(|| anyhow::anyhow!("--plan 需要 --output"))?,
-            ));
-        }
-        Ok(operation::Mode::Apply)
+        self.options.mode()
     }
     fn options(&self) -> operation::Options {
-        operation::Options {
-            zdiff3: self.zdiff3,
-            detailed: self.explain_reasons,
-        }
+        self.options.options()
     }
 }
 
 impl StashArgs {
+    fn mode(&self) -> anyhow::Result<operation::Mode> {
+        self.options.mode()
+    }
+    fn options(&self) -> operation::Options {
+        self.options.options()
+    }
+}
+
+impl OperationOptions {
     fn mode(&self) -> anyhow::Result<operation::Mode> {
         if let Some(path) = &self.apply {
             return Ok(operation::Mode::ApplyPlan(path.clone()));
