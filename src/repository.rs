@@ -19,13 +19,13 @@ pub fn report(path: &str, outcome: &Outcome, labels: &Labels, detailed: bool) {
 
 /// Shared diagnostics for manual prepare and workflow preflight. Callers own
 /// their operation-specific heading/footer; evidence ordering is identical.
-pub fn report_analysis(report: &crate::analysis::Report, heading: &str, detailed: bool) {
+pub fn report_analysis(report: &crate::analysis::Report, detailed: bool) {
     for warning in &report.warnings {
         eprintln!("strict-weave：{}", merge::safe_label(warning));
     }
     for (path, file) in &report.files {
         if !file.reasons.is_empty() {
-            eprintln!("{heading} 📄 {}", merge::safe_label(path));
+            eprintln!("📄 {}", merge::safe_label(path));
         }
         report_findings(&file.reasons, &file.related_moves, detailed);
     }

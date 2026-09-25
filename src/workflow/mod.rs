@@ -190,7 +190,7 @@ fn prepare(directory: &Path, revisions: [&str; 3], detailed: bool) -> Result<(Pa
     let path = folder.path().join("analysis.json");
     analysis::save(&path, &report)?;
     let _ = folder.keep();
-    repository::report_analysis(&report, "需审核", detailed);
+    repository::report_analysis(&report, detailed);
     eprintln!("分析结果：{}", path.display());
     Ok((path, report.conflicted()))
 }

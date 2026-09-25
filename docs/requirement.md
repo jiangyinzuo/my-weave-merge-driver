@@ -224,7 +224,7 @@ export function validateInput(data: unknown) {
 
 Git 可能在双方文件内容相同时直接采用该内容，不调用自定义 merge driver。因此，仅在 `.gitattributes` 中配置 driver，不能保证所有“双方修改同一实体”的情况都会被检查。
 
-当前 `merge/rebase/pull/stash` 包装命令对明确三方进行预分析，有审核项就停止对应步骤；rebase 逐步检查。独立 prepare 则由调用方检查退出码。两者均不自动安装 index stages，详见 [workflows.md](workflows.md) 和 [global-analysis.md](global-analysis.md)。
+公开接口应只要求配置 Git merge driver 和 `.gitattributes`，之后直接使用原生 `git merge`、`git rebase`、`git cherry-pick`、`git pull`、`git stash`。Git 负责 index stages、sequencer 及 `--continue`、`--abort`、`--quit` 等状态流程。独立 `prepare` 只读且可选，由调用方检查退出码，不自动安装 index stages，详见 [workflows.md](workflows.md) 和 [global-analysis.md](global-analysis.md)。
 
 约束如下：
 

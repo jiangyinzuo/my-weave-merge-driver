@@ -1,11 +1,11 @@
 # 显式三方全局分析与 driver
 
-全局分析读取明确的 base / ours / theirs，生成只读报告，由原生 Git 调用的各文件 driver 校验并读取。匹配规则集中在 [analysis.md](analysis.md)，自动确定三方并执行 Git 的入口见 [workflows.md](workflows.md)。Git 没有可由 merge driver 注册的通用操作前 hook，直接执行原生 Git 不会自动启动 prepare。
+全局分析读取明确的 base / ours / theirs，生成只读报告，由原生 Git 调用的各文件 driver 校验并读取。匹配规则集中在 [analysis.md](analysis.md)。Git 没有可由 merge driver 注册的通用操作前 hook，直接执行原生 Git 不会自动启动 prepare；需要检查 Git 可能跳过 driver 的路径时，由用户或上层工具显式调用只读 prepare。
 
 ## 手动调用
 
 ```sh
-strict-weave driver prepare BASE OURS THEIRS \
+strict-weave prepare BASE OURS THEIRS \
   --output /absolute/path/analysis.json --explain-reasons
 ```
 
@@ -24,12 +24,12 @@ prepare 不创建冲突文件或 index stages。只有返回 `0` 才继续的手
 
 ```sh
 # BASE_COMMIT 必须是本次 Git merge 实际采用的唯一基准。
-strict-weave driver prepare BASE_COMMIT HEAD feature/example \
+strict-weave prepare BASE_COMMIT HEAD feature/example \
   --output /absolute/path/analysis.json &&
 STRICT_WEAVE_ANALYSIS=/absolute/path/analysis.json git merge feature/example
 ```
 
-每次分析使用新报告路径。报告生成后输入版本不能改变；rebase/cherry-pick/stash 必须按实际步骤确定三方，不能直接照搬这个 merge 示例。常规操作推荐使用自动包装入口。
+每次分析使用新报告路径。报告生成后输入版本不能改变；rebase/cherry-pick/stash 必须按实际步骤确定三方，不能直接照搬这个 merge 示例。该模式不会自动管理 Git 操作，也不会创建 index conflict；确认返回值后再自行决定是否执行 Git。
 
 ## 报告格式
 
@@ -60,6 +60,6 @@ strict-weave driver BASE_FILE OURS_FILE THEIRS_FILE SOURCE_PATH 7 \
 
 - 单文件输入必须为 UTF-8、无 NUL、无已有 conflict marker，不超过 1,000,000 bytes。预分析拒绝非 UTF-8 路径、symlink/submodule；变化文本总量和报告各限 64 MiB。候选组合及另一侧关联展开总数分别限 10000，超限报错而非截断。
 - 指纹只验证当前文件输入，不证明整个 Git 操作与报告 tree 一致；调用方负责版本、方向和步骤一致。driver 的空输入不能区分缺失文件与空文件，报告本身则区分两者。
-- 虚拟 base、filters/renormalize 转换、文件 rename 路径映射可能导致输入失配；当前明确拒绝，不猜测映射。包装命令的上下文限制见 [workflows.md](workflows.md)。
-- **报告不能迫使 Git 调用 driver。** 包装入口会在 prepare 有审核项时停止；手动调用若忽略 `1`，Git 仍可能跳过 driver 并提交。预分析停止不等于所有风险已成为 index conflicts。
+- 虚拟 base、filters/renormalize 转换、文件 rename 路径映射可能导致输入失配；当前明确拒绝，不猜测映射。日常 driver 配置及 Git 操作见 [workflows.md](workflows.md)。
+- **报告不能迫使 Git 调用 driver。** 手动调用若忽略 `1`，Git 仍可能跳过 driver 并提交。预分析报告不等于 index conflicts。
 - 只读权限用于防止意外修改，不是防篡改认证。移动候选只表示可解释的文本证据；未发现候选不代表不存在移动，能力范围见[跨文件规则](analysis.md#跨文件规则目录)。

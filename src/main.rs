@@ -16,20 +16,39 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Git merge driver；prepare 子命令生成显式三方全局分析
+    /// Git merge driver；Git 负责 merge/rebase/cherry-pick/stash 的流程控制
     Driver(Box<Driver>),
-    /// 全局预分析通过后执行原生 Git merge
+    /// 只读生成一次操作所需的全局三方分析报告
+    Prepare(PrepareArgs),
+    /// 兼容旧版包装入口；优先直接使用原生 Git
+    #[command(hide = true)]
     Merge(workflow::MergeArgs),
-    /// 在每个 pick 前检查的原生 Git rebase
+    #[command(hide = true)]
     Rebase(workflow::RebaseArgs),
-    /// fetch 后预分析，再执行 merge 或 rebase
+    #[command(hide = true)]
     Pull(workflow::PullArgs),
-    /// 预分析后执行 stash apply/pop
+    #[command(hide = true)]
     Stash(workflow::StashArgs),
     #[command(hide = true)]
     RebaseTodo { path: PathBuf },
     #[command(hide = true)]
     RebaseCheck { commit: String },
+}
+
+#[derive(Args)]
+struct PrepareArgs {
+    /// 明确的 base commit/tree
+    base: String,
+    /// 明确的 ours commit/tree
+    ours: String,
+    /// 明确的 theirs commit/tree
+    theirs: String,
+    /// 新建分析报告，不覆盖已有文件
+    #[arg(short = 'o', long = "output")]
+    output: PathBuf,
+    /// 展开全部分析依据
+    #[arg(long)]
+    explain_reasons: bool,
 }
 
 #[derive(Args)]
@@ -83,6 +102,13 @@ enum DriverAction {
 fn run() -> Result<u8> {
     let driver = match Cli::parse().command {
         Commands::Driver(driver) => *driver,
+        Commands::Prepare(args) => {
+            let report = analysis::prepare([&args.base, &args.ours, &args.theirs])?;
+            analysis::save(&args.output, &report)?;
+            repository::report_analysis(&report, args.explain_reasons);
+            eprintln!("分析结果：{}", args.output.display());
+            return Ok(u8::from(report.conflicted()));
+        }
         Commands::Merge(args) => return workflow::merge(args),
         Commands::Rebase(args) => return workflow::rebase(args),
         Commands::Pull(args) => return workflow::pull(args),
@@ -100,7 +126,7 @@ fn run() -> Result<u8> {
     {
         let report = analysis::prepare([&base, &ours, &theirs])?;
         analysis::save(&output, &report)?;
-        repository::report_analysis(&report, "冲突", explain_reasons);
+        repository::report_analysis(&report, explain_reasons);
         eprintln!(
             "分析结果：{}；Git 未调用 driver 的文件不会自动成为 index conflict",
             output.display()

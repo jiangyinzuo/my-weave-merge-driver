@@ -2,7 +2,7 @@
 
 基于 [weave-core](https://github.com/Ataraxy-Labs/weave) 的严格 Git merge driver。它保留 Git 行级冲突，并在双方修改同一 function/entity 时要求人工审核，包括修改不同行或得到相同结果的情况。冲突提示使用中文，保留 function、ours、theirs、base 等术语。
 
-可将 driver 配置给原生 Git，也可使用 `strict-weave merge/rebase/pull/stash` 自动进行全局预分析后执行 Git。预分析补充跨文件疑似移动、重命名信息，并在 Git 可能跳过 driver 的相同内容修改等情况下提前停止。
+只需配置一次 Git merge driver 和 `.gitattributes`，之后继续使用原生 Git 的全部命令。driver 在 Git 实际要求合并文件时执行严格检查；Git 仍完全负责 merge、rebase、cherry-pick、stash、pull 以及 `--continue`、`--abort`、`--quit` 等状态流程。
 
 ## 安装
 
@@ -62,54 +62,41 @@ git config --local merge.strict-weave.driver 'strict-weave driver %O %A %B %P %L
 git config --local merge.strict-weave.driver 'strict-weave driver %O %A %B %P %L --ours-label %X --base-label %S --theirs-label %Y --zdiff3 --explain-reasons'
 ```
 
-## 自动预分析并执行 Git
+## 直接使用原生 Git
 
-在目标仓库中执行：
+完成配置后，直接执行平时的 Git 命令：
 
 ```sh
-strict-weave merge feature/payment
-strict-weave merge --no-ff --no-commit feature/payment
-strict-weave rebase main
-strict-weave rebase -i --rebase-merges main
-strict-weave rebase --onto main old-base topic
-strict-weave pull --rebase origin main
-strict-weave pull --rebase=interactive origin main
-strict-weave stash pop --index
+git merge feature/payment
+git rebase main
+git rebase -i --rebase-merges main
+git cherry-pick <commit>
+git pull --rebase
+git stash pop --index
 ```
 
 merge/rebase/pull 要求干净的工作区和 index（包括未跟踪文件）。stash 允许已有 tracked 修改，但暂不支持当前工作区有未跟踪文件。预分析通过才执行原生 Git；发现审核项就停止并显示报告路径，没有忽略审核继续的开关。
 
-rebase 对每个重放步骤分别检查。交互式编辑完成后自动插入检查；停止时此前步骤可能已经执行。使用以下命令继续、跳过或中止：
+冲突时仍使用 Git 原生命令继续、跳过或中止：
 
 ```sh
-strict-weave rebase --continue
-strict-weave rebase --skip
-strict-weave rebase --abort
+git rebase --continue
+git rebase --skip
+git rebase --abort
 ```
 
-`--continue` 会重新检查被预分析阻止的步骤。此类停止发生在应用该步骤之前，不能按“已有冲突文件”处理；先阅读报告，再决定修改输入、跳过或中止。真正由 Git 产生的冲突仍按 Git 提示编辑并 `git add`。
-
-如希望使用 `git strict-merge` 等拼写，可配置 Git alias：
-
-```sh
-git config --global alias.strict-merge '!strict-weave merge'
-git config --global alias.strict-rebase '!strict-weave rebase'
-git config --global alias.strict-pull '!strict-weave pull'
-git config --global alias.strict-stash '!strict-weave stash'
-```
-
-这些是有限的 Git 包装接口，不透传任意参数；不支持的模式明确报错。支持选项、与 Git 默认行为的差异、pull 的 fetch 副作用及报告生命周期见 [操作命令说明](docs/workflows.md)。
+driver 返回冲突时，编辑文件并执行 `git add`，再按 Git 的提示完成当前操作。strict-weave 不保存自己的操作状态，也不提供 `--continue`、`--abort` 或 `--quit` 包装命令。
 
 ## 手动三方预分析
 
 需要自行集成 Git 操作时，可提供明确的 base / ours / theirs commit/tree：
 
 ```sh
-strict-weave driver prepare BASE_TREE OURS_TREE THEIRS_TREE \
+strict-weave prepare BASE_TREE OURS_TREE THEIRS_TREE \
   --output /absolute/path/analysis.json --explain-reasons
 ```
 
-报告路径必须尚不存在；prepare 只读取 Git 对象，返回 `0` 才适合继续对应步骤。driver 可通过 `STRICT_WEAVE_ANALYSIS` 或 `--analysis` 读取报告，并校验路径与三方指纹。报告不能跨操作或 rebase 步骤随意复用。输入含义、调用示例及限制见 [全局分析协议](docs/global-analysis.md)。
+报告路径必须尚不存在；prepare 只读取 Git 对象，返回 `0` 才适合继续对应步骤。driver 可通过 `STRICT_WEAVE_ANALYSIS` 或 `--analysis` 读取报告，并校验路径与三方指纹。报告不能跨操作或 rebase 步骤随意复用。旧版 `strict-weave driver prepare ...` 仍可兼容使用。输入含义、调用示例及限制见 [全局分析协议](docs/global-analysis.md)。
 
 ## 退出码与使用边界
 
@@ -120,7 +107,7 @@ strict-weave driver prepare BASE_TREE OURS_TREE THEIRS_TREE \
 | `129` | 处理失败，未写回 ours | 处理失败，未生成新报告 |
 | `2` | CLI 参数错误 | CLI 参数错误 |
 
-**Git 可能跳过 driver**，例如双方产生相同文件内容、部分删除或文件 rename。自动包装命令会在预分析发现审核项时停止；仅配置 driver 或忽略手动 prepare 的非零退出码仍有盲区。预分析停止不会创建 index conflict，也不证明代码语义正确。
+**Git 可能跳过 driver**，例如双方产生相同文件内容、部分删除或文件 rename。仅配置 driver 或忽略手动 prepare 的非零退出码仍有盲区。prepare 不会创建 index conflict，也不证明代码语义正确。
 
 当前按顶层 entity 分析，class/namespace 内部成员不独立匹配；无法可靠分析时保守冲突或明确报错。详细限制见 [当前实现状态](WIP.md)。
 
@@ -129,7 +116,7 @@ strict-weave driver prepare BASE_TREE OURS_TREE THEIRS_TREE \
 | 文档 | 内容 |
 | --- | --- |
 | [需求与示例](docs/requirement.md) | 严格策略、目标提示、尚未完成的体验要求 |
-| [操作命令](docs/workflows.md) | merge/rebase/pull/stash 参数、三方上下文及停止/继续行为 |
+| [操作命令](docs/workflows.md) | 原生 Git 操作、driver 边界及可选 prepare |
 | [分析规则](docs/analysis.md) | 已实现规则、执行顺序与代码入口 |
 | [原因模型](docs/conflict-reasons.md) | 全部父原因、子依据和归并规则，同时用作 rustdoc |
 | [全局分析协议](docs/global-analysis.md) | prepare、报告格式、driver 校验及输入限制 |
