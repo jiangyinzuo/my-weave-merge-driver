@@ -246,3 +246,40 @@ fn clean_single_commit_rebase_updates_branch_without_rebase_state() {
     assert_eq!(repo.git(&["rev-list", "--count", "feature..HEAD"]), "1");
     assert!(repo.path().join("main.go").exists());
 }
+
+#[test]
+fn stash_pop_applies_cleanly_and_drops_only_after_success() {
+    let repo = Repo::new(BASE);
+    repo.write("calc.go", OURS);
+    repo.git(&["stash", "push", "-qm", "work"]);
+    let out = repo.tool(&["stash", "pop"]);
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(
+        fs::read_to_string(repo.path().join("calc.go")).unwrap(),
+        OURS
+    );
+    assert_eq!(repo.git(&["stash", "list"]), "");
+}
+
+#[test]
+fn stash_pop_conflict_keeps_stash_and_installs_index_stages() {
+    let repo = Repo::new(BASE);
+    repo.write("calc.go", THEIRS);
+    repo.git(&["stash", "push", "-qm", "work"]);
+    repo.write("calc.go", OURS);
+    repo.commit("head");
+    let out = repo.tool(&["stash", "pop"]);
+    assert_eq!(
+        out.status.code(),
+        Some(1),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(!repo.git(&["ls-files", "-u"]).is_empty());
+    assert!(!repo.git(&["stash", "list"]).is_empty());
+}

@@ -17,6 +17,38 @@ enum Commands {
     CherryPick(OperationArgs),
     /// 重放当前 branch 的一个 commit 到 upstream
     Rebase(OperationArgs),
+    /// 应用一个普通 stash
+    Stash(StashCommand),
+}
+
+#[derive(Args)]
+struct StashCommand {
+    #[command(subcommand)]
+    action: StashAction,
+}
+
+#[derive(Subcommand)]
+enum StashAction {
+    /// 应用并在无冲突时删除 stash
+    Pop(StashArgs),
+    /// 应用但保留 stash
+    Apply(StashArgs),
+}
+
+#[derive(Args)]
+struct StashArgs {
+    #[arg(default_value = "stash@{0}")]
+    target: String,
+    #[arg(long, conflicts_with = "apply")]
+    plan: bool,
+    #[arg(short = 'o', long, requires = "plan")]
+    output: Option<std::path::PathBuf>,
+    #[arg(long, conflicts_with_all = ["plan", "output"])]
+    apply: Option<std::path::PathBuf>,
+    #[arg(long)]
+    zdiff3: bool,
+    #[arg(long)]
+    explain_reasons: bool,
 }
 
 #[derive(Args)]
@@ -57,6 +89,28 @@ impl OperationArgs {
     }
 }
 
+impl StashArgs {
+    fn mode(&self) -> anyhow::Result<operation::Mode> {
+        if let Some(path) = &self.apply {
+            return Ok(operation::Mode::ApplyPlan(path.clone()));
+        }
+        if self.plan {
+            return Ok(operation::Mode::Plan(
+                self.output
+                    .clone()
+                    .ok_or_else(|| anyhow::anyhow!("--plan 需要 --output"))?,
+            ));
+        }
+        Ok(operation::Mode::Apply)
+    }
+    fn options(&self) -> operation::Options {
+        operation::Options {
+            zdiff3: self.zdiff3,
+            detailed: self.explain_reasons,
+        }
+    }
+}
+
 fn run() -> Result<u8> {
     match Cli::parse().command {
         Commands::Merge(args) => operation::merge(&args.target, args.options(), args.mode()?),
@@ -64,6 +118,14 @@ fn run() -> Result<u8> {
             operation::cherry_pick(&args.target, args.options(), args.mode()?)
         }
         Commands::Rebase(args) => operation::rebase(&args.target, args.options(), args.mode()?),
+        Commands::Stash(command) => match command.action {
+            StashAction::Pop(args) => {
+                operation::stash(&args.target, true, args.options(), args.mode()?)
+            }
+            StashAction::Apply(args) => {
+                operation::stash(&args.target, false, args.options(), args.mode()?)
+            }
+        },
     }
 }
 
