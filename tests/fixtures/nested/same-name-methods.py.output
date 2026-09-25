@@ -1,6 +1,6 @@
 class Counter:
     def score(self):
-<<<<<<< feature/ours | ENTITY_CONFLICT：◇ Counter 需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：◇ Counter
         x = 10
         y = 2
         z = 3
@@ -21,7 +21,7 @@ class Counter:
 
 class Gauge:
     def score(self):
-<<<<<<< feature/ours | ENTITY_CONFLICT：◇ Gauge 需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：◇ Gauge
         x = 10
         y = 2
         z = 3

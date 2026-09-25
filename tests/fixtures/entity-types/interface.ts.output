@@ -1,5 +1,5 @@
 interface Account {
-<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ Account 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ Account
     balance: string;
 ||||||| base-commit
     balance: number;

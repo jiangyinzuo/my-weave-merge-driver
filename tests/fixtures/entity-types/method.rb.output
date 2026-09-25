@@ -1,5 +1,5 @@
 def calculate(value)
-<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ calculate 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ calculate
     value + 2
 ||||||| base-commit
     value + 1

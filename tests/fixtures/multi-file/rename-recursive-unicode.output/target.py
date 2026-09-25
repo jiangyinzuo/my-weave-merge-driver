@@ -1,4 +1,4 @@
-<<<<<<< feature/ours | GLOBAL_MODIFY_VS_MOVE：ƒ 计算 疑似重命名并移动（计算 → 求值），与另一侧变化需共同审核
+<<<<<<< feature/ours | GLOBAL_MODIFY_VS_MOVE：ƒ 计算 疑似重命名并移动（计算 → 求值），与另一侧变化冲突
 ||||||| base-commit
 =======
 def 求值(n):

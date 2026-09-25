@@ -2,7 +2,7 @@ namespace app {
 class Counter {
 public:
     int score() const {
-<<<<<<< feature/ours | ENTITY_CONFLICT：◇ app 需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：◇ app
         int x = 10;
         int y = 2;
         int z = 3;

@@ -1,6 +1,6 @@
 namespace math {
 int score() {
-<<<<<<< feature/ours | ENTITY_CONFLICT：◇ math 需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：◇ math
     int x = 10;
     int y = 2;
     int z = 3;

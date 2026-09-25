@@ -15,9 +15,6 @@ pub fn report(path: &str, outcome: &Outcome, labels: &Labels, detailed: bool) {
         );
     }
     report_findings(&outcome.reasons, &outcome.related_moves, detailed);
-    if outcome.conflicted() {
-        eprintln!("需人工处理：选择一侧 / 编辑合并结果。\n");
-    }
 }
 
 /// Shared diagnostics for manual prepare and workflow preflight. Callers own

@@ -1,5 +1,5 @@
 test("result", () => {
-<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ result 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ result
     expect(2).toBe(1);
 ||||||| base-commit
     expect(1).toBe(1);

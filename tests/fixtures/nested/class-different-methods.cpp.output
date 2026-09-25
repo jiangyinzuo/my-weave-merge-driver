@@ -1,7 +1,7 @@
 class Counter {
 public:
     int first() const {
-<<<<<<< feature/ours | ENTITY_CONFLICT：◇ Counter 需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：◇ Counter
         return 10;
     }
 

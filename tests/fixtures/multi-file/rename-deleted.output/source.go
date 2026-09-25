@@ -1,4 +1,4 @@
-<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ calculate 需人工审核; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化
+<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ calculate; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化
 ||||||| base-commit
 func calculate() int {
     return 1

@@ -2,7 +2,5 @@
 feature/ours
 base-commit
 feature/theirs
-原因 [weave]：ENTITY_CONFLICT：ƒ score 需人工审核
+原因 [weave]：ENTITY_CONFLICT：ƒ score
   依据 [weave]：分类：ours=modified, theirs=modified
-需人工处理：选择一侧 / 编辑合并结果。
-

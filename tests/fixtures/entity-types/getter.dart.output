@@ -1,4 +1,4 @@
-<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ count 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ count
 int get count => 2;
 ||||||| base-commit
 int get count => 1;

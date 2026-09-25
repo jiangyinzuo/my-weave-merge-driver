@@ -1,4 +1,4 @@
-<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：ƒ calculateTotal 需人工审核; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：ƒ calculateTotal; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化
 package invoice
 
 func calculateTotal(price int,count int) int {

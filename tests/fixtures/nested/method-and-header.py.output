@@ -1,4 +1,4 @@
-<<<<<<< feature/ours | ENTITY_CONFLICT：◇ Counter 需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：◇ Counter
 class Counter(object):
     def score(self):
         x = 10

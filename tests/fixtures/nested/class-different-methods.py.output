@@ -1,6 +1,6 @@
 class Counter:
     def first(self):
-<<<<<<< feature/ours | ENTITY_CONFLICT：◇ Counter 需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：◇ Counter
         return 10
 
     def unchanged(self):

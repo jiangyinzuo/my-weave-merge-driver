@@ -1,5 +1,5 @@
 namespace app {
-<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ app 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ app
 #define SCALE(value) ((value) * 3)
 ||||||| base-commit
 #define SCALE(value) ((value) * 2)

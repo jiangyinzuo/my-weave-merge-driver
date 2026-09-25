@@ -1,5 +1,5 @@
 func a() int {
-<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ a 需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ a
     x := 1
     y := 2
 ||||||| base-commit

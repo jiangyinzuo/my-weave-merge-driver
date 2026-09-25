@@ -1,5 +1,5 @@
 fun alpha(): Int {
-<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ alpha：双方修改结果相同，但均不同于 base，按严格规则需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ alpha：双方修改结果相同，但均不同于 base
     return 2
 ||||||| base-commit
     return 1

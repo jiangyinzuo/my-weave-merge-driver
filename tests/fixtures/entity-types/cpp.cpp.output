@@ -7,7 +7,7 @@ struct Point {
 
 class Renderer {
 public:
-<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ demo 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ demo
     int render(int value) const { return value + LIMIT + 1; }
 ||||||| base-commit
     int render(int value) const { return value + LIMIT; }

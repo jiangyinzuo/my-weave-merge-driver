@@ -2,7 +2,7 @@ package main
 
 func score() int {
     x := 1
-<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ score 需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ score
     println("ours")
     y := 2
     z := 3

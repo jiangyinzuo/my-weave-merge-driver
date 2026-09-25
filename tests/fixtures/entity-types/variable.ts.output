@@ -1,4 +1,4 @@
-<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ limit 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ limit
 let limit = 2;
 ||||||| base-commit
 let limit = 1;

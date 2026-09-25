@@ -1,5 +1,5 @@
 def alpha():
-<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ alpha 需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ alpha
     x = 1
     y = 2
 ||||||| base-commit

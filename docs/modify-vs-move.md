@@ -29,7 +29,7 @@ Git 2.53.0 关闭 rename 检测的对应实验中，old.ts 为 `UU`，new.ts 为
 [move-source.go](../tests/fixtures/moves/move-source.go.base) 及 [move-target.go](../tests/fixtures/moves/move-target.go.theirs) 对应的诊断示例：
 
 ```text
-原因 [analyze]：GLOBAL_MODIFY_VS_MOVE：function calculate 疑似移动与另一侧变化需共同审核
+原因 [analyze]：GLOBAL_MODIFY_VS_MOVE：function calculate 疑似移动与另一侧变化冲突
   依据 [analyze]：MOVE_CANDIDATE：theirs 疑似移动 function calculate · source.go:1 → target.go:1；源 deleted、目标 added；类型/名称/原始区域文本相同（含附着注释）；sources=1，destinations=1；另一侧=modified
 ```
 

@@ -2,7 +2,7 @@ class Counter:
     # 评分方法
     @staticmethod
     def score():
-<<<<<<< feature/ours | ENTITY_CONFLICT：◇ Counter 需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：◇ Counter
         x = 10
         y = 2
         z = 3

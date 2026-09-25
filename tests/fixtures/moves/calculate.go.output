@@ -1,5 +1,5 @@
 func calculate() int {
-<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：ƒ calculate 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：ƒ calculate
     return 2
 ||||||| base-commit
     return 1

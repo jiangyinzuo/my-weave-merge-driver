@@ -4,14 +4,14 @@ use strict_weave::reason::{
 };
 use weave_core::conflict::ConflictKind;
 
-const REASON_PROVENANCE_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：ƒ f 需人工审核
+const REASON_PROVENANCE_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：ƒ f
   依据 [weave]：分类：ours=deleted, theirs=modified
   依据 [weave]：拒绝：modify_delete；modified in theirs
 "#;
 const REASON_UNAVAILABLE_TXT: &str = r#"原因 [analyze]：ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
   依据 [analyze]：weave 未返回实体分类
 "#;
-const REASON_DELETE_RENAME_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：ƒ f 需人工审核
+const REASON_DELETE_RENAME_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：ƒ f
   依据 [weave]：分类：ours=deleted, theirs=rename + modified candidate
 "#;
 const REASON_UNKNOWN_EVIDENCE_JSON: &str = r#"{"kind":"line_conflict","subject":{"type":"file"},"evidence":[{"type":"unknown"}]}
@@ -21,10 +21,10 @@ const REASON_UNKNOWN_KIND_JSON: &str = r#"{"kind":"unknown","subject":{"type":"f
 const REASON_CONTROLS_JSON: &str = r#"{"kind":"entity_conflict","subject":{"type":"entity","entity_type":"function","name":"f\n\u001b[31m"},"evidence":[{"type":"weave_refusal","refusal":{"kind":"rename_modify","old_name":"a\nb","new_name":"c\rd","renamed_in":"ours"}}]}"#;
 const REASON_UNKNOWN_FIELD_JSON: &str = r#"{"kind":"line_conflict","subject":{"type":"file"},"evidence":[],"surprise":1}
 "#;
-const REASON_ACTIONS_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：ƒ f 需人工审核
+const REASON_ACTIONS_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：ƒ f
   依据 [weave]：分类：ours=modified, theirs=modified
 "#;
-const REASON_ACTIONS_DETAILS_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：ƒ f 需人工审核
+const REASON_ACTIONS_DETAILS_TXT: &str = r#"原因 [weave]：ENTITY_CONFLICT：ƒ f
   依据 [weave]：分类：ours=modified, theirs=modified
 "#;
 
@@ -44,7 +44,7 @@ fn function_glyph_uses_structured_entity_type_and_preserves_function_words_in_na
     );
     assert_eq!(
         reason.summary(),
-        "ENTITY_CONFLICT：ƒ functionality 需人工审核"
+        "ENTITY_CONFLICT：ƒ functionality"
     );
     assert!(!reason.summary().contains("function function"));
 }

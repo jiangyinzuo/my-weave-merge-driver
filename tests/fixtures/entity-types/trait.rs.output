@@ -1,6 +1,6 @@
 trait Render {
     fn size(&self) -> i32 {
-<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ Render 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ Render
         2
 ||||||| base-commit
         1

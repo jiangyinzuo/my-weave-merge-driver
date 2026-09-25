@@ -1,4 +1,4 @@
-<<<<<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ calculate 需人工审核; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化 | 文件关联 [analyze]：疑似移动 ƒ calculate · source.go:1 → ƒ calculate · ours/moved.go:1
+<<<<<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ calculate; ENTITY_LAYOUT_CHANGED：实体增删或顺序变化 | 文件关联 [analyze]：疑似移动 ƒ calculate · source.go:1 → ƒ calculate · ours/moved.go:1
 ||||||||||| base-commit
 func calculate() int {
     return 1

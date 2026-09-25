@@ -249,9 +249,9 @@ impl Reason {
                     },
                 Kind::EntityConflict =>
                     if self.evidence.contains(&Evidence::IdenticalEdits) {
-                        format!("{target}：双方修改结果相同，但均不同于 base，按严格规则需人工审核")
+                        format!("{target}：双方修改结果相同，但均不同于 base")
                     } else {
-                        format!("{target} 需人工审核")
+                        target
                     },
                 Kind::NonEntityConflict => format!("{target}被双方修改"),
                 Kind::AnalysisUnavailable => "无法可靠分析，保留整文件冲突".into(),
@@ -266,9 +266,9 @@ impl Reason {
                         },
                         _ => None,
                     }) {
-                        format!("{target} 疑似重命名并移动（{old_name} → {new_name}），与另一侧变化需共同审核")
+                        format!("{target} 疑似重命名并移动（{old_name} → {new_name}），与另一侧变化冲突")
                     } else {
-                        format!("{target} 疑似移动与另一侧变化需共同审核")
+                        format!("{target} 疑似移动与另一侧变化冲突")
                     }
                 }
             }

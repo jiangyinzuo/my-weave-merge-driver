@@ -1,5 +1,5 @@
 Function Alpha()
-<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ Alpha：双方修改结果相同，但均不同于 base，按严格规则需人工审核
+<<<<<<< feature/ours | ENTITY_CONFLICT：ƒ Alpha：双方修改结果相同，但均不同于 base
     Return 2;
 ||||||| base-commit
     Return 1;

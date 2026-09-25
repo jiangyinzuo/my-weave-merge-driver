@@ -3,5 +3,3 @@ feature/ours
 base-commit
 feature/theirs
 原因 [analyze]：UNMODELED_BOTH_CHANGED：文件开头、ƒ answer 之前的非实体区域被双方修改
-需人工处理：选择一侧 / 编辑合并结果。
-

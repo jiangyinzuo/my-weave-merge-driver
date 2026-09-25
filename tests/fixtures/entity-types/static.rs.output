@@ -1,4 +1,4 @@
-<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ LIMIT 需人工审核
+<<<<<<< feature/ours | LINE_CONFLICT：Git 行级冲突; ENTITY_CONFLICT：◇ LIMIT
 static LIMIT: i32 = 2;
 ||||||| base-commit
 static LIMIT: i32 = 1;

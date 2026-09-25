@@ -28,11 +28,11 @@ BOM 也会归一化，原文分区无法完整还原时由能力降级保守阻�
 | `Kind` / 稳定代码 | 触发条件 | 子依据 | 默认展示 |
 | --- | --- | --- | --- |
 | `LineConflict` / `LINE_CONFLICT` | 原始三份文本的 Git merge-file --diff3/--zdiff3 返回冲突，覆盖普通模式冲突；分区内行级冲突亦保留 | `GitLineConflict` | Git 行级冲突 |
-| `EntityConflict` / `ENTITY_CONFLICT` | 优先保留 weave 拒绝；未拒绝目标用 weave 双方变化分类补充严格冲突；仍未覆盖时检查原文双方变化 | `RawBothChanged`、`IdenticalEdits`、`WeaveActions`、`WeaveRefusal`，任一即可独立触发 | entity 需审核；额外动作/拒绝展开 |
+| `EntityConflict` / `ENTITY_CONFLICT` | 优先保留 weave 拒绝；未拒绝目标用 weave 双方变化分类补充严格冲突；仍未覆盖时检查原文双方变化 | `RawBothChanged`、`IdenticalEdits`、`WeaveActions`、`WeaveRefusal`，任一即可独立触发 | entity；额外动作/拒绝展开 |
 | `NonEntityConflict` / `UNMODELED_BOTH_CHANGED` | 对应的非实体分区相对 base 在两侧都变化 | `RawBothChanged` | 非实体区域双方修改 |
 | `AnalysisUnavailable` / `ENTITY_ANALYSIS_UNAVAILABLE` | 文件双方变化，且无法获得可靠原文分区或 weave 分类 | `PartitionUnavailable` 或 `WeaveUnavailable` | 无法可靠分析；整文件保守冲突 |
 | `LayoutChanged` / `ENTITY_LAYOUT_CHANGED` | 三方可解析，但实体/间隙序列不同，且文件双方变化 | `LayoutChanged` | 实体增删或顺序变化 |
-| `ModifyVsMove` / `GLOBAL_MODIFY_VS_MOVE` | 一侧存在跨文件精确移动或名称归一化匹配的删除/新增候选，另一侧源实体变化或无法确认未变 | `MoveCandidate` | 疑似移动与另一侧变化需共同审核 |
+| `ModifyVsMove` / `GLOBAL_MODIFY_VS_MOVE` | 一侧存在跨文件精确移动或名称归一化匹配的删除/新增候选，另一侧源实体变化或无法确认未变 | `MoveCandidate` | 疑似移动与另一侧变化冲突 |
 
 “双方变化”按本次快照判断，包含结果相同、格式/附着注释变化；非历史提交扫描。
 双删、同名双新增在当前保守策略中亦须审核；父原因不宣称业务语义错误。
@@ -143,4 +143,4 @@ I/O 失败、分析文件损坏/旧版/缺路径/指纹不匹配等返回 Err（
 
 `IdenticalEdits` 来源为 analyze：仅在三方原文分区可靠、布局一致且对应 entity 满足 `ours == theirs != base` 时添加。比较包含格式和附着注释，不使用归一化 hash；不推断编辑历史或业务语义相同。该事实描述 entity 本身，不要求整个文件相同。
 
-已有 weave 原因保留，追加此原文事实用于说明；未被 weave 覆盖的相同变化直接采用此事实，避免再添加重复的 RawBothChanged。默认父原因和 marker 提示“双方修改结果相同，但均不同于 base，按严格规则需人工审核”；详细模式标明逐 byte 比较来源。普通双方修改默认展开 weave 动作分类。未知/不可靠原文不宣称结果相同。
+已有 weave 原因保留，追加此原文事实用于说明；未被 weave 覆盖的相同变化直接采用此事实，避免再添加重复的 RawBothChanged。默认父原因和 marker 提示“双方修改结果相同，但均不同于 base”；详细模式标明逐 byte 比较来源。普通双方修改默认展开 weave 动作分类。未知/不可靠原文不宣称结果相同。

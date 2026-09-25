@@ -4,7 +4,5 @@ base-commit
 feature/theirs
 原因 [git]：LINE_CONFLICT：Git 行级冲突
   依据 [git]：Git 行级合并返回冲突
-原因 [weave]：ENTITY_CONFLICT：◇ Amount 需人工审核
+原因 [weave]：ENTITY_CONFLICT：◇ Amount
   依据 [weave]：拒绝：both_modified
-需人工处理：选择一侧 / 编辑合并结果。
-

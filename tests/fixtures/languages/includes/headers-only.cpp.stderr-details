@@ -4,9 +4,7 @@ base-commit
 feature/theirs
 原因 [git]：LINE_CONFLICT：Git 行级冲突
   依据 [git]：Git 行级合并返回冲突
-原因 [weave]：ENTITY_CONFLICT：entity (file)（weave，身份未关联） 需人工审核
+原因 [weave]：ENTITY_CONFLICT：entity (file)（weave，身份未关联）
   依据 [weave]：拒绝：both_modified
 原因 [analyze]：ENTITY_ANALYSIS_UNAVAILABLE：无法可靠分析，保留整文件冲突
   依据 [analyze]：原文分区不可用：语言、语法、实体边界或唯一性检查未通过
-需人工处理：选择一侧 / 编辑合并结果。
-
