@@ -248,6 +248,33 @@ fn clean_single_commit_rebase_updates_branch_without_rebase_state() {
 }
 
 #[test]
+fn rebase_plan_is_read_only_and_apply_reuses_it() {
+    let repo = Repo::new(BASE);
+    repo.git(&["checkout", "-qb", "feature"]);
+    repo.write("feature.go", "package p\n");
+    repo.commit("feature");
+    repo.git(&["checkout", "-q", "main"]);
+    repo.write("main.go", "package p\n");
+    repo.commit("main");
+    let output = tempfile::tempdir().unwrap();
+    let plan = output.path().join("rebase-plan.json");
+    let plan_text = plan.to_str().unwrap();
+    let planned = repo.tool(&["rebase", "feature", "--plan", "-o", plan_text]);
+    assert_eq!(planned.status.code(), Some(0));
+    assert!(plan.is_file());
+    assert!(!repo.path().join(".git/rebase-merge").exists());
+    let applied = repo.tool(&["rebase", "feature", "--apply", plan_text]);
+    assert_eq!(
+        applied.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&applied.stderr)
+    );
+    assert!(!repo.path().join(".git/rebase-merge").exists());
+    assert_eq!(repo.git(&["status", "--porcelain"]), "");
+}
+
+#[test]
 fn stash_pop_applies_cleanly_and_drops_only_after_success() {
     let repo = Repo::new(BASE);
     repo.write("calc.go", OURS);
@@ -282,4 +309,35 @@ fn stash_pop_conflict_keeps_stash_and_installs_index_stages() {
     );
     assert!(!repo.git(&["ls-files", "-u"]).is_empty());
     assert!(!repo.git(&["stash", "list"]).is_empty());
+}
+
+#[test]
+fn stash_pop_plan_is_read_only_and_apply_consumes_it() {
+    let repo = Repo::new(BASE);
+    repo.write("calc.go", OURS);
+    repo.git(&["stash", "push", "-qm", "work"]);
+    let output = tempfile::tempdir().unwrap();
+    let plan = output.path().join("stash-plan.json");
+    let plan_text = plan.to_str().unwrap();
+    let planned = repo.tool(&["stash", "pop", "--plan", "-o", plan_text]);
+    assert_eq!(planned.status.code(), Some(0));
+    assert!(plan.is_file());
+    assert_eq!(
+        fs::read_to_string(repo.path().join("calc.go")).unwrap(),
+        BASE
+    );
+    assert!(!repo.git(&["stash", "list"]).is_empty());
+    assert_eq!(repo.git(&["status", "--porcelain"]), "");
+    let applied = repo.tool(&["stash", "pop", "--apply", plan_text]);
+    assert_eq!(
+        applied.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&applied.stderr)
+    );
+    assert_eq!(repo.git(&["stash", "list"]), "");
+    assert_eq!(
+        fs::read_to_string(repo.path().join("calc.go")).unwrap(),
+        OURS
+    );
 }
