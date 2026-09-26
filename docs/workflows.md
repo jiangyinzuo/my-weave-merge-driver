@@ -15,6 +15,10 @@ strict-weave rebase <upstream>
 strict-weave stash apply [stash]
 strict-weave stash pop [stash]
 
+# rebase 冲突后的状态控制
+strict-weave rebase --continue
+strict-weave rebase --abort
+
 # 消费已经校验过的预分析计划
 strict-weave merge feature/payment --apply /tmp/payment-plan.json
 ```
@@ -28,7 +32,7 @@ strict-weave merge feature/payment --apply /tmp/payment-plan.json
 - Git 仍负责 `add`、继续、跳过和中止；
 - 分析报告写入 `.git/strict-weave/operation-*/analysis.json`。
 
-当前明确拒绝：多个 merge-base、文件 rename、filters/renormalize、sparse checkout、脏工作区、多个待重放 commit、interactive rebase、`--rebase-merges`、复杂 Git 选项、不支持的 commit 类型，以及带独立 index 修改或未跟踪文件的 stash。拒绝发生在修改仓库之前。
+当前明确拒绝：多个 merge-base、文件 rename、filters/renormalize、sparse checkout、脏工作区、interactive rebase、`--rebase-merges`、merge commit、复杂 Git 选项，以及带独立 index 修改或未跟踪文件的 stash。普通线性 rebase 可以包含多个 non-merge commit；每一步都由 strict-weave 分析后才应用。
 
 成功且没有冲突时，strict-weave 完成对应 commit。发生冲突时命令返回 `1` 并保留 Git 状态；分析或状态错误返回 `129`。
 
@@ -40,8 +44,6 @@ git merge --continue
 git cherry-pick --continue
 git merge --abort
 git cherry-pick --abort
-git rebase --continue
-git rebase --abort
 ```
 
-这些状态命令仍由 Git 处理。strict-weave 不提供同名状态机包装。
+merge 和 cherry-pick 的状态命令仍由 Git 处理。rebase 的逐 commit 状态由 strict-weave 管理，因此使用 `strict-weave rebase --continue/--abort`。

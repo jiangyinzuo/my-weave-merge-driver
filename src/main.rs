@@ -15,8 +15,8 @@ enum Commands {
     Merge(OperationArgs),
     /// 重放一个非 merge commit
     CherryPick(OperationArgs),
-    /// 重放当前 branch 的一个 commit 到 upstream
-    Rebase(OperationArgs),
+    /// 将当前 branch 的普通 commit 重放到 upstream
+    Rebase(RebaseArgs),
     /// 应用一个普通 stash
     Stash(StashCommand),
 }
@@ -52,6 +52,19 @@ struct OperationArgs {
 }
 
 #[derive(Args)]
+struct RebaseArgs {
+    /// 要重放到的 upstream；继续或中止时省略
+    #[arg(value_name = "UPSTREAM", conflicts_with_all = ["continue_", "abort"])]
+    target: Option<String>,
+    #[arg(long = "continue", conflicts_with_all = ["target", "abort", "plan", "output", "apply"])]
+    continue_: bool,
+    #[arg(long, conflicts_with_all = ["target", "continue_", "plan", "output", "apply"])]
+    abort: bool,
+    #[command(flatten)]
+    options: OperationOptions,
+}
+
+#[derive(Args)]
 struct OperationOptions {
     #[arg(long, conflicts_with = "apply")]
     /// 只分析并写出计划，不修改 Git
@@ -72,6 +85,12 @@ impl OperationArgs {
     fn mode(&self) -> anyhow::Result<operation::Mode> {
         self.options.mode()
     }
+    fn options(&self) -> operation::Options {
+        self.options.options()
+    }
+}
+
+impl RebaseArgs {
     fn options(&self) -> operation::Options {
         self.options.options()
     }
@@ -114,7 +133,18 @@ fn run() -> Result<u8> {
         Commands::CherryPick(args) => {
             operation::cherry_pick(&args.target, args.options(), args.mode()?)
         }
-        Commands::Rebase(args) => operation::rebase(&args.target, args.options(), args.mode()?),
+        Commands::Rebase(args) => {
+            if args.continue_ {
+                operation::rebase_continue(args.options())
+            } else if args.abort {
+                operation::rebase_abort()
+            } else {
+                let target = args.target.as_deref().ok_or_else(|| {
+                    anyhow::anyhow!("rebase 需要 UPSTREAM、--continue 或 --abort")
+                })?;
+                operation::rebase(target, args.options(), args.options.mode()?)
+            }
+        }
         Commands::Stash(command) => match command.action {
             StashAction::Pop(args) => {
                 operation::stash(&args.target, true, args.options(), args.mode()?)

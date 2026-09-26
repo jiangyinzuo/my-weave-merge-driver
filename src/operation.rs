@@ -13,6 +13,7 @@ use std::{
 
 const ARTIFACT_VERSION: u32 = 1;
 const MAX_ARTIFACT: u64 = 64 * 1024 * 1024;
+const REBASE_STATE_VERSION: u32 = 1;
 
 #[derive(Clone, Copy, Default)]
 pub struct Options {
@@ -56,6 +57,33 @@ struct Artifact {
     head: String,
     index_sha256: String,
     report: analysis::Report,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RebasePlanArtifact {
+    version: u32,
+    operation: String,
+    target: String,
+    repository: String,
+    original_head: String,
+    upstream: String,
+    index_sha256: String,
+    commits: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RebaseState {
+    version: u32,
+    repository: String,
+    branch: String,
+    original_head: String,
+    upstream: String,
+    commits: Vec<String>,
+    next: usize,
+    stopped: bool,
+    stopped_head: Option<String>,
 }
 
 fn git(args: &[&str]) -> Result<Output> {
@@ -117,6 +145,9 @@ fn repository_root() -> Result<PathBuf> {
         "--show-toplevel",
     ])?)?)
 }
+fn rebase_state_path() -> Result<PathBuf> {
+    git_path("strict-weave/rebase-state.json")
+}
 fn index_sha256() -> Result<String> {
     let path = git_path("index")?;
     let bytes = std::fs::read(path).context("读取 Git index")?;
@@ -162,6 +193,9 @@ fn enter() -> Result<Guard> {
     }
     let dir = git_path("strict-weave")?;
     std::fs::create_dir_all(&dir)?;
+    if rebase_state_path()?.exists() {
+        bail!("已有 strict-weave rebase；请使用 rebase --continue 或 --abort");
+    }
     let lock = dir.join("operation.lock");
     std::fs::OpenOptions::new()
         .write(true)
@@ -171,6 +205,27 @@ fn enter() -> Result<Guard> {
     let guard = Guard(lock);
     clean()?;
     Ok(guard)
+}
+
+fn enter_rebase_control() -> Result<Guard> {
+    if std::env::var_os("GIT_INDEX_FILE").is_some() {
+        bail!("不支持 GIT_INDEX_FILE");
+    }
+    let root = repository_root()?;
+    std::env::set_current_dir(root)?;
+    let state = rebase_state_path()?;
+    if !state.exists() {
+        bail!("没有进行中的 strict-weave rebase");
+    }
+    let dir = git_path("strict-weave")?;
+    std::fs::create_dir_all(&dir)?;
+    let lock = dir.join("operation.lock");
+    std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&lock)
+        .context("已有 strict-weave 操作；确认无运行进程后再移除 operation.lock")?;
+    Ok(Guard(lock))
 }
 
 fn check_subset(revisions: [&str; 3], paths: &BTreeSet<String>) -> Result<()> {
@@ -507,6 +562,61 @@ fn new_internal_path() -> Result<PathBuf> {
         .keep()
         .join("plan.json"))
 }
+
+fn save_rebase_state(state: &RebaseState) -> Result<()> {
+    let path = rebase_state_path()?;
+    let mut bytes = serde_json::to_vec_pretty(state)?;
+    if bytes.len() as u64 > MAX_ARTIFACT {
+        bail!("rebase 状态超过 64 MiB");
+    }
+    bytes.push(b'\n');
+    repository::atomic_write(&path, &bytes)
+}
+
+fn load_rebase_state() -> Result<RebaseState> {
+    let path = rebase_state_path()?;
+    let bytes = std::fs::read(&path).context("读取 strict-weave rebase 状态")?;
+    if bytes.len() as u64 > MAX_ARTIFACT {
+        bail!("rebase 状态超过 64 MiB");
+    }
+    let state: RebaseState = serde_json::from_slice(&bytes).context("无效的 rebase 状态")?;
+    if state.version != REBASE_STATE_VERSION
+        || state.repository != repository_root()?.display().to_string()
+        || state.commits.is_empty()
+        || state.next > state.commits.len()
+    {
+        bail!("strict-weave rebase 状态不完整或不属于当前仓库");
+    }
+    Ok(state)
+}
+
+fn save_rebase_plan(path: &Path, plan: &RebasePlanArtifact) -> Result<()> {
+    let bytes = serde_json::to_vec_pretty(plan)?;
+    if bytes.len() as u64 > MAX_ARTIFACT {
+        bail!("rebase 计划超过 64 MiB");
+    }
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    std::fs::create_dir_all(parent)?;
+    let mut file = tempfile::NamedTempFile::new_in(parent)?;
+    file.write_all(&bytes)?;
+    file.write_all(b"\n")?;
+    file.as_file().sync_all()?;
+    file.persist_noclobber(path)
+        .map_err(|error| error.error)
+        .context("计划文件已存在；不会覆盖旧计划")?;
+    Ok(())
+}
+
+fn remove_rebase_state() -> Result<()> {
+    let path = rebase_state_path()?;
+    if path.exists() {
+        std::fs::remove_file(path)?;
+    }
+    Ok(())
+}
 fn native(args: &[&str]) -> Result<Output> {
     let mut prefix = vec![
         "-c",
@@ -542,44 +652,27 @@ fn finish_commit(args: &[&str]) -> Result<u8> {
     }
 }
 
-fn write_rebase_state(branch: &str, original: &str, upstream: &str, commit: &str) -> Result<()> {
-    let dir = git_path("rebase-merge")?;
-    std::fs::create_dir_all(&dir)?;
-    let subject = string(&["show", "-s", "--format=%s", commit])?;
-    let message = read(&["show", "-s", "--format=%B", commit])?;
-    let author_name = string(&["show", "-s", "--format=%an", commit])?;
-    let author_email = string(&["show", "-s", "--format=%ae", commit])?;
-    let author_timestamp = string(&["show", "-s", "--format=%at", commit])?;
-    let author_offset = string(&["show", "-s", "--format=%ai", commit])?
-        .split_whitespace()
-        .last()
-        .unwrap_or("+0000")
-        .to_owned();
-    let shell_quote = |value: &str| format!("'{}'", value.replace('\'', "'\\''"));
-    let author_script = format!(
-        "GIT_AUTHOR_NAME={}\nGIT_AUTHOR_EMAIL={}\nGIT_AUTHOR_DATE='@{} {}'\n",
-        shell_quote(&author_name),
-        shell_quote(&author_email),
-        author_timestamp,
-        author_offset
-    );
-    for (name, contents) in [
-        ("head-name", format!("{branch}\n").into_bytes()),
-        ("onto", format!("{upstream}\n").into_bytes()),
-        ("orig-head", format!("{original}\n").into_bytes()),
-        ("stopped-sha", format!("{commit}\n").into_bytes()),
-        ("msgnum", b"1\n".to_vec()),
-        ("end", b"1\n".to_vec()),
-        ("done", format!("pick {commit} # {subject}\n").into_bytes()),
-        ("git-rebase-todo", Vec::new()),
-        ("message", message),
-        ("author-script", author_script.into_bytes()),
-        ("interactive", Vec::new()),
-        ("no-reschedule-failed-exec", Vec::new()),
-        ("drop_redundant_commits", Vec::new()),
-    ] {
-        repository::atomic_write(&dir.join(name), &contents)?;
+fn current_branch() -> Result<String> {
+    string(&["symbolic-ref", "-q", "HEAD"]).context("strict-weave rebase 当前需要在 branch 上执行")
+}
+
+fn rebase_commits(upstream: &str, original: &str) -> Result<Vec<String>> {
+    let output = string(&["rev-list", "--reverse", &format!("{upstream}..{original}")])?;
+    let commits: Vec<_> = output
+        .lines()
+        .filter(|line| !line.is_empty())
+        .map(str::to_owned)
+        .collect();
+    for commit in &commits {
+        let parents = string(&["rev-list", "--parents", "-n", "1", commit])?;
+        if parents.split_whitespace().count() != 2 {
+            bail!("普通 rebase 不支持 merge commit：{commit}");
+        }
     }
+    Ok(commits)
+}
+
+fn clear_cherry_pick_state() -> Result<()> {
     let cherry_head = git_path("CHERRY_PICK_HEAD")?;
     if cherry_head.exists() {
         std::fs::remove_file(cherry_head)?;
@@ -591,17 +684,129 @@ fn write_rebase_state(branch: &str, original: &str, upstream: &str, commit: &str
     Ok(())
 }
 
-fn rebase_replay(upstream: &str) -> Result<(String, String, String)> {
-    let commits = string(&["rev-list", "--reverse", &format!("{upstream}..HEAD")])?;
-    let commits: Vec<_> = commits.lines().filter(|line| !line.is_empty()).collect();
-    let [commit] = commits.as_slice() else {
-        if commits.is_empty() {
-            bail!("当前 branch 没有需要 rebase 的 commit");
+fn ensure_resolved_rebase_index() -> Result<()> {
+    if !read(&["ls-files", "-u", "-z"])?.is_empty() {
+        bail!("仍有未解决的 index 冲突；请先编辑并 git add 文件");
+    }
+    let status = read(&["status", "--porcelain=v1", "-z", "--untracked-files=all"])?;
+    for entry in status
+        .split(|byte| *byte == 0)
+        .filter(|entry| !entry.is_empty())
+    {
+        if entry.len() < 2 {
+            bail!("Git status 输出不完整");
         }
-        bail!("普通 rebase 当前只支持一个待重放的 commit");
+        if entry[0] == b'?' || entry[1] != b' ' {
+            bail!("存在未暂存或未跟踪的修改；请只保留已 git add 的 rebase 结果");
+        }
+    }
+    Ok(())
+}
+
+fn save_rebase_operation_plan(
+    mode: &Mode,
+    target: &str,
+    original: &str,
+    upstream: &str,
+    commits: &[String],
+) -> Result<Option<u8>> {
+    let artifact = RebasePlanArtifact {
+        version: REBASE_STATE_VERSION,
+        operation: OperationKind::Rebase.name().into(),
+        target: target.into(),
+        repository: repository_root()?.display().to_string(),
+        original_head: original.into(),
+        upstream: upstream.into(),
+        index_sha256: index_sha256()?,
+        commits: commits.to_vec(),
     };
-    let parent = commit_id(&format!("{commit}^"))?;
-    Ok((parent, (*commit).into(), upstream.into()))
+    let path = match mode {
+        Mode::Plan(path) => path,
+        Mode::Apply => return Ok(None),
+        Mode::ApplyPlan(_) => return Ok(None),
+    };
+    save_rebase_plan(path, &artifact)?;
+    eprintln!(
+        "重放计划：{}（{} 个 commit）",
+        path.display(),
+        commits.len()
+    );
+    Ok(Some(0))
+}
+
+fn load_rebase_operation_plan(
+    path: &Path,
+    target: &str,
+    original: &str,
+    upstream: &str,
+    commits: &[String],
+) -> Result<()> {
+    let bytes = std::fs::read(path).context("读取 rebase 计划")?;
+    if bytes.len() as u64 > MAX_ARTIFACT {
+        bail!("rebase 计划超过 64 MiB");
+    }
+    let artifact: RebasePlanArtifact =
+        serde_json::from_slice(&bytes).context("无效的 rebase 计划")?;
+    if artifact.version != REBASE_STATE_VERSION
+        || artifact.operation != OperationKind::Rebase.name()
+        || artifact.target != target
+        || artifact.repository != repository_root()?.display().to_string()
+        || artifact.original_head != original
+        || artifact.upstream != upstream
+        || artifact.index_sha256 != index_sha256()?
+        || artifact.commits != commits
+    {
+        bail!("rebase 计划已过期或与当前操作不匹配；请重新执行 --plan");
+    }
+    Ok(())
+}
+
+fn finish_rebase(state: &RebaseState) -> Result<u8> {
+    let head = commit_id("HEAD")?;
+    read(&["update-ref", &state.branch, &head])?;
+    read(&["symbolic-ref", "HEAD", &state.branch])?;
+    remove_rebase_state()?;
+    eprintln!("rebase 完成：重放 {} 个 commit", state.commits.len());
+    Ok(0)
+}
+
+fn advance_rebase(state: &mut RebaseState, options: Options) -> Result<u8> {
+    loop {
+        if state.next == state.commits.len() {
+            return finish_rebase(state);
+        }
+        if state.stopped {
+            return Ok(1);
+        }
+        let commit = state.commits[state.next].clone();
+        let parent = commit_id(&format!("{commit}^"))?;
+        let ours = commit_id("HEAD")?;
+        let revisions = [parent, ours.clone(), commit.clone()];
+        let plan = Plan::build(OperationKind::Rebase, &ours, &commit, revisions, options)?;
+        plan.recheck()?;
+        save_internal_plan(&plan, &Mode::Apply)?;
+
+        state.stopped = true;
+        state.stopped_head = Some(ours.clone());
+        save_rebase_state(state)?;
+        let result = native(&["cherry-pick", "--no-commit", "--strategy=ort", &commit])?;
+        if !matches!(result.status.code(), Some(0 | 1)) {
+            bail!("Git 无法应用 rebase commit；状态已保留，可使用 --abort");
+        }
+        clear_cherry_pick_state()?;
+        if plan.install(options)? {
+            eprintln!(
+                "rebase 在第 {} 个 commit 处暂停；请解决后运行 strict-weave rebase --continue",
+                state.next + 1
+            );
+            return Ok(1);
+        }
+        finish_commit(&["commit", "--allow-empty", "-C", &commit])?;
+        state.next += 1;
+        state.stopped = false;
+        state.stopped_head = None;
+        save_rebase_state(state)?;
+    }
 }
 fn execute_plan(plan: Plan, kind: OperationKind, options: Options) -> Result<u8> {
     plan.recheck()?;
@@ -693,44 +898,95 @@ pub fn cherry_pick(target: &str, options: Options, mode: Mode) -> Result<u8> {
 pub fn rebase(target: &str, options: Options, mode: Mode) -> Result<u8> {
     let _guard = enter()?;
     let original = commit_id("HEAD")?;
+    let branch = current_branch()?;
     let upstream = commit_id(target)?;
-    let (parent, commit, _) = rebase_replay(&upstream)?;
-    let revisions = [parent, upstream.clone(), commit.clone()];
-    let plan = make_plan(
-        &mode,
-        OperationKind::Rebase,
-        target,
-        &commit,
-        revisions.clone(),
-        options,
-    )?;
-    if plan.artifact.head != original {
-        bail!("分析计划的原始 HEAD 与当前 HEAD 不匹配");
+    let commits = rebase_commits(&upstream, &original)?;
+    if commits.is_empty() {
+        eprintln!("rebase：没有需要重放的 commit");
+        return Ok(0);
     }
-    if let Some(code) = report_plan(&plan, &mode, options)? {
+    if let Some(code) = save_rebase_operation_plan(&mode, target, &original, &upstream, &commits)? {
         return Ok(code);
     }
-    save_internal_plan(&plan, &mode)?;
-    plan.recheck()?;
-    let branch = string(&["symbolic-ref", "-q", "HEAD"])?;
+    if let Mode::ApplyPlan(path) = &mode {
+        load_rebase_operation_plan(path, target, &original, &upstream, &commits)?;
+    }
+    if let Mode::Apply = mode {
+        let path = new_internal_path()?;
+        let artifact = RebasePlanArtifact {
+            version: REBASE_STATE_VERSION,
+            operation: OperationKind::Rebase.name().into(),
+            target: target.into(),
+            repository: repository_root()?.display().to_string(),
+            original_head: original.clone(),
+            upstream: upstream.clone(),
+            index_sha256: index_sha256()?,
+            commits: commits.clone(),
+        };
+        save_rebase_plan(&path, &artifact)?;
+        eprintln!(
+            "重放计划：{}（{} 个 commit）",
+            path.display(),
+            commits.len()
+        );
+    }
     let checkout = native(&["checkout", "--detach", &upstream])?;
     if !checkout.status.success() {
         bail!("无法将 rebase 基底切换到 upstream");
     }
-    let _ = read(&["update-ref", "ORIG_HEAD", &original])?;
-    let result = native(&["cherry-pick", "--no-commit", "--strategy=ort", &commit])?;
-    if !matches!(result.status.code(), Some(0 | 1)) {
-        let _ = native(&["checkout", "--detach", &original]);
-        let _ = read(&["symbolic-ref", "HEAD", &branch]);
-        bail!("Git 无法应用 rebase commit；已尝试恢复原始 HEAD");
+    read(&["update-ref", "ORIG_HEAD", &original])?;
+    let mut state = RebaseState {
+        version: REBASE_STATE_VERSION,
+        repository: repository_root()?.display().to_string(),
+        branch,
+        original_head: original,
+        upstream,
+        commits,
+        next: 0,
+        stopped: false,
+        stopped_head: None,
+    };
+    save_rebase_state(&state)?;
+    advance_rebase(&mut state, options)
+}
+
+pub fn rebase_continue(options: Options) -> Result<u8> {
+    let _guard = enter_rebase_control()?;
+    let mut state = load_rebase_state()?;
+    if !state.stopped {
+        bail!("当前 rebase 没有等待解决的 commit");
     }
-    if plan.install(options)? {
-        write_rebase_state(&branch, &original, &upstream, &commit)?;
-        return Ok(1);
+    let expected_head = state
+        .stopped_head
+        .as_deref()
+        .context("rebase 状态缺少暂停时的 HEAD")?;
+    if commit_id("HEAD")? != expected_head {
+        bail!("rebase 暂停后的 HEAD 已变化；请使用 --abort 或恢复该 HEAD");
     }
+    ensure_resolved_rebase_index()?;
+    let commit = state
+        .commits
+        .get(state.next)
+        .context("rebase 状态的 commit 序号无效")?
+        .clone();
+    clear_cherry_pick_state()?;
     finish_commit(&["commit", "--allow-empty", "-C", &commit])?;
-    let _ = read(&["update-ref", &branch, "HEAD", &original])?;
-    let _ = read(&["symbolic-ref", "HEAD", &branch])?;
+    state.next += 1;
+    state.stopped = false;
+    state.stopped_head = None;
+    save_rebase_state(&state)?;
+    advance_rebase(&mut state, options)
+}
+
+pub fn rebase_abort() -> Result<u8> {
+    let _guard = enter_rebase_control()?;
+    let state = load_rebase_state()?;
+    native(&["reset", "--hard", &state.original_head])?;
+    read(&["update-ref", &state.branch, &state.original_head])?;
+    read(&["symbolic-ref", "HEAD", &state.branch])?;
+    clear_cherry_pick_state()?;
+    remove_rebase_state()?;
+    eprintln!("rebase 已中止，恢复到 {}", state.original_head);
     Ok(0)
 }
 

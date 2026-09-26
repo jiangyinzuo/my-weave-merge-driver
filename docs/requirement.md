@@ -231,7 +231,7 @@ strict-weave 不注册 Git merge driver，也不依赖 `.gitattributes`。用户
 1. 在调用 Git 修改 index 或工作区前，检查三方快照的全部路径，不能只扫描 Git 已有冲突文件，也不能跳过 `ours == theirs`。
 2. 使用该操作实际的三方基准。对 base 中已有且双方保留的 entity，`ours != base && theirs != base` 必须审核；三方相同或仅一侧变化不因本规则冲突。
 3. Git 原生行级冲突是强制下限；即使 entity 分析能够合并，也必须保留冲突。
-4. 只读 plan 不修改 Git。apply 失败时不得留下半完成的 strict-weave 写入；成功建立冲突时安装标准 index stages，后续 `--continue`、`--abort` 等状态命令完全由原生 Git 处理。
+4. 只读 plan 不修改 Git。apply 失败时不得留下半完成的 strict-weave 写入；merge/cherry-pick 成功建立冲突时安装标准 index stages，后续状态由原生 Git 处理。普通多 commit rebase 使用 strict-weave 自己的 `--continue`、`--abort`，以确保每个后续 commit 都重新分析。
 5. 测试必须覆盖真实 merge、cherry-pick、rebase 和 stash 流程，以及 Git 行级结果与严格 entity 结果不同的场景。
 
 当前操作子集和明确限制见 [workflows.md](workflows.md)。

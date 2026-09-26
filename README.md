@@ -12,6 +12,15 @@ strict-weave stash apply [stash]
 strict-weave stash pop [stash]
 ```
 
+普通线性 rebase 支持多个 non-merge commit。冲突时解决文件并暂存后，继续执行：
+
+```sh
+strict-weave rebase --continue
+strict-weave rebase --abort
+```
+
+每个待重放 commit 都会重新读取当前完整 tree 并执行一次全局分析；后续 commit 不会绕过严格检查。
+
 只读计划和应用已有计划的形式分别是：
 
 ```sh

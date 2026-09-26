@@ -50,24 +50,25 @@ case.output/
 - `strict-weave merge TARGET`
 - `strict-weave cherry-pick COMMIT`
 - `strict-weave rebase UPSTREAM`
+- `strict-weave rebase --continue|--abort`
 - `strict-weave stash apply|pop`
 - `--plan -o FILE` 的只读模式
 - `--apply FILE` 的计划校验和过期拒绝
-- clean 结果、原生行级冲突、严格 entity 冲突、标准 index stages 以及原生 Git `--continue` 状态
+- clean 结果、原生行级冲突、严格 entity 冲突、标准 index stages，以及多 commit rebase 的逐步 `--continue` 和 `--abort` 状态
 
 测试要求工作区和 index 的初始状态干净，并确认计划绑定的 HEAD、index、仓库路径、target、三方 tree 和分析报告。只读 plan 不应修改工作区、index、HEAD 或 refs；apply 失败也不能消费旧计划。
 
-后续状态由原生 Git 处理，例如：
+merge/cherry-pick 的后续状态由原生 Git 处理，例如：
 
 ```sh
 git merge --continue
 git merge --abort
 git cherry-pick --continue
-git rebase --continue
-git rebase --abort
+strict-weave rebase --continue
+strict-weave rebase --abort
 ```
 
-测试不把这些状态命令重新包装进 strict-weave。
+merge/cherry-pick 的状态命令仍由 Git 处理；rebase 状态由 strict-weave 管理，以便每个后续 commit 都重新执行全局分析。
 
 ## 验证
 
