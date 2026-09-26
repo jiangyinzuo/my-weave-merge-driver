@@ -59,6 +59,7 @@ case.output/
 - 人工解决后，后续 replay 使用新 HEAD 的完整 tree 识别跨文件移动，并保存正确的三方 tree ID
 - rebase 首次冲突后停止预演并列出 pending commit，拒绝修改过的计划；提交、branch 更新和中止失败后的重试，不重复重放，不将未完整应用的步骤当作已解决
 - 从子目录保存和应用相对路径计划，仍分析仓库完整 tree；损坏或被修改的计划不能取消冲突
+- 计划文件放在工作区且未被忽略时，apply 因未跟踪文件拒绝，不建立 Git 冲突状态
 - 分叉后的 clean merge/cherry-pick、commit parents 和 author/message；原生行级冲突及双方相同修改复用 fixture 输出逐 byte 断言
 - 脏工作区、属性转换、rename、文件/目录冲突、binary 和 symlink 在应用前拒绝；原生 stash apply 失败时保留 stash 和本地修改
 

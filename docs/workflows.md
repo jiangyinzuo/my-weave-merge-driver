@@ -1,63 +1,70 @@
-# strict-weave 操作命令
+# 操作流程
 
-strict-weave 不实现 Git merge driver，也不通过 `.gitattributes` 注入 Git。用户需要显式使用 strict-weave 支持的命令；其它 Git 命令继续由 Git 自己执行，不会自动获得严格 entity 分析。
-
-当前支持：
+strict-weave 是显式命令，不是 Git merge driver。它只包装下面这些常用流程；直接执行 Git 命令不会经过严格分析。
 
 ```sh
-# 预分析，不修改 HEAD、refs、index 或工作区
-strict-weave merge feature/payment --plan -o /tmp/payment-plan.json
-
-# 预分析并立即 apply
-strict-weave merge feature/payment
-strict-weave cherry-pick <commit>
-strict-weave rebase <upstream>
-strict-weave stash apply [stash]
-strict-weave stash pop [stash]
-
-# rebase 冲突后的状态控制
-strict-weave rebase --continue
-strict-weave rebase --abort
-
-# 消费已经校验过的预分析计划
-strict-weave merge feature/payment --apply /tmp/payment-plan.json
+strict-weave merge TARGET
+strict-weave cherry-pick COMMIT
+strict-weave rebase UPSTREAM
+strict-weave stash apply [STASH]
+strict-weave stash pop [STASH]
 ```
 
-`--apply` 会重新确认 repository、target、base / ours / theirs、HEAD、index 和完整报告内容；任一项变化都会拒绝执行。计划文件不能被当前操作之外的旧缓存替代。
+开始前，工作区和 index 必须干净。命令会解析实际 commits，读取完整的 base / ours / theirs tree，完成全局分析和状态检查，然后调用 Git。分析或状态错误不会修改 Git 状态。
 
-`-o` 和 `--apply` 的相对路径以执行命令时的目录为准。从仓库子目录执行也会分析完整 tree。
+## 返回值
 
-命令会先检查工作区和 index，解析实际 commits，读取完整三棵 tree，完成全局分析，然后再调用 Git plumbing 建立标准操作状态。发现冲突时：
+| 返回值 | 含义 |
+| --- | --- |
+| `0` | 操作完成且没有待解决冲突 |
+| `1` | 发现冲突，或 `--plan` 生成的计划包含冲突 |
+| `129` | 参数、分析、Git 状态或应用过程错误 |
 
-- 工作区写入 strict-weave 冲突块；
-- index 保留 stage 1/2/3；
-- 使用 `git add` 暂存解决结果；
-- 默认执行时，每步报告写入 `.git/strict-weave/operation-*/plan.json`，不自动读取旧报告。
+原生 Git 返回 `1` 时，strict-weave 还会检查 index 是否真的有 unmerged entries。没有时视为应用失败：不安装严格结果，也不删除 stash。
 
-当前明确拒绝：多个 merge-base、文件 rename、filters/renormalize、sparse checkout、脏工作区、interactive rebase、`--rebase-merges`、merge commit、复杂 Git 选项，以及带独立 index 修改或未跟踪文件的 stash。普通线性 rebase 可以包含多个 non-merge commit；每一步都由 strict-weave 分析后才应用。
+## 冲突后
 
-merge/cherry-pick/rebase 成功且没有冲突时，strict-weave 完成对应 commit；stash 只应用改动。发生冲突时命令返回 `1` 并保留 Git 状态；分析或状态错误返回 `129`。
-
-原生 Git 返回 `1` 时还会检查 index 是否包含未解决冲突。没有冲突项则视为应用失败，不安装严格结果，也不删除 stash。
-
-标准 Git 操作示例：
+冲突时工作区包含 strict-weave 冲突块，index 保留 stage 1/2/3。编辑文件并暂存后，按操作类型继续：
 
 ```sh
 git add path/to/file
-git merge --continue
-git cherry-pick --continue
-git merge --abort
-git cherry-pick --abort
+git merge --continue             # merge
+git cherry-pick --continue       # cherry-pick
+strict-weave rebase --continue   # strict-weave rebase
 ```
 
-merge 和 cherry-pick 的状态命令仍由 Git 处理。rebase 的逐 commit 状态由 strict-weave 管理，因此使用 `strict-weave rebase --continue/--abort`。
+放弃 merge 或 cherry-pick 使用 `git merge --abort` 或 `git cherry-pick --abort`。放弃 strict-weave rebase 使用 `strict-weave rebase --abort`。rebase 不能使用 `git rebase --continue`，否则后续 commit 不会经过全局分析。
 
-## 多 commit rebase
+## 计划
 
-开始重放前固定 upstream、原 branch 和待重放 commit 顺序。每一步的 base 是原 commit 的 parent，ours 是当前已经重放到的 HEAD，theirs 是原 commit；三棵完整 tree 都重新分析。人工解决并 `git add` 后，`--continue` 提交实际暂存结果，后续分析基于这个新结果，保留原 commit 的 author 和 message。
+计划是只读分析结果：
 
-重放期间使用 detached HEAD，原 branch 到全部完成时才更新；`--abort` 恢复开始前的 branch、index 和工作区，丢弃本次重放中的已跟踪改动。`--continue` 自动继承开始时的 `--zdiff3`、`--explain-reasons`。当前不提供 `--skip`，也不能用 `git rebase --continue` 代替，否则无法保证后续全局分析。
+```sh
+strict-weave merge TARGET --plan -o /tmp/strict-weave-plan.json
+strict-weave merge TARGET --apply /tmp/strict-weave-plan.json
+```
 
-进度保存在 `.git/strict-weave/rebase-state.json`，与分析报告分开。继续或中止前校验仓库、HEAD、原 branch 和 Git 操作状态，拒绝覆盖外部变化。分析、提交或最终 branch 更新失败时保留进度，修复问题后可重试；若应用步骤没有完整写入，`--continue` 会拒绝提交，只允许 `--abort`。中止失败也保留进度供再次中止。
+`--plan` 始终需要 `-o/--output`。计划文件建议放在 `/tmp` 或已忽略的目录；放在工作区内且未被忽略会产生未跟踪文件，`--apply` 会因工作区不干净而拒绝。
 
-`rebase --plan` 使用 `git merge-tree --write-tree` 逐步预演，无冲突时继续，在第一个 Git 或严格 entity 冲突处停止。计划包含已分析步骤及尚待分析的 `pending` commit；不会猜测人工解决后的 tree。预演会写入不可变的 Git 对象，不改变 HEAD、refs、index 或工作区。`--apply` 重新计算并核对完整计划，实际执行时仍逐步分析。
+`--apply` 会重新确认仓库路径、HEAD、index、target、base / ours / theirs 和完整报告。任何一项变化都必须重新生成计划。计划只绑定当前操作，不会读取旧的 `.git/strict-weave/operation-*` 报告。
+
+从仓库子目录执行时，计划相对路径以调用目录为准；分析范围仍是整个仓库。
+
+## rebase
+
+普通线性 rebase 支持多个 non-merge commit。每个 commit 都重新分析当前完整 tree：
+
+1. `strict-weave rebase UPSTREAM` 在第一个冲突处暂停。
+2. 解决冲突并运行 `git add`。
+3. 运行 `strict-weave rebase --continue`，再分析下一个 commit。
+4. 需要放弃时运行 `strict-weave rebase --abort`。
+
+rebase 期间使用 detached HEAD；全部完成后才更新原 branch。`--continue` 会继承开始时的 `--zdiff3` 和 `--explain-reasons`。当前不支持 interactive rebase、`--rebase-merges`、merge commit rebase、`--skip` 或 `git rebase --continue`。
+
+## 当前边界
+
+- merge 只支持单 target 和单一 merge-base。
+- cherry-pick 只支持 non-merge commit。
+- stash 只支持没有独立 index 修改、没有未跟踪文件的普通 stash。
+- 拒绝 rename、filters/renormalize、sparse checkout、复杂布局和未实现的 Git 选项。
+- 发现分析不可靠时保守拒绝执行，不猜测业务意图。

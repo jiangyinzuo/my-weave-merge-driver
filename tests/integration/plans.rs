@@ -63,6 +63,29 @@ fn plan_only_is_read_only_and_apply_consumes_the_bound_plan() {
 }
 
 #[test]
+fn a_plan_inside_the_worktree_makes_apply_dirty_until_ignored_or_removed() {
+    let repo = Repo::new(BASE);
+    repo.diverge(OURS, THEIRS);
+    let path = repo.path().join("merge-plan.json");
+    let plan = path.to_str().unwrap();
+
+    let planned = repo.tool_code(&["merge", "feature", "--plan", "-o", plan], 1);
+    assert!(path.is_file());
+    assert!(repo
+        .git(&["status", "--porcelain"])
+        .contains("merge-plan.json"));
+    assert!(
+        String::from_utf8_lossy(&planned.stdout).contains("分析计划")
+            || String::from_utf8_lossy(&planned.stderr).contains("分析计划")
+    );
+
+    let applied = repo.tool_code(&["merge", "feature", "--apply", plan], 129);
+    assert!(String::from_utf8_lossy(&applied.stderr).contains("工作区或 index 不干净"));
+    assert!(repo.git(&["ls-files", "-u"]).is_empty());
+    assert!(!repo.path().join(".git/MERGE_HEAD").exists());
+}
+
+#[test]
 fn stale_plan_is_rejected_before_git_state_changes() {
     let repo = Repo::new(BASE);
     repo.diverge(OURS, THEIRS);

@@ -30,6 +30,31 @@ fn continue_requires_resolved_index_and_staged_worktree() {
 }
 
 #[test]
+fn native_git_rebase_continue_cannot_resume_strict_weave_rebase() {
+    let repo = conflicted_rebase();
+    let head = repo.git(&["rev-parse", "HEAD"]);
+    let branch = repo.git(&["rev-parse", "main"]);
+    let state = fs::read(repo.path().join(".git/strict-weave/rebase-state.json")).unwrap();
+
+    repo.write("calc.go", OURS);
+    repo.git(&["add", "calc.go"]);
+    let native = repo.command("git", &["rebase", "--continue"]);
+
+    assert!(!native.status.success());
+    assert_eq!(repo.git(&["rev-parse", "HEAD"]), head);
+    assert_eq!(repo.git(&["rev-parse", "main"]), branch);
+    assert_eq!(
+        fs::read(repo.path().join(".git/strict-weave/rebase-state.json")).unwrap(),
+        state
+    );
+    assert!(!repo.path().join(".git/rebase-merge").exists());
+    assert!(!repo.path().join(".git/rebase-apply").exists());
+    assert_eq!(repo.git(&["status", "--porcelain"]), "M  calc.go");
+
+    repo.tool_code(&["rebase", "--continue"], 0);
+}
+
+#[test]
 fn abort_failure_preserves_recovery_state_for_retry() {
     let repo = conflicted_rebase();
     let original = repo.git(&["rev-parse", "main"]);
