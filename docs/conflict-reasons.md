@@ -137,7 +137,7 @@ I/O 失败、分析文件损坏/旧版/缺路径/指纹不匹配等返回 Err（
 `PartitionUnavailable` 统一涵盖未支持语言、语法错误、无实体、边界重叠、
 重复名称、分区不能完整还原原文；现有解析 API 未区分具体失败原因，故不猜测。
 全局移动侧解析失败会产生非阻断 warning；只有结合另一侧移动候选或本地双方
-变化时才触发保守冲突。操作命令会将原因对应的路径安装为 Git index conflict；Git 仍负责继续和中止等状态流程。
+变化时才触发保守冲突。操作命令会将原因对应的路径安装为 Git index conflict；merge/cherry-pick 由 Git 继续或中止，rebase 使用 strict-weave 的 `--continue/--abort`，以保证后续 commit 重新全局分析。
 
 ## 相同修改结果说明
 

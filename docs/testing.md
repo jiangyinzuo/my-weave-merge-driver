@@ -5,13 +5,13 @@
 常用入口：
 
 ```sh
-cargo test --offline --locked
-cargo test --offline --locked --test fixtures
-cargo test --offline --locked --test operations
-cargo test --offline --locked --test fixtures -- entities/disjoint.go
+cargo test -j 2 --offline --locked
+cargo test -j 2 --offline --locked --test fixtures
+cargo test -j 2 --offline --locked --test operations
+cargo test -j 2 --offline --locked --test fixtures -- entities/disjoint.go
 ```
 
-源码 fixture 按 `entities/`、`languages/`、`insertions/`、`nested/`、`layout/`、`moves/`、`multi-file/`、`encoding/` 和 `fallback/` 分类。输入文本直接存放在 fixture 中；Rust 常量只用于很短的仓库初始化辅助文本。
+源码 fixture 按 `entities/`、`languages/`、`insertions/`、`nested/`、`layout/`、`moves/`、`multi-file/`、`encoding/` 和 `fallback/` 分类。合并核心、分析测试和集成测试共用这些文本，不另建集成测试 fixture 副本；Rust 常量只用于很短的仓库初始化辅助文本。
 
 ## 单文件 fixture
 
@@ -45,7 +45,7 @@ case.output/
 
 ## 真实 Git 操作
 
-`tests/operations.rs` 在临时 Git 仓库中执行实际的 strict-weave 命令，覆盖：
+`tests/operations.rs` 是集成测试入口，用例按操作放在 [tests/integration/](../tests/integration/)。测试在临时目录创建真实 Git 仓库、branch 和 commit，调用实际 strict-weave 命令，覆盖：
 
 - `strict-weave merge TARGET`
 - `strict-weave cherry-pick COMMIT`
@@ -55,28 +55,21 @@ case.output/
 - `--plan -o FILE` 的只读模式
 - `--apply FILE` 的计划校验和过期拒绝
 - clean 结果、原生行级冲突、严格 entity 冲突、标准 index stages，以及多 commit rebase 的逐步 `--continue` 和 `--abort` 状态
+- merge/cherry-pick/rebase 残留报告及损坏报告不影响下次 merge；清除旧报告前后的冲突文件和 index stages 完全相同；旧 clean 计划不会隐藏新冲突，旧冲突计划不会影响新 clean 结果
+- 人工解决后，后续 replay 使用新 HEAD 的完整 tree 识别跨文件移动，并保存正确的三方 tree ID
+- rebase 首次冲突后停止预演并列出 pending commit，拒绝修改过的计划；提交、branch 更新和中止失败后的重试，不重复重放，不将未完整应用的步骤当作已解决
 
 测试要求工作区和 index 的初始状态干净，并确认计划绑定的 HEAD、index、仓库路径、target、三方 tree 和分析报告。只读 plan 不应修改工作区、index、HEAD 或 refs；apply 失败也不能消费旧计划。
 
-merge/cherry-pick 的后续状态由原生 Git 处理，例如：
-
-```sh
-git merge --continue
-git merge --abort
-git cherry-pick --continue
-strict-weave rebase --continue
-strict-weave rebase --abort
-```
-
-merge/cherry-pick 的状态命令仍由 Git 处理；rebase 状态由 strict-weave 管理，以便每个后续 commit 都重新执行全局分析。
+单文件输入通过 `include_str!` 复用，跨文件输入用公共 helper 将 `multi-file/*.base/ours/theirs` 复制到仓库后提交。人工解决结果优先复用已有文本；展示测试也可复用 `.output-zdiff3`，只替换实际 commit 标签。增加端到端场景时，只新增 Git 操作和状态断言，避免再次维护相同源码与输出。
 
 ## 验证
 
 ```sh
 cargo fmt --all -- --check
-cargo clippy --offline --locked --all-targets -- -D warnings
-cargo test --offline --locked
-RUSTDOCFLAGS="-D warnings" cargo doc --offline --locked --no-deps
+cargo clippy -j 2 --offline --locked --all-targets -- -D warnings
+cargo test -j 2 --offline --locked
+RUSTDOCFLAGS="-D warnings" cargo doc -j 2 --offline --locked --no-deps
 ```
 
 fixture 预期不会自动更新。发现差异时先阅读三方输入和实际输出，再手工修改对应 `.output` 或报告文件。

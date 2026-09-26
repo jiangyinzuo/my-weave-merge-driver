@@ -231,8 +231,9 @@ strict-weave 不注册 Git merge driver，也不依赖 `.gitattributes`。用户
 1. 在调用 Git 修改 index 或工作区前，检查三方快照的全部路径，不能只扫描 Git 已有冲突文件，也不能跳过 `ours == theirs`。
 2. 使用该操作实际的三方基准。对 base 中已有且双方保留的 entity，`ours != base && theirs != base` 必须审核；三方相同或仅一侧变化不因本规则冲突。
 3. Git 原生行级冲突是强制下限；即使 entity 分析能够合并，也必须保留冲突。
-4. 只读 plan 不修改 Git。apply 失败时不得留下半完成的 strict-weave 写入；merge/cherry-pick 成功建立冲突时安装标准 index stages，后续状态由原生 Git 处理。普通多 commit rebase 使用 strict-weave 自己的 `--continue`、`--abort`，以确保每个后续 commit 都重新分析。
-5. 测试必须覆盖真实 merge、cherry-pick、rebase 和 stash 流程，以及 Git 行级结果与严格 entity 结果不同的场景。
+4. 只读 plan 不修改 HEAD、refs、index 或工作区；预演可以写入不可变的 Git 对象。rebase 预演遇到冲突时停止，明确列出尚未分析的 commit，不猜测人工解决后的 tree。
+5. 校验或分析失败不得应用当前步骤；应用期间的 I/O 或 Git 失败必须报错，不能将部分写入伪装成成功。merge/cherry-pick 成功建立冲突时安装标准 index stages，后续状态由原生 Git 处理。普通多 commit rebase 使用 strict-weave 的 `--continue`、`--abort`，保存可校验的恢复状态，每个后续 commit 都基于实际解决结果重新分析；未完整应用的步骤不得通过 `--continue` 提交。
+6. 测试必须覆盖真实 merge、cherry-pick、rebase 和 stash 流程，以及 Git 行级结果与严格 entity 结果不同的场景。旧报告残留不得影响新操作；集成测试与核心测试共用 fixture 文本。
 
 当前操作子集和明确限制见 [workflows.md](workflows.md)。
 

@@ -67,7 +67,7 @@ struct RebaseArgs {
 #[derive(Args)]
 struct OperationOptions {
     #[arg(long, conflicts_with = "apply")]
-    /// 只分析并写出计划，不修改 Git
+    /// 只分析并写出计划，不修改 HEAD、index 或工作区
     plan: bool,
     #[arg(short = 'o', long, requires = "plan", value_name = "FILE")]
     /// `--plan` 的输出文件
