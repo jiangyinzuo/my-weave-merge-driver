@@ -14,12 +14,15 @@
 | 报告隔离 | 每步在 `.git/strict-weave/operation-*` 保存新的 `plan.json`，不扫描旧报告；操作锁防止并发 strict-weave 写入 |
 | rebase 恢复 | 保存逐步进度、显示选项及提交 OID；提交或更新 branch 失败可重试，未完整应用的步骤只能 `--abort`；异常 HEAD/branch 和其它 Git 操作会被拒绝 |
 | 正确性边界 | 分析失败、多个 merge-base、属性转换、rename、复杂布局均拒绝执行，不猜测 |
+| 应用失败 | 原生 Git 返回 `1` 且没有 unmerged index 时明确报错；不安装严格结果、不删除 stash |
 
 ## 代码与验证
 
 `src/operation/` 按职责拆分：`git.rs` 封装 Git plumbing 和操作检查，`plan.rs` 负责三方分析、计划校验与冲突安装；`merge.rs`、`stash.rs` 执行对应操作。`rebase/` 独立维护逐 commit 重放、恢复状态和只读预演。
 
-端到端用例位于 `tests/integration/`，与核心测试共用 `tests/fixtures/`。覆盖旧报告残留、过期计划拒绝、多 commit 重放、人工解决后的跨文件分析、显示选项继承，以及应用/提交/中止失败的恢复。测试维护方式见 [docs/testing.md](docs/testing.md)。
+`src/analysis/git.rs` 统一读取 Git tree 的文本、blob ID 和文件模式；计划生成及冲突 stages 复用同一次读取的元数据。操作入口统一解析相对于调用目录的计划路径，再切到仓库根目录执行全局操作。
+
+端到端用例位于 `tests/integration/`，与核心测试共用 `tests/fixtures/`；fixture runner 直接读取原始输入，不再中转临时文件。覆盖旧报告残留、损坏和过期计划拒绝、子目录操作、原生 Git/严格 entity 冲突、多 commit 重放、人工解决后的跨文件分析、显示选项继承，以及应用/提交/中止失败的恢复。支持边界及测试维护方式见 [docs/testing.md](docs/testing.md)。
 
 ## 后续阶段
 

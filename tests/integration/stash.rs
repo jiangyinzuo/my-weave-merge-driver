@@ -1,4 +1,37 @@
 use super::*;
+
+#[test]
+fn failed_native_stash_apply_preserves_stash_and_hidden_worktree_changes() {
+    for flag in ["--assume-unchanged", "--skip-worktree"] {
+        for strict_conflict in [false, true] {
+            let repo = Repo::new(BASE);
+            repo.write("calc.go", THEIRS);
+            repo.git(&["stash", "push", "-qm", "work"]);
+            if strict_conflict {
+                repo.write("calc.go", OURS);
+                repo.commit("ours");
+            }
+            // Git status hides these local edits, but stash apply rejects them.
+            // Exit 1 without unmerged entries is an error, not a conflict.
+            repo.git(&["update-index", flag, "calc.go"]);
+            let local = if strict_conflict { BASE } else { OURS };
+            repo.write("calc.go", local);
+            assert_eq!(repo.git(&["status", "--porcelain"]), "");
+            let head = repo.git(&["rev-parse", "HEAD"]);
+            let stash = repo.git(&["rev-parse", "refs/stash"]);
+            let index = repo.git(&["ls-files", "--stage", "-v"]);
+
+            let output = repo.tool_code(&["stash", "pop"], 129);
+            assert!(String::from_utf8_lossy(&output.stderr).contains("Git stash apply"));
+            assert_eq!(repo.git(&["rev-parse", "HEAD"]), head);
+            assert_eq!(repo.git(&["rev-parse", "refs/stash"]), stash);
+            assert_eq!(repo.git(&["ls-files", "--stage", "-v"]), index);
+            assert_eq!(repo.content("calc.go"), local);
+            assert!(repo.git(&["ls-files", "-u"]).is_empty());
+        }
+    }
+}
+
 #[test]
 fn stash_pop_applies_cleanly_and_drops_only_after_success() {
     let repo = Repo::new(BASE);

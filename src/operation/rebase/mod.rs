@@ -2,8 +2,8 @@
 //! manual resolution. Git's sequencer is not used: it would bypass that analysis.
 use super::{
     git::{
-        acquire, checked, clean, commit_id, enter, git_path, head_branch, native, read,
-        replay_commit, repository_root, string, unique_base,
+        acquire, checked, clean, commit_id, enter, git_path, head_branch, native, native_apply,
+        read, replay_commit, repository_root, string, unique_base,
     },
     plan::{make_plan, report_plan, save_internal_plan, save_new, Plan},
     Mode, OperationKind, Options,
@@ -83,13 +83,8 @@ fn apply_next(state: &mut State) -> Result<bool> {
     // cannot mistake partial installation for a user's completed resolution.
     state.phase = Phase::Applying;
     state.save()?;
-    let output = native(&["cherry-pick", "--no-commit", "--strategy=ort", &commit])?;
-    let native_conflicted = !read(&["ls-files", "-u", "-z"])?.is_empty();
-    if !matches!(output.status.code(), Some(0 | 1))
-        || (output.status.code() == Some(1) && !native_conflicted)
-    {
-        bail!("Git 未完成 rebase 应用；状态已保留，请使用 strict-weave rebase --abort");
-    }
+    native_apply(&["cherry-pick", "--no-commit", "--strategy=ort", &commit])
+        .context("rebase 应用未完成；状态已保留，请使用 strict-weave rebase --abort")?;
     state.validate_context()?;
     clear_pick_state()?;
     let conflicted = plan.install(state.options)?;
@@ -179,7 +174,7 @@ fn advance(mut state: State) -> Result<u8> {
 }
 
 pub fn rebase(target: &str, options: Options, mode: Mode) -> Result<u8> {
-    let _guard = enter()?;
+    let (_guard, mode) = enter(mode)?;
     let original = commit_id("HEAD")?;
     let branch = head_branch()?.context("strict-weave rebase 当前需要在 branch 上执行")?;
     let upstream = commit_id(target)?;

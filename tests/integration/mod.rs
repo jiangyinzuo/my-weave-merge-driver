@@ -1,3 +1,4 @@
+use crate::common;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -21,8 +22,11 @@ impl Repo {
         self.0.path()
     }
     fn command(&self, program: &str, args: &[&str]) -> Output {
+        self.command_in(self.path(), program, args)
+    }
+    fn command_in(&self, directory: &Path, program: &str, args: &[&str]) -> Output {
         Command::new(program)
-            .current_dir(self.path())
+            .current_dir(directory)
             .args(args)
             .env("GIT_CONFIG_GLOBAL", "/dev/null")
             .env("GIT_CONFIG_NOSYSTEM", "1")
@@ -63,7 +67,14 @@ impl Repo {
         self.command(env!("CARGO_BIN_EXE_strict-weave"), args)
     }
     fn tool_code(&self, args: &[&str], code: i32) -> Output {
-        let output = self.tool(args);
+        self.tool_code_in(".", args, code)
+    }
+    fn tool_code_in(&self, directory: &str, args: &[&str], code: i32) -> Output {
+        let output = self.command_in(
+            &self.path().join(directory),
+            env!("CARGO_BIN_EXE_strict-weave"),
+            args,
+        );
         assert_eq!(
             output.status.code(),
             Some(code),
@@ -130,6 +141,7 @@ const BASE: &str = include_str!("../fixtures/entities/disjoint.go.base");
 const OURS: &str = include_str!("../fixtures/entities/disjoint.go.ours");
 const THEIRS: &str = include_str!("../fixtures/entities/disjoint.go.theirs");
 
+mod guards;
 mod merge;
 mod plans;
 mod rebase;

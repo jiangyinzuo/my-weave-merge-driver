@@ -25,6 +25,8 @@ strict-weave merge feature/payment --apply /tmp/payment-plan.json
 
 `--apply` 会重新确认 repository、target、base / ours / theirs、HEAD、index 和完整报告内容；任一项变化都会拒绝执行。计划文件不能被当前操作之外的旧缓存替代。
 
+`-o` 和 `--apply` 的相对路径以执行命令时的目录为准。从仓库子目录执行也会分析完整 tree。
+
 命令会先检查工作区和 index，解析实际 commits，读取完整三棵 tree，完成全局分析，然后再调用 Git plumbing 建立标准操作状态。发现冲突时：
 
 - 工作区写入 strict-weave 冲突块；
@@ -35,6 +37,8 @@ strict-weave merge feature/payment --apply /tmp/payment-plan.json
 当前明确拒绝：多个 merge-base、文件 rename、filters/renormalize、sparse checkout、脏工作区、interactive rebase、`--rebase-merges`、merge commit、复杂 Git 选项，以及带独立 index 修改或未跟踪文件的 stash。普通线性 rebase 可以包含多个 non-merge commit；每一步都由 strict-weave 分析后才应用。
 
 merge/cherry-pick/rebase 成功且没有冲突时，strict-weave 完成对应 commit；stash 只应用改动。发生冲突时命令返回 `1` 并保留 Git 状态；分析或状态错误返回 `129`。
+
+原生 Git 返回 `1` 时还会检查 index 是否包含未解决冲突。没有冲突项则视为应用失败，不安装严格结果，也不删除 stash。
 
 标准 Git 操作示例：
 

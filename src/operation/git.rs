@@ -1,4 +1,5 @@
 //! Git plumbing and operation guards.
+use super::Mode;
 use anyhow::{bail, Context, Result};
 use sha2::{Digest, Sha256};
 use std::{
@@ -138,14 +139,19 @@ pub(super) fn ensure_no_git_operation(allowed_cherry: Option<&str>) -> Result<()
     Ok(())
 }
 
-pub(super) fn enter() -> Result<Guard> {
+pub(super) fn enter(mut mode: Mode) -> Result<(Guard, Mode)> {
+    // Resolve user paths before acquire changes cwd for full-tree operations.
+    match &mut mode {
+        Mode::Plan(path) | Mode::ApplyPlan(path) => *path = std::path::absolute(&*path)?,
+        Mode::Apply => (),
+    }
     let guard = acquire()?;
     ensure_no_git_operation(None)?;
     if git_path("strict-weave/rebase-state.json")?.exists() {
         bail!("已有 strict-weave rebase；请使用 rebase --continue 或 --abort");
     }
     clean()?;
-    Ok(guard)
+    Ok((guard, mode))
 }
 
 pub(super) fn native_output(args: &[&str]) -> Result<Output> {
@@ -167,6 +173,18 @@ pub(super) fn native(args: &[&str]) -> Result<Output> {
     std::io::stdout().write_all(&output.stdout)?;
     std::io::stderr().write_all(&output.stderr)?;
     Ok(output)
+}
+
+/// Native porcelain may return 1 for either conflicts or a failure to apply.
+/// Only an unmerged index permits installing our strict conflict results.
+/// In particular, a failed stash apply must never lead to dropping the stash.
+pub(super) fn native_apply(args: &[&str]) -> Result<()> {
+    let output = native(args)?;
+    match output.status.code() {
+        Some(0) => Ok(()),
+        Some(1) if !read(&["ls-files", "-u", "-z"])?.is_empty() => Ok(()),
+        _ => bail!("Git {} 未完成；未安装严格结果", args.join(" ")),
+    }
 }
 
 /// Create the replayed commit without moving HEAD. Persisting its OID before

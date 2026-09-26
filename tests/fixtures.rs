@@ -145,13 +145,11 @@ fn check_text(
     analysis: Option<&Path>,
 ) -> Result<(), String> {
     let artifact_file = |suffix| PathBuf::from(format!("{}.{suffix}", artifact.display()));
-    let scratch = tempfile::tempdir().map_err(|e| e.to_string())?;
-    for (side, input) in ["base", "ours", "theirs"].iter().zip(&case.inputs) {
-        let bytes = match input {
-            Some(input) => fs::read(input).map_err(|e| format!("{}: {e}", input.display()))?,
-            None => Vec::new(),
-        };
-        fs::write(scratch.path().join(side), bytes).map_err(|e| e.to_string())?;
+    let mut inputs: [Vec<u8>; 3] = Default::default();
+    for (bytes, input) in inputs.iter_mut().zip(&case.inputs) {
+        if let Some(input) = input {
+            *bytes = fs::read(input).map_err(|e| format!("{}: {e}", input.display()))?;
+        }
     }
     let expected = fs::read(&case.default_output)
         .map_err(|e| format!("{}: {e}", case.default_output.display()))?;
@@ -171,16 +169,10 @@ fn check_text(
     };
     let labels = options.labels();
     let attempt = (|| -> anyhow::Result<_> {
-        let inputs = ["base", "ours", "theirs"].map(|name| fs::read(scratch.path().join(name)));
-        let inputs = [
-            inputs[0].as_ref().unwrap(),
-            inputs[1].as_ref().unwrap(),
-            inputs[2].as_ref().unwrap(),
-        ];
         let texts = [
-            strict_weave::merge::validate_text(inputs[0])?,
-            strict_weave::merge::validate_text(inputs[1])?,
-            strict_weave::merge::validate_text(inputs[2])?,
+            strict_weave::merge::validate_text(&inputs[0])?,
+            strict_weave::merge::validate_text(&inputs[1])?,
+            strict_weave::merge::validate_text(&inputs[2])?,
         ];
         let mut outcome = strict_weave::merge::merge_with_style(
             texts[0],
@@ -213,7 +205,7 @@ fn check_text(
     let (actual, actual_code, diagnostics) = match attempt {
         Ok(value) => value,
         Err(error) => (
-            fs::read(scratch.path().join("ours")).unwrap(),
+            inputs[1].clone(),
             129,
             format!("strict-weave：{error:#}\n").into_bytes(),
         ),

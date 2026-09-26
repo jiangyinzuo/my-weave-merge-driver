@@ -113,30 +113,31 @@ pub(super) struct Plan {
     stages: Vec<u8>,
 }
 impl Plan {
-    fn load_snapshots(revisions: [&str; 3]) -> Result<[(String, analysis::TreeSnapshot); 3]> {
-        Ok([
-            analysis::snapshot(revisions[0])?,
-            analysis::snapshot(revisions[1])?,
-            analysis::snapshot(revisions[2])?,
-        ])
+    fn load_snapshots(revisions: [&str; 3]) -> Result<[analysis::GitSnapshot; 3]> {
+        let loaded = [
+            analysis::GitSnapshot::load(revisions[0])?,
+            analysis::GitSnapshot::load(revisions[1])?,
+            analysis::GitSnapshot::load(revisions[2])?,
+        ];
+        let paths = loaded
+            .iter()
+            .flat_map(|snapshot| snapshot.texts.keys().cloned())
+            .collect();
+        check_subset(revisions, &paths)?;
+        Ok(loaded)
     }
     fn from_loaded(
         artifact: Artifact,
         label: &str,
-        loaded: [(String, analysis::TreeSnapshot); 3],
+        loaded: [analysis::GitSnapshot; 3],
         options: Options,
     ) -> Result<Self> {
         let revisions = artifact.revisions.each_ref().map(String::as_str);
-        let trees = loaded.each_ref().map(|(id, _)| id.clone());
+        let trees = loaded.each_ref().map(|snapshot| snapshot.tree_id.clone());
         if artifact.report.trees != trees {
             bail!("分析报告的 tree ID 与当前 Git 对象不匹配");
         }
-        let snapshots = loaded.each_ref().map(|(_, snapshot)| snapshot);
-        let paths = snapshots
-            .iter()
-            .flat_map(|snapshot| snapshot.keys().cloned())
-            .collect();
-        check_subset(revisions, &paths)?;
+        let snapshots = loaded.each_ref().map(|snapshot| &snapshot.texts);
         artifact.report.validate()?;
         let labels = merge::Labels {
             base: revisions[0].into(),
@@ -161,10 +162,11 @@ impl Plan {
                 stages.extend_from_slice(
                     format!("0 {}\t{path}\0", "0".repeat(revisions[1].len())).as_bytes(),
                 );
-                for (stage, revision) in revisions.iter().enumerate() {
-                    if let Some((mode, oid)) = analysis::blob_oid(revision, path)? {
+                for (stage, snapshot) in loaded.iter().enumerate() {
+                    if let Some(entry) = snapshot.entries.get(path) {
                         stages.extend_from_slice(
-                            format!("{mode} {oid} {}\t{path}\0", stage + 1).as_bytes(),
+                            format!("{} {} {}\t{path}\0", entry.mode, entry.oid, stage + 1)
+                                .as_bytes(),
                         );
                     }
                 }
@@ -187,13 +189,8 @@ impl Plan {
     ) -> Result<Self> {
         let refs = revisions.each_ref().map(String::as_str);
         let loaded = Self::load_snapshots(refs)?;
-        let trees = loaded.each_ref().map(|(id, _)| id.clone());
-        let snapshots = loaded.each_ref().map(|(_, snapshot)| snapshot);
-        let paths = snapshots
-            .iter()
-            .flat_map(|snapshot| snapshot.keys().cloned())
-            .collect();
-        check_subset(refs, &paths)?;
+        let trees = loaded.each_ref().map(|snapshot| snapshot.tree_id.clone());
+        let snapshots = loaded.each_ref().map(|snapshot| &snapshot.texts);
         let report = analysis::analyze(
             &[
                 snapshots[0].clone(),
@@ -305,14 +302,14 @@ fn load_artifact(
         bail!("分析计划已过期；HEAD、index 或仓库路径发生变化");
     }
     let loaded = Plan::load_snapshots(revisions.each_ref().map(String::as_str))?;
-    let snapshots = loaded.each_ref().map(|(_, snapshot)| snapshot);
+    let snapshots = loaded.each_ref().map(|snapshot| &snapshot.texts);
     let computed = analysis::analyze(
         &[
             snapshots[0].clone(),
             snapshots[1].clone(),
             snapshots[2].clone(),
         ],
-        loaded.each_ref().map(|(tree, _)| tree.clone()),
+        loaded.each_ref().map(|snapshot| snapshot.tree_id.clone()),
     )?;
     if serde_json::to_vec(&computed)? != serde_json::to_vec(&artifact.report)? {
         bail!("分析计划内容与当前 Git 对象不匹配；请重新执行 --plan");

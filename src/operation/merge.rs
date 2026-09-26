@@ -1,6 +1,9 @@
 //! Single-target merge and cherry-pick.
 use super::{
-    git::{checked, commit_id, enter, finish_commit, git_path, native, read, string, unique_base},
+    git::{
+        checked, commit_id, enter, finish_commit, git_path, native, native_apply, read, string,
+        unique_base,
+    },
     plan::{make_plan, report_plan, save_internal_plan, Plan},
     Mode, OperationKind, Options,
 };
@@ -10,8 +13,8 @@ use anyhow::{bail, Result};
 fn execute_plan(plan: Plan, kind: OperationKind, options: Options) -> Result<u8> {
     plan.recheck()?;
     let revisions = plan.artifact.revisions.each_ref().map(String::as_str);
-    let result = match kind {
-        OperationKind::Merge => native(&[
+    match kind {
+        OperationKind::Merge => native_apply(&[
             "merge",
             "--no-commit",
             "--no-ff",
@@ -23,13 +26,10 @@ fn execute_plan(plan: Plan, kind: OperationKind, options: Options) -> Result<u8>
             revisions[2],
         ])?,
         OperationKind::CherryPick => {
-            native(&["cherry-pick", "--no-commit", "--strategy=ort", revisions[2]])?
+            native_apply(&["cherry-pick", "--no-commit", "--strategy=ort", revisions[2]])?
         }
         _ => bail!("该操作不能使用通用 apply 流程：{}", kind.name()),
     };
-    if !matches!(result.status.code(), Some(0 | 1)) {
-        bail!("Git 未建立预期操作状态");
-    }
     if kind == OperationKind::Merge && !git_path("MERGE_HEAD")?.exists() {
         bail!("Git 未建立 MERGE_HEAD");
     }
@@ -53,7 +53,7 @@ fn execute_plan(plan: Plan, kind: OperationKind, options: Options) -> Result<u8>
     }
 }
 fn run(operation: OperationKind, target: &str, options: Options, mode: Mode) -> Result<u8> {
-    let _guard = enter()?;
+    let (_guard, mode) = enter(mode)?;
     let ours = commit_id("HEAD")?;
     let theirs = commit_id(target)?;
     let base = if operation == OperationKind::Merge {

@@ -1,13 +1,13 @@
 //! Git stash apply/pop operation.
 use super::{
-    git::{commit_id, enter, native, string},
+    git::{commit_id, enter, native, native_apply, string},
     plan::{make_plan, report_plan, save_internal_plan},
     Mode, OperationKind, Options,
 };
 use anyhow::{bail, Result};
 
 pub fn stash(target: &str, pop: bool, options: Options, mode: Mode) -> Result<u8> {
-    let _guard = enter()?;
+    let (_guard, mode) = enter(mode)?;
     let ours = commit_id("HEAD")?;
     let stash = commit_id(target)?;
     let parents = string(&["rev-list", "--parents", "-n", "1", &stash])?;
@@ -39,10 +39,7 @@ pub fn stash(target: &str, pop: bool, options: Options, mode: Mode) -> Result<u8
     }
     save_internal_plan(&plan, &mode)?;
     plan.recheck()?;
-    let result = native(&["stash", "apply", "--quiet", target])?;
-    if !matches!(result.status.code(), Some(0 | 1)) {
-        bail!("Git stash apply 未完成；未安装严格结果");
-    }
+    native_apply(&["stash", "apply", "--quiet", target])?;
     if plan.install(options)? {
         return Ok(1);
     }
